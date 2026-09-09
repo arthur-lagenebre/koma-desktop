@@ -21,3 +21,9 @@ indent_size = 2
 
 [*.md]
 trim_trailing_whitespace = false
+
+# Test projects are not a public API surface. The Subject_Behaviour naming
+# convention is deliberate: it is what makes xUnit failure output readable.
+[tests/**.cs]
+dotnet_diagnostic.CA1707.severity = none
+dotnet_diagnostic.CA1515.severity = none

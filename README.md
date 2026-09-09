@@ -87,5 +87,7 @@ These are unresolved and will shape early decisions:
 
 ## Licence
 
-Not yet chosen. Until a licence file is added, default copyright applies and
-nobody may reuse this code.
+Apache License 2.0. See [LICENSE](LICENSE).
+
+The KOMA specification itself lives in a separate repository under its own
+terms; this licence covers only the code in this repository.
