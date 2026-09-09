@@ -1,0 +1,26 @@
+<Project>
+
+  <PropertyGroup>
+    <!-- Change the target framework here only. If you are not on .NET 10,
+         set this to net8.0 and nothing else needs to move. -->
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <!-- Do NOT set InvariantGlobalization. §3 of the specification requires
+         Unicode NFC normalization and case folding of ZIP entry names, which
+         needs the full ICU data. Turning invariant mode on would silently
+         change the result of duplicate-entry detection. -->
+    <InvariantGlobalization>false</InvariantGlobalization>
+  </PropertyGroup>
+
+</Project>

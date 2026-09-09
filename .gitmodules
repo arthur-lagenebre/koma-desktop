@@ -1,0 +1,3 @@
+[submodule "external/koma"]
+	path = external/koma
+	url = https://github.com/arthur-lagenebre/koma.git

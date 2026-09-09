@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Koma.Cli/Koma.Cli.csproj" />
+    <Project Path="src/Koma.Core/Koma.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Koma.Core.Tests/Koma.Core.Tests.csproj" />
+  </Folder>
+</Solution>

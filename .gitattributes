@@ -1,0 +1,18 @@
+* text=auto eol=lf
+
+*.cs        text eol=lf diff=csharp
+*.csproj    text eol=lf
+*.sln       text eol=crlf
+*.props     text eol=lf
+*.md        text eol=lf
+*.yml       text eol=lf
+*.ps1       text eol=crlf
+*.sh        text eol=lf
+
+# KOMA packages and their parts are binary or byte-sensitive.
+*.koma      binary
+*.cbz       binary
+*.png       binary
+*.jpg       binary
+*.webp      binary
+*.slnx      text eol=lf
