@@ -9,5 +9,9 @@
   <ItemGroup>
     <Folder Include="Packaging\" />
   </ItemGroup>
+  
+  <ItemGroup>
+    <InternalsVisibleTo Include="Koma.Core.Tests" />
+  </ItemGroup>
 
 </Project>

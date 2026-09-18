@@ -98,12 +98,13 @@ public sealed class KomaEntryNameTests
     }
 
     [Fact]
-    public void FoldForUniqueness_DoesNotExpandSharpS()
+    public void FoldForUniqueness_ExpandsSharpS()
     {
-        // Documents the choice rather than endorsing it. §3 says "case folding"
-        // without saying whether it means simple or full folding; under full
-        // folding these two would collide. See the remarks on FoldForUniqueness.
-        Assert.False(KomaEntryName.AreSameLogicalName("straße.webp", "STRASSE.webp"));
+        // §3 requires full case folding, which maps ß to ss. Simple folding keeps
+        // these two apart, and that is what this project did before: the choice is
+        // not a detail of the implementation but a rule of the format, covered by
+        // the corpus case L1-full-case-fold-duplicate.
+        Assert.True(KomaEntryName.AreSameLogicalName("straße.webp", "STRASSE.webp"));
     }
 
     [Fact]
@@ -111,5 +112,15 @@ public sealed class KomaEntryNameTests
     {
         Assert.False(KomaEntryName.AreSameLogicalName("koma/manifest.xml", "koma/metadata.xml"));
         Assert.False(KomaEntryName.AreSameLogicalName("images/page-001.webp", "images/page-002.webp"));
+    }
+
+    [Fact]
+    public void CaseFoldingTable_RecordsTheUnicodeVersionItWasBuiltFrom()
+    {
+        // The table is generated. Regenerating it against a different Unicode
+        // release can change what collides, so the version is part of the
+        // behaviour rather than a build detail. tools/generate_case_folding.py
+        // must be run with the Python that runs the reference validator.
+        Assert.Equal("16.0.0", CaseFoldingTable.UnicodeVersion);
     }
 }

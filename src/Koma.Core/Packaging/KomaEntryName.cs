@@ -35,7 +35,7 @@ public enum EntryNameProblem
 /// The entry naming rules of §3: UTF-8, <c>/</c> separators, Unicode NFC,
 /// package-root-relative, with absolute paths, dot segments, backslashes and
 /// traversal constructs forbidden, and logical names unique after normalization
-/// and case folding.
+/// and full case folding.
 /// </summary>
 public static class KomaEntryName
 {
@@ -104,40 +104,43 @@ public static class KomaEntryName
     }
 
     /// <summary>
-    /// A drive-letter prefix such as <c>C:/</c>.
+    /// A drive-letter prefix such as <c>C:/</c>, which §15.1 counts as an
+    /// absolute path although it does not begin with a separator.
     /// </summary>
-    /// <remarks>
-    /// §3 forbids absolute paths without saying whether a Windows drive letter
-    /// counts, since it does not begin with a separator. Treating it as one
-    /// follows from the same clause's ban on traversal constructs, and Windows
-    /// is this application's primary target, so the permissive reading is the
-    /// dangerous one.
-    /// </remarks>
     private static bool HasDriveLetter(string name) =>
         name.Length >= 2 && name[1] == ':' && char.IsAsciiLetter(name[0]);
 
     /// <summary>
-    /// The form in which two names are compared for uniqueness under §3.
+    /// The form in which two names are compared for uniqueness under §3:
+    /// NFC, then Unicode full case folding.
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// §3 requires logical names to be unique after Unicode normalization and
-    /// case folding. Normalization is unambiguous; case folding is not. Unicode
-    /// defines both a simple and a full folding, and they disagree: full
-    /// folding maps <c>ß</c> to <c>ss</c>, so <c>straße.jpg</c> and
-    /// <c>STRASSE.jpg</c> collide under full folding and not under simple.
-    /// </para>
-    /// <para>
-    /// This uses simple folding, via invariant upper-casing, which is what .NET
-    /// offers without a dependency. Upper rather than lower because it maps
-    /// both Greek sigmas onto one, where lower-casing keeps them apart.
-    /// </para>
+    /// The order is the specification's, and it is not interchangeable with its
+    /// reverse. Folding can produce sequences that would normalize differently,
+    /// so normalizing first is what makes two producers agree.
     /// </remarks>
     public static string FoldForUniqueness(string name)
     {
         ArgumentNullException.ThrowIfNull(name);
 
-        return name.Normalize(NormalizationForm.FormC).ToUpperInvariant();
+        string normalized = name.Normalize(NormalizationForm.FormC);
+        var folded = new StringBuilder(normalized.Length);
+
+        foreach (Rune rune in normalized.EnumerateRunes())
+        {
+            int at = Array.BinarySearch(CaseFoldingTable.Keys, rune.Value);
+
+            if (at >= 0)
+            {
+                folded.Append(CaseFoldingTable.Values[at]);
+            }
+            else
+            {
+                folded.Append(rune);
+            }
+        }
+
+        return folded.ToString();
     }
 
     /// <summary>
