@@ -4,35 +4,28 @@ namespace Koma.Core.Packaging;
 /// Codes for container-level defects.
 /// </summary>
 /// <remarks>
-/// <para>
-/// The first group is taken from the conformance corpus, which is normative by
-/// example. The second group has no counterpart there: §3 forbids backslashes,
-/// empty segments and non-NFC names, but neither §15 nor the corpus names a
-/// code for them, so these spellings are this implementation's proposal and are
-/// liable to change when the specification catches up.
-/// </para>
-/// <para>
-/// Keeping the distinction visible matters more than picking good names. Folding
-/// an unnamed defect into <see cref="PathTraversal"/> would report
-/// <c>images\page.webp</c> — which escapes nothing — as an escape attempt, and
-/// would hide from the corpus that a case is missing.
-/// </para>
+/// All of these are normative: the first group is defined by example in the
+/// conformance corpus, the second by the table of §15.1. The distinction is
+/// kept because it says which ones a corpus package currently exercises, and
+/// therefore which ones an implementation can get wrong without any test
+/// noticing.
 /// </remarks>
 public static class ContainerViolationCode
 {
-    // Defined by the corpus.
+    // Exercised by a corpus package.
     public const string PathTraversal = "path-traversal";
     public const string AbsolutePath = "absolute-path";
     public const string DuplicateLogicalEntry = "duplicate-logical-entry";
 
-    // Proposed; no corpus case yet.
+    // Defined by §15.1; no corpus package yet.
+    public const string PathEmpty = "path-empty";
     public const string PathBackslash = "path-backslash";
     public const string PathEmptySegment = "path-empty-segment";
     public const string PathNotNormalized = "path-not-normalized";
-    public const string PathEmpty = "path-empty";
     public const string EntryCountLimit = "entry-count-limit";
     public const string UncompressedSizeLimit = "uncompressed-size-limit";
     public const string CompressionRatioLimit = "compression-ratio-limit";
+    public const string DeclaredSizeMismatch = "declared-size-mismatch";
 }
 
 /// <summary>
