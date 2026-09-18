@@ -69,6 +69,12 @@ public sealed record ResourceLimits
     {
         ArgumentOutOfRangeException.ThrowIfNegative(archiveSizeBytes);
 
+        // A non-positive multiple allows nothing through. It is a nonsensical
+        // profile rather than a permissive one, and the division below has no
+        // answer for it.
+        if (ArchiveSizeMultiple <= 0)
+            return 0;
+
         long byMultiple = archiveSizeBytes > TotalUncompressedBytes / ArchiveSizeMultiple ? TotalUncompressedBytes : archiveSizeBytes * ArchiveSizeMultiple;
 
         return Math.Min(TotalUncompressedBytes, byMultiple);
