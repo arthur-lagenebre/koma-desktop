@@ -34,6 +34,8 @@ public static class ContainerViolationCode
     public const string XmlNotWellFormed = "xml-not-well-formed";
     public const string SchemaInvalidContainer = "schema-invalid:container";
     public const string MimetypeContent = "mimetype-content";
+    public const string MimetypePosition = "mimetype-position";
+    public const string MimetypeCompression = "mimetype-compression";
 
     // Named by no one.
     public const string XmlDocumentSizeLimit = "xml-document-size-limit";

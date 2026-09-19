@@ -29,10 +29,12 @@ public sealed class ConformanceCorpusTests
     private static readonly HashSet<string> Implemented =
     [
         ContainerViolationCode.MimetypeContent,
+        ContainerViolationCode.MimetypePosition,
+        ContainerViolationCode.MimetypeCompression,
         ContainerViolationCode.PathTraversal,
         ContainerViolationCode.AbsolutePath,
         ContainerViolationCode.DuplicateLogicalEntry,
-        ContainerViolationCode.CompressionRatioLimit,
+        ContainerViolationCode.CompressionRatioLimit
     ];
 
     /// <summary>
@@ -46,11 +48,7 @@ public sealed class ConformanceCorpusTests
     /// wrong place or compressed. Telling them apart means reading the local
     /// header fields rather than only the 24 bytes at the offset.
     /// </remarks>
-    private static readonly Dictionary<string, string> Misnamed = new()
-    {
-        ["mimetype-position"] = ContainerViolationCode.MimetypeContent,
-        ["mimetype-compression"] = ContainerViolationCode.MimetypeContent,
-    };
+    private static readonly Dictionary<string, string> Misnamed = [];
 
     /// <summary>
     /// Faults outside what this build checks. These packages must open: their
@@ -128,8 +126,8 @@ public sealed class ConformanceCorpusTests
         int misnamed = cases.Count(c => c.Code is not null && Misnamed.ContainsKey(c.Code));
         int outOfScope = cases.Length - covered - misnamed;
 
-        Assert.Equal(6, covered);
-        Assert.Equal(2, misnamed);
+        Assert.Equal(8, covered);
+        Assert.Equal(0, misnamed);
         Assert.Equal(23, outOfScope);
     }
 

@@ -12,7 +12,6 @@ public enum PackageOpenOutcome
 {
     /// <summary>The package is open and may be read.</summary>
     Opened,
-
     /// <summary>
     /// The package declares a version this build does not support. §5.0
     /// requires this to be reported as an unsupported version and not as an
@@ -20,9 +19,8 @@ public enum PackageOpenOutcome
     /// violation in the list.
     /// </summary>
     UnsupportedVersion,
-
     /// <summary>The package is not readable. See the violations.</summary>
-    Rejected,
+    Rejected
 }
 
 /// <summary>
@@ -127,20 +125,16 @@ public static class PackageOpener
         if (gate is not null)
             return Rejected(gate);
 
-        if (!KomaMediaType.Sniff(stream))
-        {
-            return Rejected(new ContainerViolation(
-                ContainerViolationCode.MimetypeContent,
-                KomaMediaType.EntryName,
-                $"The bytes at offset {KomaMediaType.SniffOffset} are not '{KomaMediaType.Value}' (§2.1)."));
-        }
-
-        stream.Position = 0;
         var archive = new ZipArchive(stream, ZipArchiveMode.Read, leaveOpen);
         bool keep = false;
 
         try
         {
+            ContainerViolation? mimetype = MimetypeEntryCheck.Check(stream, archive);
+
+            if (mimetype is not null)
+                return Rejected(mimetype);
+
             // 2. container.xml, and the version, before anything else is judged.
             XDocument? container = KomaXml.TryLoad(archive, ContainerPath, out ContainerViolation? xml, profile);
 
@@ -148,32 +142,17 @@ public static class PackageOpener
                 return Rejected(xml);
 
             if (container is null)
-            {
-                return Rejected(new ContainerViolation(
-                    ContainerViolationCode.MissingRequiredXml,
-                    ContainerPath,
-                    "The package has no container (§6)."));
-            }
+                return Rejected(new ContainerViolation(ContainerViolationCode.MissingRequiredXml, ContainerPath, "The package has no container (§6)."));
 
             XElement? root = container.Root;
 
             if (root is null || root.Name != XName.Get("Container", ContainerNamespace))
-            {
-                return Rejected(new ContainerViolation(
-                    ContainerViolationCode.SchemaInvalidContainer,
-                    ContainerPath,
-                    $"The root element is not Container in {ContainerNamespace} (§6)."));
-            }
+                return Rejected(new ContainerViolation(ContainerViolationCode.SchemaInvalidContainer, ContainerPath, $"The root element is not Container in {ContainerNamespace} (§6)."));
 
             string? declared = root.Attribute("version")?.Value;
 
             if (!KomaVersion.TryParse(declared, out KomaVersion version))
-            {
-                return Rejected(new ContainerViolation(
-                    ContainerViolationCode.SchemaInvalidContainer,
-                    ContainerPath,
-                    $"'{declared}' is not a version of the form major.minor (§5.1)."));
-            }
+                return Rejected(new ContainerViolation(ContainerViolationCode.SchemaInvalidContainer, ContainerPath, $"'{declared}' is not a version of the form major.minor (§5.1)."));
 
             ProcessingMode mode = VersionPortal.SelectMode(version);
 
@@ -196,12 +175,7 @@ public static class PackageOpener
             string? rootPath = ReadRootFile(root, ContainerPath, violations);
 
             if (rootPath is not null && archive.GetEntry(rootPath) is null)
-            {
-                violations.Add(new ContainerViolation(
-                    ContainerViolationCode.MissingRequiredXml,
-                    rootPath,
-                    "The container points at a manifest the package does not contain (§6)."));
-            }
+                violations.Add(new ContainerViolation(ContainerViolationCode.MissingRequiredXml, rootPath, "The container points at a manifest the package does not contain (§6)."));
 
             if (violations.Count > 0 || rootPath is null)
             {
@@ -235,17 +209,12 @@ public static class PackageOpener
     /// </summary>
     private static string? ReadRootFile(XElement container, string entryName, List<ContainerViolation> violations)
     {
-        XElement[] roots = container
-            .Elements(XName.Get("RootFiles", ContainerNamespace))
-            .Elements(XName.Get("RootFile", ContainerNamespace))
-            .ToArray();
+        XElement[] roots = [.. container.Elements(XName.Get("RootFiles", ContainerNamespace))
+                                        .Elements(XName.Get("RootFile", ContainerNamespace))];
 
         if (roots.Length != 1)
         {
-            violations.Add(new ContainerViolation(
-                ContainerViolationCode.SchemaInvalidContainer,
-                entryName,
-                $"KOMA 0.9 requires exactly one RootFile; found {roots.Length} (§6)."));
+            violations.Add(new ContainerViolation(ContainerViolationCode.SchemaInvalidContainer, entryName, $"KOMA 0.9 requires exactly one RootFile; found {roots.Length} (§6)."));
 
             return null;
         }
@@ -256,10 +225,7 @@ public static class PackageOpener
 
         if (mediaType != ManifestMediaType)
         {
-            violations.Add(new ContainerViolation(
-                ContainerViolationCode.SchemaInvalidContainer,
-                entryName,
-                $"RootFile/@media-type is '{mediaType}', not the literal of §2."));
+            violations.Add(new ContainerViolation(ContainerViolationCode.SchemaInvalidContainer, entryName, $"RootFile/@media-type is '{mediaType}', not the literal of §2."));
 
             return null;
         }
@@ -268,10 +234,7 @@ public static class PackageOpener
         // it before it is used to reach into the archive.
         if (!KomaEntryName.TryValidate(path, out EntryNameProblem problem))
         {
-            violations.Add(new ContainerViolation(
-                ContainerViolationCode.SchemaInvalidContainer,
-                entryName,
-                $"RootFile/@full-path is not a Path: {problem} (§4.3)."));
+            violations.Add(new ContainerViolation(ContainerViolationCode.SchemaInvalidContainer, entryName, $"RootFile/@full-path is not a Path: {problem} (§4.3)."));
 
             return null;
         }
@@ -279,8 +242,7 @@ public static class PackageOpener
         return path;
     }
 
-    private static readonly ReadOnlyCollection<ContainerViolation> Empty =
-        new List<ContainerViolation>().AsReadOnly();
+    private static readonly ReadOnlyCollection<ContainerViolation> Empty = new List<ContainerViolation>().AsReadOnly();
 
     private static PackageOpenResult Rejected(ContainerViolation violation) => new()
     {
