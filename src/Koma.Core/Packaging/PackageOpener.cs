@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.IO.Compression;
 using System.Xml.Linq;
+using Koma.Core.Model;
 using Koma.Core.Versioning;
 
 namespace Koma.Core.Packaging;
@@ -50,12 +51,13 @@ public sealed class KomaPackage : IDisposable
 {
     private readonly ZipArchive archive;
 
-    internal KomaPackage(ZipArchive archive, KomaVersion version, ProcessingMode mode, string rootManifestPath, ResourceLimits limits)
+    internal KomaPackage(ZipArchive archive, KomaVersion version, ProcessingMode mode, string rootManifestPath, Manifest manifest, ResourceLimits limits)
     {
         this.archive = archive;
         Version = version;
         Mode = mode;
         RootManifestPath = rootManifestPath;
+        Manifest = manifest;
         Limits = limits;
     }
 
@@ -70,6 +72,9 @@ public sealed class KomaPackage : IDisposable
 
     /// <summary>Path of the root manifest, from the single <c>RootFile</c> of §6.</summary>
     public string RootManifestPath { get; }
+
+    /// <summary>The manifest: the declared resources and the reading order (§8).</summary>
+    public Manifest Manifest { get; }
 
     /// <summary>The profile the package was opened under.</summary>
     public ResourceLimits Limits { get; }
@@ -107,6 +112,12 @@ public sealed class KomaPackage : IDisposable
 /// misplaced one (§2.1); and the version portal runs before any judgement of
 /// validity (§5.0): a package from another era of the format is not a broken
 /// package, and a reader that validates first reports the wrong thing about it.
+/// </para>
+/// <para>
+/// Only errors stop a package from opening. §8.8 allows a resource outside the
+/// spine and asks that it be noticed, so a reader that refused it would refuse
+/// a publication the specification calls readable; the warnings travel on the
+/// result instead.
 /// </para>
 /// </remarks>
 public static class PackageOpener
@@ -176,10 +187,9 @@ public static class PackageOpener
 
             string? rootPath = ReadRootFile(root, ContainerPath, violations);
 
-            if (rootPath is not null && archive.GetEntry(rootPath) is null)
-                violations.Add(new ContainerViolation(ContainerViolationCode.MissingRequiredXml, rootPath, "The container points at a manifest the package does not contain (§6)."));
+            Manifest? manifest = rootPath is null ? null : ReadManifest(archive, rootPath, version, profile, violations);
 
-            if (violations.Count > 0 || rootPath is null)
+            if (manifest is null || violations.Any(v => v.Severity == ViolationSeverity.Error))
             {
                 return new PackageOpenResult
                 {
@@ -194,9 +204,9 @@ public static class PackageOpener
             return new PackageOpenResult
             {
                 Outcome = PackageOpenOutcome.Opened,
-                Package = new KomaPackage(archive, version, mode, rootPath, profile),
+                Package = new KomaPackage(archive, version, mode, rootPath!, manifest, profile),
                 DeclaredVersion = version,
-                Violations = Empty
+                Violations = violations.AsReadOnly()
             };
         }
         finally
@@ -204,6 +214,28 @@ public static class PackageOpener
             if (!keep)
                 archive.Dispose();
         }
+    }
+
+    /// <summary>
+    /// Loads and reads the root manifest.
+    /// </summary>
+    private static Manifest? ReadManifest(ZipArchive archive, string path, KomaVersion version, ResourceLimits profile, List<ContainerViolation> violations)
+    {
+        XDocument? document = KomaXml.TryLoad(archive, path, out ContainerViolation? xml, profile);
+
+        if (xml is not null)
+        {
+            violations.Add(xml);
+            return null;
+        }
+
+        if (document is null)
+        {
+            violations.Add(new ContainerViolation(ContainerViolationCode.MissingRequiredXml, path, "The container points at a manifest the package does not contain (§6)."));
+            return null;
+        }
+
+        return ManifestReader.Read(document, path, version, violations);
     }
 
     /// <summary>

@@ -34,7 +34,14 @@ public sealed class ConformanceCorpusTests
         ContainerViolationCode.PathTraversal,
         ContainerViolationCode.AbsolutePath,
         ContainerViolationCode.DuplicateLogicalEntry,
-        ContainerViolationCode.CompressionRatioLimit
+        ContainerViolationCode.CompressionRatioLimit,
+        ContainerViolationCode.FrontCoverMissing,
+        ContainerViolationCode.FrontCoverDuplicate,
+        ContainerViolationCode.FrontCoverNotInSpine,
+        ContainerViolationCode.SpineTargetMissing,
+        ContainerViolationCode.SpineDuplicateItem,
+        ContainerViolationCode.Span2SpreadPosition,
+        ContainerViolationCode.DecorativeWithAlternativeText
     ];
 
     /// <summary>
@@ -126,9 +133,9 @@ public sealed class ConformanceCorpusTests
         int misnamed = cases.Count(c => c.Code is not null && Misnamed.ContainsKey(c.Code));
         int outOfScope = cases.Length - covered - misnamed;
 
-        Assert.Equal(8, covered);
+        Assert.Equal(16, covered);
         Assert.Equal(0, misnamed);
-        Assert.Equal(23, outOfScope);
+        Assert.Equal(15, outOfScope);
     }
 
     [Fact]

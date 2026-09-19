@@ -21,7 +21,15 @@ public sealed class PackageOpenerTests
         """;
 
     private const string Manifest = """
-        <Manifest xmlns="urn:koma:manifest" version="0.9"/>
+        <Manifest xmlns="urn:koma:manifest" version="0.9" metadata="koma/metadata.xml">
+          <Resources>
+            <Item id="p001" href="pages/001.jpg" media-type="image/jpeg"
+                  width="1600" height="2400" roles="front-cover"/>
+          </Resources>
+          <Spine>
+            <ItemRef item="p001"/>
+          </Spine>
+        </Manifest>
         """;
 
     /// <summary>

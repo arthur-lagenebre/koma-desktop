@@ -1,7 +1,22 @@
 namespace Koma.Core.Packaging;
 
 /// <summary>
-/// Codes for container-level defects.
+/// Whether a defect stops a publication from being read.
+/// </summary>
+/// <remarks>
+/// §15 reports errors and warnings, and the corpus expects a package whose only
+/// defect is a warning to be valid to read. Without the distinction a reader
+/// refuses publications the specification says it must open — §8.8 allows a
+/// resource outside the spine and only asks that it be noticed.
+/// </remarks>
+public enum ViolationSeverity
+{
+    Error,
+    Warning
+}
+
+/// <summary>
+/// Codes for defects a reader can report.
 /// </summary>
 /// <remarks>
 /// All of these are normative: the first group is defined by example in the
@@ -21,6 +36,16 @@ public static class ContainerViolationCode
     public const string DuplicateLogicalEntry = "duplicate-logical-entry";
     public const string CompressionRatioLimit = "compression-ratio-limit";
     public const string DeclaredSizeMismatch = "declared-size-mismatch";
+    public const string FrontCoverMissing = "front-cover-missing";
+    public const string FrontCoverDuplicate = "front-cover-duplicate";
+    public const string FrontCoverNotInSpine = "front-cover-not-in-spine";
+    public const string FrontCoverNotFirst = "front-cover-not-first";
+    public const string SpineTargetMissing = "spine-target-missing";
+    public const string SpineDuplicateItem = "spine-duplicate-item";
+    public const string Span2SpreadPosition = "span2-spread-position";
+    public const string TokenListDuplicate = "tokenlist-duplicate";
+    public const string DecorativeWithAlternativeText = "decorative-with-alternative-text";
+    public const string ResourceOutsideSpine = "resource-outside-spine";
 
     // Defined by §15.1; no corpus package yet.
     public const string NotAZip = "not-a-zip";
@@ -34,14 +59,22 @@ public static class ContainerViolationCode
     public const string MissingRequiredXml = "missing-required-xml";
     public const string XmlNotWellFormed = "xml-not-well-formed";
     public const string SchemaInvalidContainer = "schema-invalid:container";
+    public const string SchemaInvalidManifest = "schema-invalid:manifest";
     public const string XmlDocumentSizeLimit = "xml-document-size-limit";
     public const string XmlNestingLimit = "xml-nesting-limit";
 }
 
 /// <summary>
-/// One container-level defect found by <see cref="ArchiveInspector"/>.
+/// One defect found while reading a package.
 /// </summary>
 /// <param name="Code">A <see cref="ContainerViolationCode"/> value.</param>
 /// <param name="EntryName">The entry at fault, where one entry is at fault.</param>
 /// <param name="Message">A description for a log or a diagnostic pane.</param>
-public sealed record ContainerViolation(string Code, string? EntryName, string Message);
+public sealed record ContainerViolation(string Code, string? EntryName, string Message)
+{
+    /// <summary>
+    /// Defaults to <see cref="ViolationSeverity.Error"/>, so a defect has to be
+    /// declared harmless on purpose rather than by omission.
+    /// </summary>
+    public ViolationSeverity Severity { get; init; } = ViolationSeverity.Error;
+}
