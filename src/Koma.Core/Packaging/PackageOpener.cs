@@ -272,7 +272,14 @@ public static class PackageOpener
         PublicationMetadata? metadata = ReadMetadata(archive, manifest.MetadataPath, version, profile, violations);
 
         if (manifest.NavigationPath is null)
+        {
+            // §8 makes nav.xml optional and §15 notes its absence: a
+            // publication without one is readable but has no table of
+            // contents, no page list and no landmarks.
+            violations.Add(new ContainerViolation(ContainerViolationCode.NoNavigationDocument, manifest.MetadataPath, "The publication declares no navigation document (§8).") { Severity = ViolationSeverity.Warning });
+
             return metadata;
+        }
 
         XDocument? navigation = KomaXml.TryLoad(archive, manifest.NavigationPath, out ContainerViolation? navigationXml, profile);
 

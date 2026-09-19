@@ -80,7 +80,7 @@ public sealed class PackageOpenerTests
         PackageOpenResult result = Open(buffer);
 
         Assert.Equal(PackageOpenOutcome.Opened, result.Outcome);
-        Assert.Empty(result.Violations);
+        Assert.DoesNotContain(result.Violations, v => v.Severity == ViolationSeverity.Error);
 
         using KomaPackage? package = result.Package;
         Assert.NotNull(package);

@@ -100,6 +100,7 @@ public static class ManifestReader
         CheckSpineAgainstItems(manifest, entryName, violations);
         CheckFrontCover(manifest, entryName, violations);
         CheckResourcesInSpine(manifest, entryName, violations);
+        CheckPrivateUseTokens(manifest, entryName, violations);
 
         return manifest;
     }
@@ -320,6 +321,25 @@ public static class ManifestReader
 
         foreach (ManifestItem item in manifest.Items.Where(i => !inSpine.Contains(i.Id)))
             violations.Add(new ContainerViolation(ContainerViolationCode.ResourceOutsideSpine, entryName, $"Item '{item.Id}' is not in the spine and is not a reading resource (§8.8).") { Severity = ViolationSeverity.Warning });
+    }
+
+    /// <summary>
+    /// §4.5: a private-use token is legitimate and a reader MUST NOT reject a
+    /// document for carrying one.
+    /// </summary>
+    /// <remarks>
+    /// Noted rather than faulted, because §4.5 also says such a token has no
+    /// globally defined meaning: this reader will fall back on §4.5.1 and show
+    /// the page as though the token were absent, which the producer may not
+    /// expect. Reported once per distinct token, not once per item, since it
+    /// is the vocabulary that is private and not each use of it.
+    /// </remarks>
+    private static void CheckPrivateUseTokens(Manifest manifest, string entryName, List<ContainerViolation> violations)
+    {
+        IEnumerable<string> tokens = manifest.Items.SelectMany(i => i.Roles).Where(t => t.StartsWith("x-", StringComparison.Ordinal)).Distinct(StringComparer.Ordinal);
+
+        foreach (string token in tokens)
+            violations.Add(new ContainerViolation(ContainerViolationCode.PrivateUseToken, entryName, $"'{token}' is a private-use role token; §4.5.1 applies and its meaning is the producer's alone.") { Severity = ViolationSeverity.Warning });
     }
 
     private static int IndexInSpine(Manifest manifest, string id)
