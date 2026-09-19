@@ -7,7 +7,13 @@ Written in C# with Avalonia. Windows is the primary target; Linux is supported.
 
 ## Status
 
-Nothing works yet. This repository is a skeleton.
+`Koma.Core` opens packages and paginates spines. It reads the container,
+resolves the version against the portal of §5.0, and enforces the ZIP profile
+of §3 and the default resource profile of §13.1. The pairing algorithm of §10.4
+agrees with the reference implementation on all fifteen upstream fixtures.
+
+Nothing reads `manifest.xml` yet, so the opener and the paginator are not yet
+connected, and no layer-3 or layer-4 check exists. There is no user interface.
 
 The format itself is at pre-release draft `0.9`. Per §5.0 of the specification,
 a reader supporting one `0.x` version **must reject every other `0.x`**, and
@@ -31,7 +37,7 @@ This is **not** a conforming KOMA Validator: that requires all four layers of
 ## Layout
 
 ```
-src/Koma.Core        format model, reader, writer, security limits — no UI
+src/Koma.Core        format model, reader, writer, rendering, limits — no UI
 src/Koma.Cli         command-line front end over Koma.Core
 tests/Koma.Core.Tests  xUnit, driven by the upstream conformance corpus
 external/koma        git submodule: the specification, schemas and corpus
@@ -72,18 +78,21 @@ are ported to xUnit here for the same reason.
 
 These are unresolved and will shape early decisions:
 
-1. **ZIP writing.** §2.1 fixes bytes 0–61 of the file: the `mimetype` entry
-   must be physically first, Store (method 0), no extra fields, no data
-   descriptor. It is not established that `System.IO.Compression.ZipArchive`
-   can satisfy this. First test to write is a byte-level assertion on a
-   produced archive; if it fails, evaluate SharpCompress or SharpZipLib.
-2. **RELAX NG.** .NET validates XSD and DTD, not RELAX NG. Options are Trang
+1. **RELAX NG.** .NET validates XSD and DTD, not RELAX NG. Options are Trang
    conversion to XSD (lossy), the unmaintained `Commons.Xml.Relaxng`, or
    hand-written structural checks. §17 notes the schemas are only layer 2 of
    four in any case.
-3. **WebP and EXIF.** §16 makes WebP support mandatory and requires EXIF
+2. **WebP and EXIF.** §16 makes WebP support mandatory and requires EXIF
    orientation to be ignored. Verify SkiaSharp's behaviour on both before
    building the render pipeline around it.
+
+## Settled
+
+**ZIP writing.** §2.1 fixes bytes 0–61 of the file, and it was not established
+that `System.IO.Compression` could satisfy that. It can: `MimetypeEntryTests`
+asserts the local header field by field, on Windows and on Linux, so no
+third-party ZIP writer is needed. The tests stay because a future runtime could
+change what `CompressionLevel.NoCompression` emits.
 
 ## Licence
 

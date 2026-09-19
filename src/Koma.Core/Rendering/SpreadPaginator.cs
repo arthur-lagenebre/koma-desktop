@@ -199,8 +199,7 @@ public static class SpreadPaginator
 
         public bool IsFull => Left is not null && Right is not null;
 
-        public bool IsOccupied(PhysicalSide side) =>
-            side == PhysicalSide.Left ? Left is not null : Right is not null;
+        public bool IsOccupied(PhysicalSide side) => side == PhysicalSide.Left ? Left is not null : Right is not null;
 
         public void Place(PhysicalSide side, string item)
         {

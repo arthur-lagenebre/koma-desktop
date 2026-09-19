@@ -112,8 +112,7 @@ internal static class Program
         }
     }
 
-    private static void Field(string name, string value) =>
-        Console.WriteLine($"  {name,-10}{value}");
+    private static void Field(string name, string value) => Console.WriteLine($"  {name,-10}{value}");
 
     private static void Usage()
     {

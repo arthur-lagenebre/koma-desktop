@@ -36,13 +36,11 @@ public sealed record InspectionResult
 /// <see cref="BoundedReadStream"/>.
 /// </para>
 /// <para>
-/// <strong>Known gap.</strong> <see cref="ZipArchive"/> materialises every
-/// entry of the central directory when it is constructed, so by the time the
-/// entry count can be read, the allocation §13.1 wants bounded has already
-/// happened. Enforcing <see cref="ResourceLimits.MaxEntries"/> before that
-/// means reading the end-of-central-directory record directly, including its
-/// ZIP64 form and the trailing-comment scan. Until that exists, the count is
-/// checked but the allocation is not prevented.
+/// The entry count is checked here for completeness, but it is not this pass
+/// that enforces it: <see cref="ZipArchive"/> materialises the whole central
+/// directory when it is constructed, so reaching this code already cost the
+/// allocation §13.1 wants bounded. <see cref="ArchiveGate"/> refuses the count
+/// beforehand, from the end-of-central-directory record.
 /// </para>
 /// <para>
 /// The mimetype rules of §2.1 are not checked here: they are byte offsets in
@@ -94,7 +92,7 @@ public static class ArchiveInspector
         {
             Violations = violations.AsReadOnly(),
             EntryCount = entryCount,
-            DeclaredUncompressedBytes = declaredTotal,
+            DeclaredUncompressedBytes = declaredTotal
         };
     }
 
@@ -104,10 +102,7 @@ public static class ArchiveInspector
 
         if (seen.TryGetValue(folded, out string? first))
         {
-            violations.Add(new ContainerViolation(
-                ContainerViolationCode.DuplicateLogicalEntry,
-                name,
-                $"Is the same logical name as '{first}' after normalization and case folding (§3)."));
+            violations.Add(new ContainerViolation(ContainerViolationCode.DuplicateLogicalEntry, name, $"Is the same logical name as '{first}' after normalization and case folding (§3)."));
 
             return;
         }
@@ -119,20 +114,13 @@ public static class ArchiveInspector
     {
         (string code, string message) = problem switch
         {
-            EntryNameProblem.Absolute =>
-                (ContainerViolationCode.AbsolutePath, "Is an absolute path (§3)."),
-            EntryNameProblem.ParentDirectorySegment =>
-                (ContainerViolationCode.PathTraversal, "Contains a '..' segment (§3)."),
-            EntryNameProblem.CurrentDirectorySegment =>
-                (ContainerViolationCode.PathTraversal, "Contains a '.' segment (§3)."),
-            EntryNameProblem.Backslash =>
-                (ContainerViolationCode.PathBackslash, "Contains a backslash (§3)."),
-            EntryNameProblem.EmptySegment =>
-                (ContainerViolationCode.PathEmptySegment, "Contains an empty path segment (§3)."),
-            EntryNameProblem.NotNormalized =>
-                (ContainerViolationCode.PathNotNormalized, "Is not in Unicode NFC (§3)."),
-            _ =>
-                (ContainerViolationCode.PathEmpty, "Is empty (§3)."),
+            EntryNameProblem.Absolute => (ContainerViolationCode.AbsolutePath, "Is an absolute path (§3)."),
+            EntryNameProblem.ParentDirectorySegment => (ContainerViolationCode.PathTraversal, "Contains a '..' segment (§3)."),
+            EntryNameProblem.CurrentDirectorySegment => (ContainerViolationCode.PathTraversal, "Contains a '.' segment (§3)."),
+            EntryNameProblem.Backslash => (ContainerViolationCode.PathBackslash, "Contains a backslash (§3)."),
+            EntryNameProblem.EmptySegment => (ContainerViolationCode.PathEmptySegment, "Contains an empty path segment (§3)."),
+            EntryNameProblem.NotNormalized => (ContainerViolationCode.PathNotNormalized, "Is not in Unicode NFC (§3)."),
+            _ => (ContainerViolationCode.PathEmpty, "Is empty (§3).")
         };
 
         return new ContainerViolation(code, name, message);

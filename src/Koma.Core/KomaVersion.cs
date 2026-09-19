@@ -101,8 +101,7 @@ public readonly record struct KomaVersion(int Major, int Minor) : IComparable<Ko
         return byMajor != 0 ? byMajor : Minor.CompareTo(other.Minor);
     }
 
-    public override string ToString() =>
-        string.Create(CultureInfo.InvariantCulture, $"{Major}.{Minor}");
+    public override string ToString() => string.Create(CultureInfo.InvariantCulture, $"{Major}.{Minor}");
 
     public static bool operator <(KomaVersion left, KomaVersion right) => left.CompareTo(right) < 0;
 

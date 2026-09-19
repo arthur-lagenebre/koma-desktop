@@ -59,7 +59,7 @@ public sealed class ConformanceCorpusTests
     [
         // Layer 1, but only observable while decompressing an entry the opener
         // never reads. BoundedReadStream catches it at the point of use.
-        "declared-size-mismatch",
+        "declared-size-mismatch"
     ];
 
     public static TheoryData<string, string, string?> Cases()

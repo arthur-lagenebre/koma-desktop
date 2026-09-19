@@ -252,8 +252,7 @@ public sealed class PackageOpenerTests
     {
         // §2 says these literals are fixed strings, never resolved, so an
         // approximation is not a near miss but a different value.
-        using MemoryStream buffer = Build(
-            Container.Replace("application/vnd.koma.manifest+xml", "application/xml", StringComparison.Ordinal));
+        using MemoryStream buffer = Build(Container.Replace("application/vnd.koma.manifest+xml", "application/xml", StringComparison.Ordinal));
 
         PackageOpenResult result = Open(buffer);
 
@@ -263,8 +262,7 @@ public sealed class PackageOpenerTests
     [Fact]
     public void RejectsARootFilePathThatEscapesThePackage()
     {
-        using MemoryStream buffer = Build(
-            Container.Replace("koma/manifest.xml", "../../etc/passwd", StringComparison.Ordinal));
+        using MemoryStream buffer = Build(Container.Replace("koma/manifest.xml", "../../etc/passwd", StringComparison.Ordinal));
 
         PackageOpenResult result = Open(buffer);
 

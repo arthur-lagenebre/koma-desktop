@@ -226,7 +226,7 @@ internal static class CaseFoldingTable
         0x1E905, 0x1E906, 0x1E907, 0x1E908, 0x1E909, 0x1E90A, 0x1E90B, 0x1E90C,
         0x1E90D, 0x1E90E, 0x1E90F, 0x1E910, 0x1E911, 0x1E912, 0x1E913, 0x1E914,
         0x1E915, 0x1E916, 0x1E917, 0x1E918, 0x1E919, 0x1E91A, 0x1E91B, 0x1E91C,
-        0x1E91D, 0x1E91E, 0x1E91F, 0x1E920, 0x1E921,
+        0x1E91D, 0x1E91E, 0x1E91F, 0x1E920, 0x1E921
     ];
 
     /// <summary>Folded form of each key, in the same order.</summary>
@@ -491,6 +491,6 @@ internal static class CaseFoldingTable
         "\U0001E92F", "\U0001E930", "\U0001E931", "\U0001E932", "\U0001E933", "\U0001E934",
         "\U0001E935", "\U0001E936", "\U0001E937", "\U0001E938", "\U0001E939", "\U0001E93A",
         "\U0001E93B", "\U0001E93C", "\U0001E93D", "\U0001E93E", "\U0001E93F", "\U0001E940",
-        "\U0001E941", "\U0001E942", "\U0001E943",
+        "\U0001E941", "\U0001E942", "\U0001E943"
     ];
 }

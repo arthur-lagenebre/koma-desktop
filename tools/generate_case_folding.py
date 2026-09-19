@@ -87,17 +87,17 @@ def main():
     out = sys.stdout
     out.write(HEADER.format(version=unicodedata.unidata_version))
 
-    for i in range(0, len(keys), 8):
-        row = ", ".join(f"0x{k:04X}" for k in keys[i:i + 8])
-        out.write(f"        {row},\n")
+    rows = [", ".join(f"0x{k:04X}" for k in keys[i:i + 8])
+            for i in range(0, len(keys), 8)]
+    out.write(",\n".join(f"        {r}" for r in rows) + "\n")
 
     out.write("    ];\n\n")
     out.write("    /// <summary>Folded form of each key, in the same order.</summary>\n")
     out.write("    internal static readonly string[] Values =\n    [\n")
 
-    for i in range(0, len(keys), 6):
-        row = ", ".join(escape(folds[k]) for k in keys[i:i + 6])
-        out.write(f"        {row},\n")
+    rows = [", ".join(escape(folds[k]) for k in keys[i:i + 6])
+            for i in range(0, len(keys), 6)]
+    out.write(",\n".join(f"        {r}" for r in rows) + "\n")
 
     out.write(FOOTER)
 

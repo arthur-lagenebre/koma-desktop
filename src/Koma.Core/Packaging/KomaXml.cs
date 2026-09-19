@@ -97,7 +97,7 @@ public static class KomaXml
         CloseInput = false,
         IgnoreWhitespace = false,
         IgnoreComments = true,
-        IgnoreProcessingInstructions = true,
+        IgnoreProcessingInstructions = true
     };
 
     /// <summary>

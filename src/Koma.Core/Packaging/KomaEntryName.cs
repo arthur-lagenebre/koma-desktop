@@ -28,7 +28,7 @@ public enum EntryNameProblem
     ParentDirectorySegment,
 
     /// <summary>Not in Unicode NFC.</summary>
-    NotNormalized,
+    NotNormalized
 }
 
 /// <summary>
@@ -107,8 +107,7 @@ public static class KomaEntryName
     /// A drive-letter prefix such as <c>C:/</c>, which §15.1 counts as an
     /// absolute path although it does not begin with a separator.
     /// </summary>
-    private static bool HasDriveLetter(string name) =>
-        name.Length >= 2 && name[1] == ':' && char.IsAsciiLetter(name[0]);
+    private static bool HasDriveLetter(string name) => name.Length >= 2 && name[1] == ':' && char.IsAsciiLetter(name[0]);
 
     /// <summary>
     /// The form in which two names are compared for uniqueness under §3:
@@ -146,6 +145,5 @@ public static class KomaEntryName
     /// <summary>
     /// Whether two names are the same logical name under §3.
     /// </summary>
-    public static bool AreSameLogicalName(string left, string right) =>
-        string.Equals(FoldForUniqueness(left), FoldForUniqueness(right), StringComparison.Ordinal);
+    public static bool AreSameLogicalName(string left, string right) => string.Equals(FoldForUniqueness(left), FoldForUniqueness(right), StringComparison.Ordinal);
 }

@@ -77,8 +77,7 @@ public sealed class KomaPackage : IDisposable
     /// <summary>
     /// Loads a core XML document by its package-relative path.
     /// </summary>
-    public XDocument? TryLoadXml(string path, out ContainerViolation? violation) =>
-        KomaXml.TryLoad(archive, path, out violation, Limits);
+    public XDocument? TryLoadXml(string path, out ContainerViolation? violation) => KomaXml.TryLoad(archive, path, out violation, Limits);
 
     /// <summary>
     /// Opens a resource for reading, bounded by the size its own central
@@ -103,11 +102,11 @@ public sealed class KomaPackage : IDisposable
 /// <remarks>
 /// <para>
 /// The order is the substance here, not an implementation detail. The entry
-/// count is refused before the archive is built (§13.1), the media type is read
-/// from fixed offsets before anything is parsed (§2.1), and the version portal
-/// runs before any judgement of validity (§5.0): a package from another era of
-/// the format is not a broken package, and a reader that validates first
-/// reports the wrong thing about it.
+/// count is refused before the archive is built (§13.1); the mimetype entry is
+/// checked next, once the central directory can tell an absent entry from a
+/// misplaced one (§2.1); and the version portal runs before any judgement of
+/// validity (§5.0): a package from another era of the format is not a broken
+/// package, and a reader that validates first reports the wrong thing about it.
 /// </para>
 /// </remarks>
 public static class PackageOpener
@@ -165,7 +164,7 @@ public static class PackageOpener
                 {
                     Outcome = PackageOpenOutcome.UnsupportedVersion,
                     DeclaredVersion = version,
-                    Violations = Empty,
+                    Violations = Empty
                 };
             }
 
@@ -186,7 +185,7 @@ public static class PackageOpener
                 {
                     Outcome = PackageOpenOutcome.Rejected,
                     DeclaredVersion = version,
-                    Violations = violations.AsReadOnly(),
+                    Violations = violations.AsReadOnly()
                 };
             }
 
@@ -197,7 +196,7 @@ public static class PackageOpener
                 Outcome = PackageOpenOutcome.Opened,
                 Package = new KomaPackage(archive, version, mode, rootPath, profile),
                 DeclaredVersion = version,
-                Violations = Empty,
+                Violations = Empty
             };
         }
         finally
@@ -250,6 +249,6 @@ public static class PackageOpener
     private static PackageOpenResult Rejected(ContainerViolation violation) => new()
     {
         Outcome = PackageOpenOutcome.Rejected,
-        Violations = new List<ContainerViolation> { violation }.AsReadOnly(),
+        Violations = new List<ContainerViolation> { violation }.AsReadOnly()
     };
 }

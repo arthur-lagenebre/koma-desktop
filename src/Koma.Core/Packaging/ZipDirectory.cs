@@ -152,7 +152,7 @@ public static class ZipDirectory
         {
             EntryCount = entries,
             CentralDirectorySize = size,
-            IsZip64 = zip64,
+            IsZip64 = zip64
         };
 
         problem = ZipDirectoryProblem.None;
