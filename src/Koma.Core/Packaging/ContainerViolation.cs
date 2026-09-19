@@ -46,6 +46,11 @@ public static class ContainerViolationCode
     public const string TokenListDuplicate = "tokenlist-duplicate";
     public const string DecorativeWithAlternativeText = "decorative-with-alternative-text";
     public const string ResourceOutsideSpine = "resource-outside-spine";
+    public const string MediaTypeMismatch = "media-type-mismatch";
+    public const string DimensionsMismatch = "dimensions-mismatch";
+    public const string AnimatedPageResource = "animated-page-resource";
+    public const string ChecksumMismatch = "checksum-mismatch";
+    public const string ExifOrientationResidue = "exif-orientation-residue";
 
     // Defined by §15.1; no corpus package yet.
     public const string NotAZip = "not-a-zip";
@@ -64,6 +69,8 @@ public static class ContainerViolationCode
     public const string XmlNestingLimit = "xml-nesting-limit";
     public const string NavigationTargetOutsideSpine = "navigation-target-outside-spine";
     public const string UnnamespacedElementInExtensions = "unnamespaced-element-in-extensions";
+    public const string MissingPageResource = "missing-page-resource";
+    public const string UnreadablePageResource = "unreadable-page-resource";
 }
 
 /// <summary>

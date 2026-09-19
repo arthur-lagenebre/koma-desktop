@@ -1,6 +1,7 @@
+using Koma.Core.Model;
+using Koma.Core.Packaging;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Koma.Core.Packaging;
 
 namespace Koma.Core.Tests;
 
@@ -44,7 +45,12 @@ public sealed class ConformanceCorpusTests
         ContainerViolationCode.DecorativeWithAlternativeText,
         ContainerViolationCode.TokenListDuplicate,
         ContainerViolationCode.NavigationTargetOutsideSpine,
-        ContainerViolationCode.UnnamespacedElementInExtensions
+        ContainerViolationCode.UnnamespacedElementInExtensions,
+        ContainerViolationCode.MediaTypeMismatch,
+        ContainerViolationCode.DimensionsMismatch,
+        ContainerViolationCode.AnimatedPageResource,
+        ContainerViolationCode.ChecksumMismatch,
+        ContainerViolationCode.ExifOrientationResidue
     ];
 
     /// <summary>
@@ -59,18 +65,6 @@ public sealed class ConformanceCorpusTests
     /// header fields rather than only the 24 bytes at the offset.
     /// </remarks>
     private static readonly Dictionary<string, string> Misnamed = [];
-
-    /// <summary>
-    /// Faults outside what this build checks. These packages must open: their
-    /// defect is real but lies in a layer the opener does not reach, so
-    /// refusing them would be a false positive, not early diligence.
-    /// </summary>
-    private static readonly HashSet<string> OutOfScope =
-    [
-        // Layer 1, but only observable while decompressing an entry the opener
-        // never reads. BoundedReadStream catches it at the point of use.
-        "declared-size-mismatch"
-    ];
 
     public static TheoryData<string, string, string?> Cases()
     {
@@ -92,34 +86,47 @@ public sealed class ConformanceCorpusTests
 
         using FileStream file = File.OpenRead(path);
         PackageOpenResult result = PackageOpener.Open(file, leaveOpen: true);
+        List<ContainerViolation> violations = [.. result.Violations];
 
-        // A valid package, and one whose only fault is a warning, must open.
+        // The resource layer is a pass of its own, because it reads every page.
+        // A validator runs it over everything, which is what this test is; a
+        // reading system verifies a page when it reaches that page.
+        if (result.Outcome == PackageOpenOutcome.Opened)
+        {
+            using KomaPackage opened = result.Package!;
+            violations.AddRange(PageResourceChecks.CheckAll(opened));
+        }
+
+        bool refused = result.Outcome != PackageOpenOutcome.Opened || violations.Any(v => v.Severity == ViolationSeverity.Error);
+        string found = violations.Count == 0 ? "no violations" : string.Join(", ", violations.Select(v => v.Code));
+
+        // A valid package, and one whose only fault is a warning, must be read.
         if (outcome is "valid" or "warning")
         {
-            Assert.True(result.Outcome == PackageOpenOutcome.Opened, $"{package} should open; got {result.Outcome} with {Describe(result)}.");
+            Assert.False(refused, $"{package} should be readable; got {result.Outcome} with {found}.");
 
             return;
         }
 
         if (code is not null && Implemented.Contains(code))
         {
-            Assert.Equal(PackageOpenOutcome.Rejected, result.Outcome);
-            Assert.Contains(result.Violations, v => v.Code == code);
+            Assert.True(refused, $"{package} should be refused; got {found}.");
+            Assert.Contains(violations, v => v.Code == code);
 
             return;
         }
 
         if (code is not null && Misnamed.TryGetValue(code, out string? actual))
         {
-            Assert.Equal(PackageOpenOutcome.Rejected, result.Outcome);
-            Assert.Contains(result.Violations, v => v.Code == actual);
+            Assert.True(refused, $"{package} should be refused; got {found}.");
+            Assert.Contains(violations, v => v.Code == actual);
 
             return;
         }
 
-        // Everything else: layers 3 and 4, and the one layer-1 fault the opener
-        // cannot see. The package is defective and this build cannot say so.
-        Assert.True(result.Outcome == PackageOpenOutcome.Opened,$"{package} is out of scope for the opener and should open; got {result.Outcome} with {Describe(result)}.");
+        // Everything else is a defect this build cannot see, and the package
+        // must be readable: refusing it would be a false positive.
+        Assert.False(refused, $"{package} is out of scope and should be readable; got {found}.");
     }
 
     [Fact]
@@ -136,9 +143,9 @@ public sealed class ConformanceCorpusTests
         int misnamed = cases.Count(c => c.Code is not null && Misnamed.ContainsKey(c.Code));
         int outOfScope = cases.Length - covered - misnamed;
 
-        Assert.Equal(19, covered);
+        Assert.Equal(24, covered);
         Assert.Equal(0, misnamed);
-        Assert.Equal(12, outOfScope);
+        Assert.Equal(7, outOfScope);
     }
 
     [Fact]
@@ -205,6 +212,4 @@ public sealed class ConformanceCorpusTests
         [JsonPropertyName("code")]
         public string? Code { get; init; }
     }
-
-    private static string Describe(PackageOpenResult result) => result.Violations.Count == 0 ? "no violations" : string.Join(", ", result.Violations.Select(v => v.Code));
 }
