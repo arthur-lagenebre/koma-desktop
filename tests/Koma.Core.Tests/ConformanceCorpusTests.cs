@@ -29,28 +29,29 @@ public sealed class ConformanceCorpusTests
     /// </summary>
     private static readonly HashSet<string> Implemented =
     [
-        ContainerViolationCode.MimetypeContent,
-        ContainerViolationCode.MimetypePosition,
-        ContainerViolationCode.MimetypeCompression,
-        ContainerViolationCode.PathTraversal,
         ContainerViolationCode.AbsolutePath,
-        ContainerViolationCode.DuplicateLogicalEntry,
-        ContainerViolationCode.CompressionRatioLimit,
-        ContainerViolationCode.FrontCoverMissing,
-        ContainerViolationCode.FrontCoverDuplicate,
-        ContainerViolationCode.FrontCoverNotInSpine,
-        ContainerViolationCode.SpineTargetMissing,
-        ContainerViolationCode.SpineDuplicateItem,
-        ContainerViolationCode.Span2SpreadPosition,
-        ContainerViolationCode.DecorativeWithAlternativeText,
-        ContainerViolationCode.TokenListDuplicate,
-        ContainerViolationCode.NavigationTargetOutsideSpine,
-        ContainerViolationCode.UnnamespacedElementInExtensions,
-        ContainerViolationCode.MediaTypeMismatch,
-        ContainerViolationCode.DimensionsMismatch,
+        ContainerViolationCode.AccessibilityHazardConflict,
         ContainerViolationCode.AnimatedPageResource,
         ContainerViolationCode.ChecksumMismatch,
-        ContainerViolationCode.ExifOrientationResidue
+        ContainerViolationCode.CompressionRatioLimit,
+        ContainerViolationCode.DecorativeWithAlternativeText,
+        ContainerViolationCode.DimensionsMismatch,
+        ContainerViolationCode.DuplicateLogicalEntry,
+        ContainerViolationCode.ExifOrientationResidue,
+        ContainerViolationCode.FrontCoverDuplicate,
+        ContainerViolationCode.FrontCoverMissing,
+        ContainerViolationCode.FrontCoverNotInSpine,
+        ContainerViolationCode.MediaTypeMismatch,
+        ContainerViolationCode.MimetypeCompression,
+        ContainerViolationCode.MimetypeContent,
+        ContainerViolationCode.MimetypePosition,
+        ContainerViolationCode.NavigationTargetOutsideSpine,
+        ContainerViolationCode.PathTraversal,
+        ContainerViolationCode.Span2SpreadPosition,
+        ContainerViolationCode.SpineDuplicateItem,
+        ContainerViolationCode.SpineTargetMissing,
+        ContainerViolationCode.TokenListDuplicate,
+        ContainerViolationCode.UnnamespacedElementInExtensions
     ];
 
     /// <summary>
@@ -143,9 +144,9 @@ public sealed class ConformanceCorpusTests
         int misnamed = cases.Count(c => c.Code is not null && Misnamed.ContainsKey(c.Code));
         int outOfScope = cases.Length - covered - misnamed;
 
-        Assert.Equal(24, covered);
+        Assert.Equal(25, covered);
         Assert.Equal(0, misnamed);
-        Assert.Equal(7, outOfScope);
+        Assert.Equal(6, outOfScope);
     }
 
     [Fact]

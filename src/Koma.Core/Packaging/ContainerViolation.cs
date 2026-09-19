@@ -36,6 +36,9 @@ public static class ContainerViolationCode
     public const string DuplicateLogicalEntry = "duplicate-logical-entry";
     public const string CompressionRatioLimit = "compression-ratio-limit";
     public const string DeclaredSizeMismatch = "declared-size-mismatch";
+    public const string UnnamespacedElementInExtensions = "unnamespaced-element-in-extensions";
+    public const string TokenListDuplicate = "tokenlist-duplicate";
+    public const string AccessibilityHazardConflict = "accessibility-hazard-conflict";
     public const string FrontCoverMissing = "front-cover-missing";
     public const string FrontCoverDuplicate = "front-cover-duplicate";
     public const string FrontCoverNotInSpine = "front-cover-not-in-spine";
@@ -43,9 +46,9 @@ public static class ContainerViolationCode
     public const string SpineTargetMissing = "spine-target-missing";
     public const string SpineDuplicateItem = "spine-duplicate-item";
     public const string Span2SpreadPosition = "span2-spread-position";
-    public const string TokenListDuplicate = "tokenlist-duplicate";
     public const string DecorativeWithAlternativeText = "decorative-with-alternative-text";
     public const string ResourceOutsideSpine = "resource-outside-spine";
+    public const string NavigationTargetOutsideSpine = "navigation-target-outside-spine";
     public const string MediaTypeMismatch = "media-type-mismatch";
     public const string DimensionsMismatch = "dimensions-mismatch";
     public const string AnimatedPageResource = "animated-page-resource";
@@ -63,12 +66,11 @@ public static class ContainerViolationCode
     public const string UncompressedSizeLimit = "uncompressed-size-limit";
     public const string MissingRequiredXml = "missing-required-xml";
     public const string XmlNotWellFormed = "xml-not-well-formed";
-    public const string SchemaInvalidContainer = "schema-invalid:container";
-    public const string SchemaInvalidManifest = "schema-invalid:manifest";
     public const string XmlDocumentSizeLimit = "xml-document-size-limit";
     public const string XmlNestingLimit = "xml-nesting-limit";
-    public const string NavigationTargetOutsideSpine = "navigation-target-outside-spine";
-    public const string UnnamespacedElementInExtensions = "unnamespaced-element-in-extensions";
+    public const string SchemaInvalidContainer = "schema-invalid:container";
+    public const string SchemaInvalidMetadata = "schema-invalid:metadata";
+    public const string SchemaInvalidManifest = "schema-invalid:manifest";
     public const string MissingPageResource = "missing-page-resource";
     public const string UnreadablePageResource = "unreadable-page-resource";
 }

@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.IO.Compression;
 using System.Xml.Linq;
 using Koma.Core.Model;
+using Koma.Core.Rendering;
 using Koma.Core.Versioning;
 
 namespace Koma.Core.Packaging;
@@ -51,13 +52,14 @@ public sealed class KomaPackage : IDisposable
 {
     private readonly ZipArchive archive;
 
-    internal KomaPackage(ZipArchive archive, KomaVersion version, ProcessingMode mode, string rootManifestPath, Manifest manifest, ResourceLimits limits)
+    internal KomaPackage(ZipArchive archive, KomaVersion version, ProcessingMode mode, string rootManifestPath, Manifest manifest, PublicationMetadata metadata, ResourceLimits limits)
     {
         this.archive = archive;
         Version = version;
         Mode = mode;
         RootManifestPath = rootManifestPath;
         Manifest = manifest;
+        Metadata = metadata;
         Limits = limits;
     }
 
@@ -76,6 +78,9 @@ public sealed class KomaPackage : IDisposable
     /// <summary>The manifest: the declared resources and the reading order (§8).</summary>
     public Manifest Manifest { get; }
 
+    /// <summary>What the metadata says about how the publication is read (§7).</summary>
+    public PublicationMetadata Metadata { get; }
+
     /// <summary>The profile the package was opened under.</summary>
     public ResourceLimits Limits { get; }
 
@@ -83,6 +88,17 @@ public sealed class KomaPackage : IDisposable
     /// Loads a core XML document by its package-relative path.
     /// </summary>
     public XDocument? TryLoadXml(string path, out ContainerViolation? violation) => KomaXml.TryLoad(archive, path, out violation, Limits);
+
+    /// <summary>
+    /// The publication laid out as it is to be displayed (§10).
+    /// </summary>
+    /// <param name="viewportFitsTwo">
+    /// Whether the display can show two pages side by side. §10.1 leaves that
+    /// judgement to the reading system, so it is asked for here rather than
+    /// guessed: the spine, the reading direction and the spread policy come
+    /// from the publication, and this one fact does not.
+    /// </param>
+    public IReadOnlyList<Spread> Paginate(bool viewportFitsTwo = true) => SpreadPaginator.Paginate(Manifest.ToSpineEntries(), Metadata.Direction, Metadata.Spread, viewportFitsTwo);
 
     /// <summary>
     /// Opens a resource for reading, bounded by the size its own central
@@ -189,10 +205,9 @@ public static class PackageOpener
 
             Manifest? manifest = rootPath is null ? null : ReadManifest(archive, rootPath, version, profile, violations);
 
-            if (manifest is not null)
-                ReadCompanionDocuments(archive, manifest, profile, violations);
+            PublicationMetadata? metadata = manifest is null ? null : ReadCompanionDocuments(archive, manifest, version, profile, violations);
 
-            if (manifest is null || violations.Any(v => v.Severity == ViolationSeverity.Error))
+            if (manifest is null || metadata is null || violations.Any(v => v.Severity == ViolationSeverity.Error))
             {
                 return new PackageOpenResult
                 {
@@ -207,7 +222,7 @@ public static class PackageOpener
             return new PackageOpenResult
             {
                 Outcome = PackageOpenOutcome.Opened,
-                Package = new KomaPackage(archive, version, mode, rootPath!, manifest, profile),
+                Package = new KomaPackage(archive, version, mode, rootPath!, manifest, metadata, profile),
                 DeclaredVersion = version,
                 Violations = violations.AsReadOnly()
             };
@@ -252,36 +267,52 @@ public static class PackageOpener
     /// §9 can run over them, which is all this build needs from them so far;
     /// reading them into a model is the next piece, not this one.
     /// </remarks>
-    private static void ReadCompanionDocuments(ZipArchive archive, Manifest manifest, ResourceLimits profile, List<ContainerViolation> violations)
+    private static PublicationMetadata? ReadCompanionDocuments(ZipArchive archive, Manifest manifest, KomaVersion version, ResourceLimits profile, List<ContainerViolation> violations)
     {
-        XDocument? metadata = KomaXml.TryLoad(archive, manifest.MetadataPath, out ContainerViolation? metadataXml, profile);
-
-        if (metadataXml is not null)
-            violations.Add(metadataXml);
-        else if (metadata is null)
-            violations.Add(new ContainerViolation(ContainerViolationCode.MissingRequiredXml, manifest.MetadataPath, "The manifest points at metadata the package does not contain (§8)."));
-        else
-            CoreDocumentChecks.CheckExtensions(metadata, manifest.MetadataPath, violations);
+        PublicationMetadata? metadata = ReadMetadata(archive, manifest.MetadataPath, version, profile, violations);
 
         if (manifest.NavigationPath is null)
-            return;
+            return metadata;
 
         XDocument? navigation = KomaXml.TryLoad(archive, manifest.NavigationPath, out ContainerViolation? navigationXml, profile);
 
         if (navigationXml is not null)
         {
             violations.Add(navigationXml);
-            return;
+            return metadata;
         }
 
         if (navigation is null)
         {
             violations.Add(new ContainerViolation(ContainerViolationCode.MissingRequiredXml, manifest.NavigationPath, "The manifest declares navigation the package does not contain (§8)."));
-            return;
+            return metadata;
         }
 
         CoreDocumentChecks.CheckExtensions(navigation, manifest.NavigationPath, violations);
         CoreDocumentChecks.CheckNavigationTargets(navigation, manifest, manifest.NavigationPath, violations);
+
+        return metadata;
+    }
+
+    private static PublicationMetadata? ReadMetadata(ZipArchive archive, string path, KomaVersion version, ResourceLimits profile, List<ContainerViolation> violations)
+    {
+        XDocument? document = KomaXml.TryLoad(archive, path, out ContainerViolation? xml, profile);
+
+        if (xml is not null)
+        {
+            violations.Add(xml);
+            return null;
+        }
+
+        if (document is null)
+        {
+            violations.Add(new ContainerViolation(ContainerViolationCode.MissingRequiredXml, path, "The manifest points at metadata the package does not contain (§8)."));
+            return null;
+        }
+
+        CoreDocumentChecks.CheckExtensions(document, path, violations);
+
+        return MetadataReader.Read(document, path, version, violations);
     }
 
     /// <summary>

@@ -33,7 +33,9 @@ public sealed class PackageOpenerTests
         """;
 
     private const string Metadata = """
-        <Metadata xmlns="urn:koma:metadata" version="0.9"/>
+        <Metadata xmlns="urn:koma:metadata" version="0.9">
+          <Reading direction="ltr" spread="auto"/>
+        </Metadata>
         """;
 
     /// <summary>
