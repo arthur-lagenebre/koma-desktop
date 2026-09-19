@@ -76,8 +76,16 @@ internal static class Program
                     Field("version", package.Version.ToString());
                     Field("mode", package.Mode.ToString());
                     Field("manifest", package.RootManifestPath);
-                    Field("entries", package.EntryCount.ToString(CultureInfo.InvariantCulture));
+                    Field("metadata", package.Manifest.MetadataPath);
+                    Field("navigation", package.Manifest.NavigationPath ?? "none");
+                    Field("resources", Count(package.Manifest.Items.Count));
+                    Field("spine", Count(package.Manifest.Spine.Count));
+                    Field("entries", Count(package.EntryCount));
                 }
+
+                // Warnings do not stop a package from being read, so they come
+                // after what was read rather than in place of it.
+                Report(result.Violations);
 
                 return ExitOpened;
 
@@ -98,21 +106,30 @@ internal static class Program
 
                 Field("status", "rejected");
 
-                foreach (ContainerViolation violation in result.Violations)
-                {
-                    Console.WriteLine($"  {violation.Code}");
-
-                    if (violation.EntryName is not null)
-                        Console.WriteLine($"    entry   {violation.EntryName}");
-
-                    Console.WriteLine($"    {violation.Message}");
-                }
+                Report(result.Violations);
 
                 return ExitRejected;
         }
     }
 
-    private static void Field(string name, string value) => Console.WriteLine($"  {name,-10}{value}");
+    private static void Report(IEnumerable<ContainerViolation> violations)
+    {
+        foreach (ContainerViolation violation in violations)
+        {
+            string severity = violation.Severity == ViolationSeverity.Warning ? "warning" : "error";
+
+            Console.WriteLine($"  {severity,-11}{violation.Code}");
+
+            if (violation.EntryName is not null)
+                Console.WriteLine($"    entry   {violation.EntryName}");
+
+            Console.WriteLine($"    {violation.Message}");
+        }
+    }
+
+    private static string Count(int value) => value.ToString(CultureInfo.InvariantCulture);
+
+    private static void Field(string name, string value) => Console.WriteLine($"  {name,-11}{value}");
 
     private static void Usage()
     {
@@ -123,7 +140,7 @@ internal static class Program
               koma info <file.koma> [<file.koma> ...]
 
             exit status:
-              0  opened
+              0  opened, warnings and all
               1  rejected; the violations are printed with their §15.1 codes
               2  the version is not one this build reads (§5.0)
               3  bad usage, or a file that is not there

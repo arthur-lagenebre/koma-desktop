@@ -313,6 +313,9 @@ public static class ManifestReader
     /// </summary>
     private static void CheckResourcesInSpine(Manifest manifest, string entryName, List<ContainerViolation> violations)
     {
+        if (violations.Any(v => v.Code is ContainerViolationCode.SpineTargetMissing or ContainerViolationCode.FrontCoverNotInSpine))
+            return;
+
         var inSpine = new HashSet<string>(manifest.Spine.Select(r => r.Item), StringComparer.Ordinal);
 
         foreach (ManifestItem item in manifest.Items.Where(i => !inSpine.Contains(i.Id)))
