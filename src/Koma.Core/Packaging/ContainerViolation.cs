@@ -26,6 +26,10 @@ public static class ContainerViolationCode
     public const string UncompressedSizeLimit = "uncompressed-size-limit";
     public const string CompressionRatioLimit = "compression-ratio-limit";
     public const string DeclaredSizeMismatch = "declared-size-mismatch";
+
+    // Used by the reference validator, defined nowhere. See below.
+    public const string NotAZip = "not-a-zip";
+    public const string MultipartArchive = "multipart-archive";
 }
 
 /// <summary>
