@@ -243,7 +243,7 @@ public sealed class PackageOpenerTests
         using MemoryStream buffer = Build(two);
 
         PackageOpenResult result = Open(buffer);
-
+         
         Assert.Equal(ContainerViolationCode.SchemaInvalidContainer, Assert.Single(result.Violations).Code);
     }
 
