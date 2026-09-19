@@ -7,13 +7,26 @@ Written in C# with Avalonia. Windows is the primary target; Linux is supported.
 
 ## Status
 
-`Koma.Core` opens packages and paginates spines. It reads the container,
-resolves the version against the portal of §5.0, and enforces the ZIP profile
-of §3 and the default resource profile of §13.1. The pairing algorithm of §10.4
-agrees with the reference implementation on all fifteen upstream fixtures.
+`Koma.Core` goes from a file to a pagination. It refuses the entry count before
+building the archive (§13.1), checks the mimetype entry field by field (§2.1),
+resolves the version against the portal of §5.0 before judging anything, reads
+the container, manifest and metadata, and enforces the ZIP profile of §3. The
+pairing algorithm of §10.4 agrees with the reference implementation on all
+fifteen upstream fixtures, which are written by hand from the prose and never
+regenerated from an implementation.
 
-Nothing reads `manifest.xml` yet, so the opener and the paginator are not yet
-connected, and no layer-3 or layer-4 check exists. There is no user interface.
+Page resources are checked in a pass of their own rather than at open time:
+each check reads a whole image, so running them on open would decompress the
+publication before the first page could be shown, and make scanning a library
+cost as much as reading it.
+
+Of the 31 packages in the upstream corpus, 25 are refused with the code the
+corpus gives. The remaining six are a defect no opener can see — an entry that
+under-declares its size is only caught when something reads it — and the five
+packages that have nothing to refuse. `ConformanceCorpusTests` asserts those
+counts, so a case that moves is reported rather than quietly reclassified.
+
+There is no user interface yet.
 
 The format itself is at pre-release draft `0.9`. Per §5.0 of the specification,
 a reader supporting one `0.x` version **must reject every other `0.x`**, and
@@ -76,7 +89,7 @@ are ported to xUnit here for the same reason.
 
 ## Open technical questions
 
-These are unresolved and will shape early decisions:
+These are unresolved:
 
 1. **RELAX NG.** .NET validates XSD and DTD, not RELAX NG. Options are Trang
    conversion to XSD (lossy), the unmaintained `Commons.Xml.Relaxng`, or
@@ -85,6 +98,38 @@ These are unresolved and will shape early decisions:
 2. **WebP and EXIF.** §16 makes WebP support mandatory and requires EXIF
    orientation to be ignored. Verify SkiaSharp's behaviour on both before
    building the render pipeline around it.
+
+## Debts
+
+None of these block anything.
+
+- **§3 names no Unicode version.** `CaseFoldingTable` is generated from
+  Unicode 16.0; the reference validator uses whatever the Python running it
+  carries. They agree on the machine that generated the table and may not
+  agree elsewhere. Either the specification names a version, or the table
+  moves to the `koma` repository.
+- **The corpus does not exercise every code of §15.1**, which criterion 3 of
+  §5.0.1 will eventually require.
+- **Two warnings the corpus declares are not produced here**:
+  `no-navigation-document` and `private-use-token`. The packages carrying them
+  open, which the tests accept, but the corpus expects a warning.
+- **Two §2.1 faults have no code of their own**: a data descriptor and extra
+  fields on the mimetype entry. Both are reported as `mimetype-content` with
+  the reason in the message.
+- **Check order is load-bearing in two places.** `CheckResourcesInSpine` and
+  `CheckNavigationTargets` stay silent when the spine is already at fault, so
+  that the reader does not name a cause and a symptom with equal weight. Both
+  run after the checks they defer to.
+
+## Conventions
+
+One logical expression per line. Arrow bodies, single-call statements and
+switch arms are not folded, whatever their length. Constructs that are
+multi-line by nature — object and collection initialisers, switch expressions
+with several arms — keep their lines.
+
+No trailing commas. `var` only where the type is apparent on the right-hand
+side. Braces on multi-line bodies only. Comments say why, not what.
 
 ## Settled
 
