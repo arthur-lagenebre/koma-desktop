@@ -59,6 +59,9 @@ public sealed class KomaPackage : IDisposable
         Limits = limits;
     }
 
+    /// <summary>Number of entries in the archive.</summary>
+    public int EntryCount => archive.Entries.Count;
+
     /// <summary>The version declared by <c>container.xml</c>.</summary>
     public KomaVersion Version { get; }
 

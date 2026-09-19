@@ -11,4 +11,8 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <AssemblyName>koma</AssemblyName>
+  </PropertyGroup>
+
 </Project>
