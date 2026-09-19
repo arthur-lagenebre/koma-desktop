@@ -94,6 +94,6 @@ public sealed record ResourceLimits
         if (compressedBytes <= 0)
             return true;
 
-        return uncompressedBytes > compressedBytes * (long)MaxCompressionRatio;
+        return uncompressedBytes > compressedBytes * MaxCompressionRatio;
     }
 }

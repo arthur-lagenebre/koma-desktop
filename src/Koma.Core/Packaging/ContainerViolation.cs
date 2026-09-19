@@ -27,9 +27,17 @@ public static class ContainerViolationCode
     public const string CompressionRatioLimit = "compression-ratio-limit";
     public const string DeclaredSizeMismatch = "declared-size-mismatch";
 
-    // Used by the reference validator, defined nowhere. See below.
+    // Used by the reference validator, defined nowhere.
     public const string NotAZip = "not-a-zip";
     public const string MultipartArchive = "multipart-archive";
+    public const string MissingRequiredXml = "missing-required-xml";
+    public const string XmlNotWellFormed = "xml-not-well-formed";
+    public const string SchemaInvalidContainer = "schema-invalid:container";
+    public const string MimetypeContent = "mimetype-content";
+
+    // Named by no one.
+    public const string XmlDocumentSizeLimit = "xml-document-size-limit";
+    public const string XmlNestingLimit = "xml-nesting-limit";
 }
 
 /// <summary>
