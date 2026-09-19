@@ -44,12 +44,12 @@ internal static class Program
 
         int worst = ExitOpened;
 
-        foreach (string path in paths)
+        for (int i = 0; i < paths.Length; i++)
         {
-            if (paths.Length > 1)
+            if (i > 0)
                 Console.WriteLine();
 
-            worst = Math.Max(worst, Info(path));
+            worst = Math.Max(worst, Info(paths[i]));
         }
 
         return worst;
@@ -93,6 +93,9 @@ internal static class Program
                 return ExitUnsupportedVersion;
 
             default:
+                if (result.DeclaredVersion is KomaVersion declared)
+                    Field("version", declared.ToString());
+
                 Field("status", "rejected");
 
                 foreach (ContainerViolation violation in result.Violations)
