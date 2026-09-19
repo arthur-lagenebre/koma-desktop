@@ -333,16 +333,38 @@ public static class ManifestReader
         return -1;
     }
 
+    /// <summary>
+    /// A <c>TokenList</c> per §4.3.
+    /// </summary>
+    /// <remarks>
+    /// The separator is <c>;</c>, not whitespace. §4.3 explains the choice —
+    /// one convention for lists whose values may later admit spaces — and a
+    /// reader arriving from formats that split on space gets it wrong in a way
+    /// nothing reports: <c>front-cover;bonus</c> becomes a single token, the
+    /// core role no longer matches, and the publication quietly has no cover.
+    /// </remarks>
     private static string[]? ReadTokenList(string? value, string id, string attribute, string entryName, List<ContainerViolation> violations)
     {
-        if (string.IsNullOrEmpty(value))
+        if (value is null)
             return [];
 
-        string[] tokens = value.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (value.Length == 0 || value.Any(char.IsWhiteSpace))
+        {
+            violations.Add(Invalid(entryName, $"Item '{id}' has a {attribute} value that is empty or contains whitespace (§4.3)."));
+            return null;
+        }
+
+        string[] tokens = value.Split(';');
         var seen = new HashSet<string>(StringComparer.Ordinal);
 
         foreach (string token in tokens)
         {
+            if (!IsToken(token))
+            {
+                violations.Add(Invalid(entryName, $"Item '{id}' has '{token}' in {attribute}, which is not a Token (§4.3)."));
+                return null;
+            }
+
             if (!seen.Add(token))
             {
                 violations.Add(new ContainerViolation(ContainerViolationCode.TokenListDuplicate, entryName, $"Item '{id}' repeats the token '{token}' in {attribute} (§4.3)."));
@@ -352,6 +374,28 @@ public static class ManifestReader
 
         return tokens;
     }
+
+    /// <summary>
+    /// <c>[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?</c>, per §4.3.
+    /// </summary>
+    private static bool IsToken(string token)
+    {
+        if (token.Length is 0 or > 63)
+            return false;
+
+        if (!IsTokenEdge(token[0]) || !IsTokenEdge(token[^1]))
+            return false;
+
+        foreach (char c in token)
+        {
+            if (!IsTokenEdge(c) && c != '-')
+                return false;
+        }
+
+        return true;
+    }
+
+    private static bool IsTokenEdge(char c) => c is >= 'a' and <= 'z' or >= '0' and <= '9';
 
     private static string? RequiredPath(XElement root, string name, string entryName, List<ContainerViolation> violations)
     {

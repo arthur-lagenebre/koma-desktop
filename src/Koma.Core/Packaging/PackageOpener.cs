@@ -189,6 +189,9 @@ public static class PackageOpener
 
             Manifest? manifest = rootPath is null ? null : ReadManifest(archive, rootPath, version, profile, violations);
 
+            if (manifest is not null)
+                ReadCompanionDocuments(archive, manifest, profile, violations);
+
             if (manifest is null || violations.Any(v => v.Severity == ViolationSeverity.Error))
             {
                 return new PackageOpenResult
@@ -235,7 +238,50 @@ public static class PackageOpener
             return null;
         }
 
+        CoreDocumentChecks.CheckExtensions(document, path, violations);
+
         return ManifestReader.Read(document, path, version, violations);
+    }
+
+    /// <summary>
+    /// Reads the documents the manifest points at: metadata, which §8 requires,
+    /// and navigation, which it declares only when <c>nav.xml</c> is present.
+    /// </summary>
+    /// <remarks>
+    /// Neither is modelled here. They are loaded so that the checks of §4.6 and
+    /// §9 can run over them, which is all this build needs from them so far;
+    /// reading them into a model is the next piece, not this one.
+    /// </remarks>
+    private static void ReadCompanionDocuments(ZipArchive archive, Manifest manifest, ResourceLimits profile, List<ContainerViolation> violations)
+    {
+        XDocument? metadata = KomaXml.TryLoad(archive, manifest.MetadataPath, out ContainerViolation? metadataXml, profile);
+
+        if (metadataXml is not null)
+            violations.Add(metadataXml);
+        else if (metadata is null)
+            violations.Add(new ContainerViolation(ContainerViolationCode.MissingRequiredXml, manifest.MetadataPath, "The manifest points at metadata the package does not contain (§8)."));
+        else
+            CoreDocumentChecks.CheckExtensions(metadata, manifest.MetadataPath, violations);
+
+        if (manifest.NavigationPath is null)
+            return;
+
+        XDocument? navigation = KomaXml.TryLoad(archive, manifest.NavigationPath, out ContainerViolation? navigationXml, profile);
+
+        if (navigationXml is not null)
+        {
+            violations.Add(navigationXml);
+            return;
+        }
+
+        if (navigation is null)
+        {
+            violations.Add(new ContainerViolation(ContainerViolationCode.MissingRequiredXml, manifest.NavigationPath, "The manifest declares navigation the package does not contain (§8)."));
+            return;
+        }
+
+        CoreDocumentChecks.CheckExtensions(navigation, manifest.NavigationPath, violations);
+        CoreDocumentChecks.CheckNavigationTargets(navigation, manifest, manifest.NavigationPath, violations);
     }
 
     /// <summary>

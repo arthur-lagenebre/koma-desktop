@@ -32,6 +32,10 @@ public sealed class PackageOpenerTests
         </Manifest>
         """;
 
+    private const string Metadata = """
+        <Metadata xmlns="urn:koma:metadata" version="0.9"/>
+        """;
+
     /// <summary>
     /// A package that opens, unless an argument replaces part of it.
     /// </summary>
@@ -44,7 +48,10 @@ public sealed class PackageOpenerTests
             Write(archive, "META-INF/container.xml", container);
 
             if (manifest is not null)
+            {
                 Write(archive, "koma/manifest.xml", manifest);
+                Write(archive, "koma/metadata.xml", Metadata);
+            }
 
             foreach ((string name, string content) in extra)
                 Write(archive, name, content);

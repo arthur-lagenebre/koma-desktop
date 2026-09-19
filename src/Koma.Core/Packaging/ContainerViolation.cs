@@ -62,6 +62,8 @@ public static class ContainerViolationCode
     public const string SchemaInvalidManifest = "schema-invalid:manifest";
     public const string XmlDocumentSizeLimit = "xml-document-size-limit";
     public const string XmlNestingLimit = "xml-nesting-limit";
+    public const string NavigationTargetOutsideSpine = "navigation-target-outside-spine";
+    public const string UnnamespacedElementInExtensions = "unnamespaced-element-in-extensions";
 }
 
 /// <summary>
