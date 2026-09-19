@@ -1,6 +1,8 @@
 using System.Globalization;
 using Koma.Core;
+using Koma.Core.Model;
 using Koma.Core.Packaging;
+using Koma.Core.Rendering;
 
 namespace Koma.Cli;
 
@@ -81,6 +83,9 @@ internal static class Program
                     Field("resources", Count(package.Manifest.Items.Count));
                     Field("spine", Count(package.Manifest.Spine.Count));
                     Field("entries", Count(package.EntryCount));
+                    Field("direction", package.Metadata.Direction == ReadingDirection.RightToLeft ? "rtl" : "ltr");
+                    Field("spread", package.Metadata.Spread.ToString().ToLowerInvariant());
+                    Field("spreads", Count(package.Paginate().Count));
                 }
 
                 // Warnings do not stop a package from being read, so they come
