@@ -1,18 +1,18 @@
 # Where this stands
 
-Written at the end of the session that took `Koma.Core` from empty to a
-verified layer-1 reader. Read it before picking the next piece up.
+Written as the reader reached the point where a package can be opened,
+checked and paginated. Read it before picking the next piece up.
 
 ## Done
 
-**Layer 1, checked against the upstream corpus.** `ConformanceCorpusTests`
-runs `PackageOpener` over all 31 packages and sorts them into three buckets:
-8 codes detected with the spelling §15.1 and the corpus give, 0 detected under
-the wrong name, 23 outside what the opener reaches. The bucket counts are
+**Checked against the upstream corpus.** `ConformanceCorpusTests` runs
+`PackageOpener` over all 31 packages and sorts them into three buckets: 16
+detected with the spelling §15.1 and the corpus give, 0 detected under the
+wrong name, 15 outside what the opener reaches. The bucket counts are
 asserted, so a corpus case that moves is reported rather than quietly filed as
 out of scope.
 
-The last bucket is the one that matters: those 23 packages are defective, and
+The last bucket is the one that matters: those 15 packages are defective, and
 they must open. Refusing them would be a false positive, not early diligence.
 
 **Opening, in the order the specification requires.** The entry count is
@@ -32,16 +32,31 @@ upstream fixtures, which are written by hand from the prose and had never been
 seen by this code. `SpreadPaginator.Pseudocode` carries the algorithm verbatim
 and a test compares it with the specification in the submodule.
 
-**`koma info`.** Prints version, mode, manifest path and entry count, or the
-violations with their codes. Exit status carries the §5.0 distinction out to
-the shell: 1 rejected, 2 version not read by this build.
+**The manifest (§8).** `ManifestReader` reads `manifest.xml` and checks it
+against itself: identifiers, paths below `pages/`, the closed media-type
+vocabulary, dimensions with the lexical strictness of §4.3, page spans, spine
+targets, and the four front-cover rules of §8.4. `Manifest.ToSpineEntries` is
+the join between the two halves of the reader — §10.3 draws an entry's
+effective position from both the `ItemRef` and the `Item`, so they are brought
+together there rather than in the paginator.
+
+**Severity.** §8.8 allows a resource outside the spine and only asks that it
+be noticed, so a reader without the distinction refuses publications the
+specification calls readable. Only errors stop a package from opening.
+
+**`koma info`.** Prints version, mode, the manifest's paths and counts, and
+the violations with their codes and severities. Exit status carries the §5.0
+distinction out to the shell: 1 rejected, 2 version not read by this build.
 
 ## Next
 
-1. **Read `manifest.xml`.** Nothing connects the opener to the paginator: one
-   produces a package, the other expects a spine. This is also what opens
-   layer 3, where 17 corpus packages are waiting to be refused.
-2. **Layers 3 and 4.**
+1. **The remaining layer-3 checks.** Four corpus codes need a core document
+   other than the manifest: `navigation-target-outside-spine` (`nav.xml`),
+   `accessibility-hazard-conflict` (`metadata.xml`),
+   `unnamespaced-element-in-extensions`, and `tokenlist-duplicate`, which
+   turned out to repeat a token somewhere other than `roles`.
+2. **Layer 4**, which needs the image bytes: media type against signature,
+   declared dimensions, animation, checksums, residual EXIF orientation.
 3. **The Avalonia interface**, and with it the two questions still open in the
    README: RELAX NG validation, and WebP with EXIF orientation.
 
@@ -64,6 +79,10 @@ None of these block anything.
 - **Two §2.1 faults have no code of their own**: a data descriptor and extra
   fields on the mimetype entry. Both are reported as `mimetype-content` with
   the reason in the message.
+- **`CheckResourcesInSpine` depends on running after `CheckFrontCover`.** It
+  stays silent when the spine is already at fault, so that the reader does not
+  name a cause and a symptom with equal weight. The order is real, not
+  incidental.
 
 ## Conventions
 
