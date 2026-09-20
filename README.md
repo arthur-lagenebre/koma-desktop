@@ -20,6 +20,12 @@ each check reads a whole image, so running them on open would decompress the
 publication before the first page could be shown, and make scanning a library
 cost as much as reading it.
 
+`PageLoader` is that pass as a reading system runs it, one page at a time as
+the reader reaches it. It applies §16: a page with no bytes, bytes that do not
+decode, or a size beyond the pixel limits is withheld and keeps its place in
+the spine; a page with any other fault of the resource layer is decoded and
+shown, and its fault travels with it for the interface to report.
+
 Of the 35 packages in the upstream corpus, 29 are refused with the code the
 corpus gives. The remaining six are a defect no opener can see — an entry that
 under-declares its size is only caught when something reads it — and the five
@@ -52,7 +58,7 @@ This is **not** a conforming KOMA Validator: that requires all four layers of
 ```
 src/Koma.Core             format model, reader, writer, rendering, limits — no UI
 src/Koma.Cli              command-line front end over Koma.Core
-src/Koma.Imaging          page decoding over SkiaSharp — no UI
+src/Koma.Imaging          page loading and decoding over SkiaSharp — no UI
 tests/Koma.Core.Tests     xUnit, driven by the upstream conformance corpus
 tests/Koma.Imaging.Tests  SkiaSharp and the decoder, over the corpus page images
 external/koma             git submodule: the specification, schemas and corpus

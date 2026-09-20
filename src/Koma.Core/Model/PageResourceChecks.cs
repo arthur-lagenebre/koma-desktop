@@ -42,9 +42,15 @@ public static class PageResourceChecks
     }
 
     /// <summary>
-    /// Checks one page resource.
+    /// Checks one page resource, and hands back its bytes when they could be
+    /// read, whatever else was found.
     /// </summary>
-    public static void Check(KomaPackage package, ManifestItem item, List<ContainerViolation> violations)
+    /// <remarks>
+    /// The bytes come back so that a reading system decodes what it checked
+    /// rather than reading the page a second time. Whether it may decode them
+    /// is <see cref="Withholds"/>'s question, not this method's.
+    /// </remarks>
+    public static byte[]? Check(KomaPackage package, ManifestItem item, List<ContainerViolation> violations)
     {
         ArgumentNullException.ThrowIfNull(package);
         ArgumentNullException.ThrowIfNull(item);
@@ -53,7 +59,7 @@ public static class PageResourceChecks
         byte[]? bytes = Read(package, item, violations);
 
         if (bytes is null)
-            return;
+            return null;
 
         if (item.Sha256 is not null)
         {
@@ -71,7 +77,7 @@ public static class PageResourceChecks
         if (facts is null)
         {
             violations.Add(new ContainerViolation(ContainerViolationCode.UnreadablePageResource, item.Href, $"Item '{item.Id}' is not a readable JPEG, PNG or WebP (§8.1)."));
-            return;
+            return bytes;
         }
 
         // §8.1: the declared media type must match the actual byte signature.
@@ -80,7 +86,7 @@ public static class PageResourceChecks
         if (facts.MediaType != item.MediaType)
         {
             violations.Add(new ContainerViolation(ContainerViolationCode.MediaTypeMismatch, item.Href, $"Item '{item.Id}' declares {item.MediaType} and the bytes are {facts.MediaType} (§8.1)."));
-            return;
+            return bytes;
         }
 
         // §13.1 judges the pixel limits from the header, which is all this pass
@@ -89,7 +95,7 @@ public static class PageResourceChecks
         if (package.Limits.ExceedsPixelLimits(facts.Width, facts.Height))
         {
             violations.Add(new ContainerViolation(ContainerViolationCode.PagePixelLimit, item.Href, string.Create(CultureInfo.InvariantCulture, $"Item '{item.Id}' is {facts.Width}x{facts.Height}, beyond {package.Limits.MaxPixelsPerSide} pixels per side or {package.Limits.MaxPixelsPerPage} per page (§13.1).")));
-            return;
+            return bytes;
         }
 
         if (facts.Width != item.Width || facts.Height != item.Height)
@@ -103,6 +109,27 @@ public static class PageResourceChecks
         // way, so this is about the producer's work, not about rendering.
         if (facts.ExifOrientation is int orientation && orientation != 1)
             violations.Add(new ContainerViolation(ContainerViolationCode.ExifOrientationResidue, item.Href, string.Create(CultureInfo.InvariantCulture, $"Item '{item.Id}' carries EXIF orientation {orientation}; §8.2 requires 1 or absent.")));
+
+        return bytes;
+    }
+
+    /// <summary>
+    /// Whether a fault of this layer keeps the page off screen (§16).
+    /// </summary>
+    /// <remarks>
+    /// These are the faults that leave nothing safe to show: no bytes, bytes
+    /// that do not decode, or an allocation the limits of §13.1 forbid. Every
+    /// other fault of this layer still lets the page be shown, as long as the
+    /// reader says what is wrong with it.
+    /// </remarks>
+    public static bool Withholds(ContainerViolation violation)
+    {
+        ArgumentNullException.ThrowIfNull(violation);
+
+        return violation.Code is ContainerViolationCode.MissingPageResource
+                              or ContainerViolationCode.UnreadablePageResource
+                              or ContainerViolationCode.DeclaredSizeMismatch
+                              or ContainerViolationCode.PagePixelLimit;
     }
 
     private static byte[]? Read(KomaPackage package, ManifestItem item, List<ContainerViolation> violations)

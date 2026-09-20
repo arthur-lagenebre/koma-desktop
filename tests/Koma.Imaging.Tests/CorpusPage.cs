@@ -3,7 +3,7 @@ using System.IO.Compression;
 namespace Koma.Imaging.Tests;
 
 /// <summary>
-/// Reads page images out of the upstream corpus.
+/// Finds the upstream corpus packages and reads page images out of them.
 /// </summary>
 /// <remarks>
 /// Straight from the ZIP, past the opener: several of these packages are ones
@@ -13,9 +13,11 @@ namespace Koma.Imaging.Tests;
 /// </remarks>
 internal static class CorpusPage
 {
+    public static string PathOf(string package) => Path.Combine(PackagesDirectory(), package);
+
     public static byte[] Read(string package, string entry)
     {
-        string path = Path.Combine(PackagesDirectory(), package);
+        string path = PathOf(package);
         using ZipArchive archive = ZipFile.OpenRead(path);
         ZipArchiveEntry found = archive.GetEntry(entry) ?? throw new FileNotFoundException($"{entry} is not in {package}.", path);
         using Stream stream = found.Open();
