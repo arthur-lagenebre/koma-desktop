@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <!-- Pinned to what Avalonia.Skia 12.1.2 requires: SkiaSharpDecodingTests
+         establishes what this version does, and the application loads no
+         other. No native assets here: the application gets them through
+         Avalonia.Skia, and the tests name their own. -->
+    <PackageReference Include="SkiaSharp" Version="3.119.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Koma.Core\Koma.Core.csproj" />
+  </ItemGroup>
+
+</Project>

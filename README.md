@@ -52,15 +52,17 @@ This is **not** a conforming KOMA Validator: that requires all four layers of
 ```
 src/Koma.Core             format model, reader, writer, rendering, limits — no UI
 src/Koma.Cli              command-line front end over Koma.Core
+src/Koma.Imaging          page decoding over SkiaSharp — no UI
 tests/Koma.Core.Tests     xUnit, driven by the upstream conformance corpus
-tests/Koma.Imaging.Tests  what SkiaSharp does with the corpus page images
+tests/Koma.Imaging.Tests  SkiaSharp and the decoder, over the corpus page images
 external/koma             git submodule: the specification, schemas and corpus
 ```
 
-`Koma.Core` must never reference a UI package. That separation is what keeps
-the conformance work testable without a running window. It references no
-imaging library either: what a page declares about itself is read from its
-header by hand, and decoding belongs to the layer above.
+`Koma.Core` and `Koma.Imaging` must never reference a UI package. That
+separation is what keeps the conformance work, and the decoding it guards,
+testable without a running window. `Koma.Core` references no imaging library
+either: what a page declares about itself is read from its header by hand, and
+decoding belongs to the layer above.
 
 ## Building
 
@@ -112,6 +114,11 @@ None of these block anything.
   moves to the `koma` repository.
 - **The corpus does not exercise every code of §15.1**, which criterion 3 of
   §5.0.1 will eventually require.
+- **Colour profiles are not applied.** `PageDecoder` hands back pixels as
+  stored, which treats every page as sRGB. §8.3 allows that only as a fallback
+  for a reader that cannot apply an embedded profile, and it says the PNG
+  `sRGB`, `gAMA` and `cHRM` chunks are honoured. The corpus has no page with a
+  profile, so there is nothing yet to test a conversion against.
 - **Two §2.1 faults have no code of their own**: a data descriptor and extra
   fields on the mimetype entry. Both are reported as `mimetype-content` with
   the reason in the message.

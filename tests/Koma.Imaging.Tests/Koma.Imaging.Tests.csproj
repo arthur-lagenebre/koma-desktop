@@ -1,16 +1,13 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Pinned to what Avalonia.Skia 12.1.2 requires, so that these tests
-         characterise the native library the application will load rather
-         than whatever is newest. -->
-    <PackageReference Include="SkiaSharp" Version="3.119.4" />
-    <!-- SkiaSharp carries the Windows natives itself; the Linux ones are a
-         separate package, as in Avalonia.Skia's own dependencies. -->
+    <!-- SkiaSharp itself comes through Koma.Imaging, which pins it. It carries
+         the Windows natives; the Linux ones are a separate package, as in
+         Avalonia.Skia's own dependencies. -->
     <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="3.119.4" />
     <PackageReference Include="coverlet.collector" Version="6.0.4" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
@@ -24,6 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Koma.Core\Koma.Core.csproj" />
+    <ProjectReference Include="..\..\src\Koma.Imaging\Koma.Imaging.csproj" />
   </ItemGroup>
 
 </Project>
