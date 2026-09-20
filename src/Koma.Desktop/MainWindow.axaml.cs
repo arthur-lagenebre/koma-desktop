@@ -137,7 +137,9 @@ internal sealed partial class MainWindow : Window, IDisposable
         publication = new Publication(result.Package, result.Violations);
         openPath = path;
         current = 0;
-        Title = $"{name} — KOMA";
+        // §7.3 gives a publication one name; the file it arrived in is the
+        // shelf's business, not the window's.
+        Title = $"{publication.Title} — KOMA";
 
         ShowReader();
         ShowNavigation(publication.Navigation);
@@ -176,7 +178,7 @@ internal sealed partial class MainWindow : Window, IDisposable
         if (item is null)
             return;
 
-        LibraryEntry recorded = entry with { LastItem = item, LastOpened = DateTimeOffset.UtcNow };
+        LibraryEntry recorded = entry with { LastItem = item, LastPage = publication.PageNumber(item), LastOpened = DateTimeOffset.UtcNow };
         library = library with { Entries = [.. library.Entries.Select(e => e.Path == entry.Path ? recorded : e)] };
 
         try
@@ -198,6 +200,9 @@ internal sealed partial class MainWindow : Window, IDisposable
         // The reader is leaving the publication on screen, so where they are
         // in it is worth keeping before the shelf takes its place.
         RecordPosition();
+
+        // Back on the shelf, no publication is on screen to name the window.
+        Title = "KOMA";
 
         Shelf.Show(library.Entries, store);
         Shelf.IsVisible = true;

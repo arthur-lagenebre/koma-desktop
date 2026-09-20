@@ -63,10 +63,21 @@ internal sealed class LibraryView : ScrollViewer
     {
         var contents = new StackPanel { Spacing = 4 };
 
-        contents.Children.Add(Cover(entry, store));
-        contents.Children.Add(Line(entry.Title ?? Path.GetFileName(entry.Path), FontWeight.SemiBold, lines: 2));
-        contents.Children.Add(Line(Path.GetFileName(entry.Path), FontWeight.Normal, lines: 1, opacity: 0.55));
-        contents.Children.Add(Line(Subtitle(entry), FontWeight.Normal, lines: 3, opacity: 0.75));
+        string file = Path.GetFileName(entry.Path);
+
+        // A publication that will not open has no cover to be missing, so its
+        // reason takes the place a cover would have held.
+        if (entry.Unreadable is null)
+            contents.Children.Add(Cover(entry, store));
+
+        contents.Children.Add(Line(entry.Title ?? file, FontWeight.SemiBold, lines: 2));
+
+        // A publication with no title is already shown under its file name;
+        // naming the file twice says nothing the second time.
+        if (entry.Title is not null)
+            contents.Children.Add(Line(file, FontWeight.Normal, lines: 2, opacity: 0.55));
+
+        contents.Children.Add(Line(Subtitle(entry), FontWeight.Normal, lines: entry.Unreadable is null ? 3 : 8, opacity: 0.75));
 
         var card = new Button
         {
@@ -135,6 +146,10 @@ internal sealed class LibraryView : ScrollViewer
 
         string pages = entry.PageCount == 1 ? "1 page" : $"{entry.PageCount} pages";
 
-        return entry.LastItem is null ? pages : $"{pages} · started";
+        if (entry.LastItem is null)
+            return pages;
+
+        // A position from an older index has no page number to show.
+        return entry.LastPage == 0 ? $"{pages} · started" : $"page {entry.LastPage} of {entry.PageCount}";
     }
 }

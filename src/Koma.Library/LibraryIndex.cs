@@ -43,6 +43,18 @@ public sealed record LibraryEntry
     /// </remarks>
     public string? LastItem { get; init; }
 
+    /// <summary>
+    /// Where <see cref="LastItem"/> stood in the spine when it was recorded,
+    /// counting from one, or zero when nothing was recorded.
+    /// </summary>
+    /// <remarks>
+    /// For showing a reader how far in they are, and nothing else. The item
+    /// is what reopens the publication in the right place; this number is a
+    /// convenience that a reordered spine would make wrong, which is why it
+    /// is not what the position is kept as.
+    /// </remarks>
+    public int LastPage { get; init; }
+
     public DateTimeOffset? LastOpened { get; init; }
 }
 

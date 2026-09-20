@@ -45,6 +45,26 @@ internal sealed class Publication : IDisposable
 
     public ReadingDirection Direction => package.Metadata.Direction;
 
+    /// <summary>The main title of §7.3, which every publication has exactly one of.</summary>
+    public string Title => package.Metadata.MainTitle.Text;
+
+    /// <summary>
+    /// Where an item stands in the spine, counting from one, or zero for an
+    /// item the spine does not name.
+    /// </summary>
+    public int PageNumber(string item)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+
+        for (int i = 0; i < package.Manifest.Spine.Count; i++)
+        {
+            if (package.Manifest.Spine[i].Item == item)
+                return i + 1;
+        }
+
+        return 0;
+    }
+
     /// <summary>What <c>nav.xml</c> offers, or <see langword="null"/> without one.</summary>
     public PublicationNavigation? Navigation => package.Navigation;
 
