@@ -1,10 +1,14 @@
+using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Text;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
+using Avalonia.VisualTree;
 using Koma.Core;
+using Koma.Core.Model;
 using Koma.Core.Packaging;
 using Koma.Core.Rendering;
 
@@ -18,6 +22,10 @@ internal sealed partial class MainWindow : Window, IDisposable
 {
     private static readonly FilePickerFileType KomaFiles = new("KOMA publication") { Patterns = ["*.koma"] };
 
+    // The reader's language first; NavigationLabel.Choose falls back on the
+    // same primary language, then on the first label, from there.
+    private static readonly string[] Languages = [CultureInfo.CurrentUICulture.Name];
+
     private Publication? publication;
     private int current;
 
@@ -26,6 +34,9 @@ internal sealed partial class MainWindow : Window, IDisposable
         InitializeComponent();
 
         OpenButton.Click += OnOpenClicked;
+        ContentsButton.IsCheckedChanged += (_, _) => NavigationPanel.IsVisible = ContentsButton.IsChecked == true;
+        Contents.SelectionChanged += (_, _) => GoToTarget(Contents.SelectedItem);
+        LandmarkList.SelectionChanged += (_, _) => GoToTarget(LandmarkList.SelectedItem);
         View.SizeChanged += OnViewSizeChanged;
 
         // Tunnelling, so that the arrows turn pages before focus navigation
@@ -104,6 +115,7 @@ internal sealed partial class MainWindow : Window, IDisposable
         current = 0;
         Title = $"{name} — KOMA";
 
+        ShowNavigation(publication.Navigation);
         Repaginate();
         ShowCurrent();
     }
@@ -126,7 +138,7 @@ internal sealed partial class MainWindow : Window, IDisposable
         if (!publication.Paginate(SpreadLayout.FitsTwo(View.Bounds.Width, View.Bounds.Height)))
             return false;
 
-        current = anchor is null ? 0 : IndexOf(publication.Spreads, anchor);
+        current = anchor is null ? 0 : SpreadOf(publication.Spreads, anchor) ?? 0;
 
         return true;
     }
@@ -134,6 +146,11 @@ internal sealed partial class MainWindow : Window, IDisposable
     private void OnNavigationKey(object? sender, KeyEventArgs e)
     {
         if (publication is null)
+            return;
+
+        // In the panel, the arrows and Home and End browse the contents, and a
+        // new selection takes the reader there; the page keys still turn pages.
+        if (e.Source is Visual source && NavigationPanel.IsVisualAncestorOf(source) && e.Key is Key.Up or Key.Down or Key.Left or Key.Right or Key.Home or Key.End)
             return;
 
         bool leftToRight = publication.Direction == ReadingDirection.LeftToRight;
@@ -182,7 +199,7 @@ internal sealed partial class MainWindow : Window, IDisposable
         publication.Retain(near);
 
         View.Show(publication, spread);
-        SpreadCounter.Text = string.Create(CultureInfo.InvariantCulture, $"{current + 1} / {spreads.Count}");
+        SpreadCounter.Text = CounterOf(publication, spread, current, spreads.Count);
         Status.Text = StatusOf(publication, onScreen);
 
         _ = LoadAsync(publication, spread, onScreen, near);
@@ -249,7 +266,87 @@ internal sealed partial class MainWindow : Window, IDisposable
         return text.ToString().TrimEnd();
     }
 
-    private static int IndexOf(IReadOnlyList<Spread> spreads, string item)
+    /// <summary>
+    /// Fills the panel from <c>nav.xml</c>, or hides it for a publication
+    /// without one.
+    /// </summary>
+    private void ShowNavigation(PublicationNavigation? navigation)
+    {
+        Contents.Items.Clear();
+        LandmarkList.Items.Clear();
+
+        if (navigation is null)
+        {
+            ContentsButton.IsVisible = false;
+            NavigationPanel.IsVisible = false;
+            return;
+        }
+
+        foreach (TocEntry entry in navigation.TableOfContents)
+            Contents.Items.Add(TreeItemOf(entry));
+
+        foreach (Landmark landmark in navigation.Landmarks)
+            LandmarkList.Items.Add(new ListBoxItem { Content = LandmarkName(landmark), Tag = landmark.Item });
+
+        Contents.IsVisible = navigation.TableOfContents.Count > 0;
+        LandmarkList.IsVisible = navigation.Landmarks.Count > 0;
+        ContentsButton.IsVisible = Contents.IsVisible || LandmarkList.IsVisible;
+        NavigationPanel.IsVisible = ContentsButton.IsVisible && ContentsButton.IsChecked == true;
+    }
+
+    private static TreeViewItem TreeItemOf(TocEntry entry)
+    {
+        var node = new TreeViewItem { Header = NavigationLabel.Choose(entry.Labels, Languages)?.Text, Tag = entry.Item, IsExpanded = true };
+
+        foreach (TocEntry child in entry.Children)
+            node.Items.Add(TreeItemOf(child));
+
+        return node;
+    }
+
+    /// <summary>
+    /// A landmark's own label if it has one, else its type made readable:
+    /// the type is a token, and <c>body-start</c> reads as Body start.
+    /// </summary>
+    private static string LandmarkName(Landmark landmark)
+    {
+        string? label = NavigationLabel.Choose(landmark.Labels, Languages)?.Text;
+
+        if (label is not null)
+            return label;
+
+        string words = landmark.Type.Replace('-', ' ');
+
+        return char.ToUpperInvariant(words[0]) + words[1..];
+    }
+
+    private void GoToTarget(object? selected)
+    {
+        if (publication is null || selected is not Control { Tag: string item })
+            return;
+
+        if (SpreadOf(publication.Spreads, item) is int index)
+            GoTo(index);
+    }
+
+    /// <summary>
+    /// The page-list labels on screen with the spread's place, or the place
+    /// alone for a publication without a page list.
+    /// </summary>
+    private static string CounterOf(Publication publication, Spread spread, int index, int count)
+    {
+        string place = string.Create(CultureInfo.InvariantCulture, $"{index + 1} / {count}");
+        IReadOnlyList<string> labels = PageLabels.Of(spread, publication.Navigation?.PageList ?? ReadOnlyCollection<PageTarget>.Empty, publication.Direction);
+
+        return labels.Count switch
+        {
+            0 => place,
+            1 => $"p. {labels[0]}  ·  {place}",
+            _ => $"p. {labels[0]}–{labels[^1]}  ·  {place}"
+        };
+    }
+
+    private static int? SpreadOf(IReadOnlyList<Spread> spreads, string item)
     {
         for (int i = 0; i < spreads.Count; i++)
         {
@@ -257,7 +354,7 @@ internal sealed partial class MainWindow : Window, IDisposable
                 return i;
         }
 
-        return 0;
+        return null;
     }
 
     private static string Describe(ContainerViolation violation) => $"{violation.Code} — {violation.Message}";

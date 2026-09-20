@@ -45,6 +45,9 @@ internal sealed class Publication : IDisposable
 
     public ReadingDirection Direction => package.Metadata.Direction;
 
+    /// <summary>What <c>nav.xml</c> offers, or <see langword="null"/> without one.</summary>
+    public PublicationNavigation? Navigation => package.Navigation;
+
     /// <summary>The warnings the opener raised, which the reader is shown throughout.</summary>
     public IReadOnlyList<ContainerViolation> OpeningNotes { get; }
 

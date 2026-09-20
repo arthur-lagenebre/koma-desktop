@@ -8,9 +8,14 @@
     <DockPanel>
         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="12" Margin="8">
             <Button x:Name="OpenButton" Content="Open…" />
+            <ToggleButton x:Name="ContentsButton" Content="Contents" IsVisible="False" />
             <TextBlock x:Name="SpreadCounter" VerticalAlignment="Center" />
         </StackPanel>
         <TextBlock x:Name="Status" DockPanel.Dock="Bottom" Margin="8" TextWrapping="Wrap" />
+        <DockPanel x:Name="NavigationPanel" DockPanel.Dock="Left" Width="280" IsVisible="False">
+            <ListBox x:Name="LandmarkList" DockPanel.Dock="Bottom" MaxHeight="240" />
+            <TreeView x:Name="Contents" />
+        </DockPanel>
         <local:SpreadView x:Name="View" />
     </DockPanel>
 </Window>
