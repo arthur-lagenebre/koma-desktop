@@ -201,7 +201,7 @@ internal sealed partial class MainWindow : Window, IDisposable
         // in it is worth keeping before the shelf takes its place.
         RecordPosition();
 
-        // Back on the shelf, no publication is on screen to name the window.
+        // No publication is on screen to name the window any more.
         Title = "KOMA";
 
         Shelf.Show(library.Entries, store);
