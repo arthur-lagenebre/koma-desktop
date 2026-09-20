@@ -46,20 +46,22 @@ user's application data. It is a cache, rebuilt by a scan from the folders it
 watches, apart from the reading positions, which are kept as the first item of
 the last spread shown rather than as a spread number: pagination changes with
 the shape of the window, and an item does not. A publication is opened again
-only when its path, size or modification time has changed. Nothing of this is
-on screen yet.
+only when its path, size or modification time has changed.
 
-`Koma.Desktop` is a first reader: it opens a publication from a file picker or
-the command line, paginates it for the window (§10.1), and turns spreads with
-the arrow keys along the reading direction, Page Up and Page Down, Home and
-End. A Contents panel lists the table of contents and the landmarks of
-`nav.xml` in the reader's language, and a choice takes the reader to the spread
-that holds it; the counter shows the page-list labels on screen. Pages are laid
-out from their declared sizes (§16) and decoded on a worker, one at a time, as
-the reader reaches them. The spreads either side follow, so that a turn usually
-finds its pages ready, and a page queued for a spread the reader has left is
-dropped before it is decoded. Warnings from opening, the faults of the pages on
-screen and a withheld page are reported in a status line.
+`Koma.Desktop` opens on the shelf: the publications of the watched folders,
+with their covers, scanned in the background at startup and after a folder is
+added. Choosing one opens it where it was last left, and Escape goes back to
+the shelf. It also opens a publication from a file picker or the command line,
+paginates it for the window (§10.1), and turns spreads with the arrow keys
+along the reading direction, Page Up and Page Down, Home and End. A Contents
+panel lists the table of contents and the landmarks of `nav.xml` in the
+reader's language, and a choice takes the reader to the spread that holds it;
+the counter shows the page-list labels on screen. Pages are laid out from their
+declared sizes (§16) and decoded on a worker, one at a time, as the reader
+reaches them. The spreads either side follow, so that a turn usually finds its
+pages ready, and a page queued for a spread the reader has left is dropped
+before it is decoded. Warnings from opening, the faults of the pages on screen
+and a withheld page are reported in a status line.
 
 The format itself is at pre-release draft `0.9`. Per §5.0 of the specification,
 a reader supporting one `0.x` version **must reject every other `0.x`**, and

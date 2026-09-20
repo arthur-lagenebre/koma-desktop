@@ -11,6 +11,7 @@ using Koma.Core;
 using Koma.Core.Model;
 using Koma.Core.Packaging;
 using Koma.Core.Rendering;
+using Koma.Library;
 
 namespace Koma.Desktop;
 
@@ -26,22 +27,40 @@ internal sealed partial class MainWindow : Window, IDisposable
     // same primary language, then on the first label, from there.
     private static readonly string[] Languages = [CultureInfo.CurrentUICulture.Name];
 
+    private readonly LibraryStore store = LibraryStore.ForCurrentUser();
+
+    private LibraryIndex library;
     private Publication? publication;
+    private string? openPath;
     private int current;
+    private bool scanning;
 
     public MainWindow()
     {
         InitializeComponent();
 
+        library = store.Load();
+
         OpenButton.Click += OnOpenClicked;
+        LibraryButton.Click += (_, _) => ShowLibrary();
+        AddFolderButton.Click += OnAddFolderClicked;
+        Shelf.Chosen += (_, path) => OpenPath(path);
         ContentsButton.IsCheckedChanged += (_, _) => NavigationPanel.IsVisible = ContentsButton.IsChecked == true;
         Contents.SelectionChanged += (_, _) => GoToTarget(Contents.SelectedItem);
         LandmarkList.SelectionChanged += (_, _) => GoToTarget(LandmarkList.SelectedItem);
-        View.SizeChanged += OnViewSizeChanged;
+
+        // The host and not the page view: the view has no size while the
+        // shelf is up, and pagination follows the space a page would have.
+        ViewHost.SizeChanged += OnViewSizeChanged;
 
         // Tunnelling, so that the arrows turn pages before focus navigation
         // can use them to move between controls.
         AddHandler(KeyDownEvent, OnNavigationKey, RoutingStrategies.Tunnel);
+
+        ShowLibrary();
+
+        // A file named on the command line opens over the shelf a moment later.
+        _ = ScanAsync();
     }
 
     public void OpenPath(string path)
@@ -58,11 +77,12 @@ internal sealed partial class MainWindow : Window, IDisposable
             return;
         }
 
-        Open(stream, Path.GetFileName(path));
+        Open(stream, Path.GetFileName(path), path);
     }
 
     public void Dispose()
     {
+        RecordPosition();
         publication?.Dispose();
         publication = null;
     }
@@ -88,7 +108,7 @@ internal sealed partial class MainWindow : Window, IDisposable
         {
             // The package reads its pages from this stream until it is closed,
             // so the stream is handed over rather than disposed here.
-            Open(await files[0].OpenReadAsync(), files[0].Name);
+            Open(await files[0].OpenReadAsync(), files[0].Name, files[0].TryGetLocalPath());
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
@@ -96,7 +116,7 @@ internal sealed partial class MainWindow : Window, IDisposable
         }
     }
 
-    private void Open(Stream stream, string name)
+    private void Open(Stream stream, string name, string? path)
     {
         PackageOpenResult result = PackageOpener.Open(stream);
 
@@ -110,14 +130,150 @@ internal sealed partial class MainWindow : Window, IDisposable
             return;
         }
 
+        // Where the reader was in the publication being closed, before it is.
+        RecordPosition();
+
         publication?.Dispose();
         publication = new Publication(result.Package, result.Violations);
+        openPath = path;
         current = 0;
         Title = $"{name} — KOMA";
 
+        ShowReader();
         ShowNavigation(publication.Navigation);
         Repaginate();
+        Resume();
         ShowCurrent();
+    }
+
+    /// <summary>
+    /// Opens where the reader left off, if the library remembers a page.
+    /// </summary>
+    private void Resume()
+    {
+        LibraryEntry? entry = Entry(openPath);
+
+        if (publication is not null && entry?.LastItem is { } item && SpreadOf(publication.Spreads, item) is int index)
+            current = index;
+    }
+
+    /// <summary>
+    /// Records where the reader is, for the publication to reopen there.
+    /// </summary>
+    /// <remarks>
+    /// The first item of the spread on screen, never its number: §10.1
+    /// paginates for the window, so a number means another page in a window
+    /// of another shape. Only a publication of the library is remembered; a
+    /// file opened from elsewhere has nowhere to be remembered.
+    /// </remarks>
+    private void RecordPosition()
+    {
+        if (publication is null || publication.Spreads.Count == 0 || Entry(openPath) is not { } entry)
+            return;
+
+        string? item = SpreadLayout.Items(publication.Spreads[current]).FirstOrDefault();
+
+        if (item is null)
+            return;
+
+        LibraryEntry recorded = entry with { LastItem = item, LastOpened = DateTimeOffset.UtcNow };
+        library = library with { Entries = [.. library.Entries.Select(e => e.Path == entry.Path ? recorded : e)] };
+
+        try
+        {
+            store.Save(library);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            // Losing a reading position is not worth interrupting a reader
+            // who is closing a window or opening another publication.
+            Status.Text = e.Message;
+        }
+    }
+
+    private LibraryEntry? Entry(string? path) => path is null ? null : library.Entries.FirstOrDefault(e => e.Path == path);
+
+    private void ShowLibrary()
+    {
+        // The reader is leaving the publication on screen, so where they are
+        // in it is worth keeping before the shelf takes its place.
+        RecordPosition();
+
+        Shelf.Show(library.Entries, store);
+        Shelf.IsVisible = true;
+        View.IsVisible = false;
+        NavigationPanel.IsVisible = false;
+        ContentsButton.IsVisible = false;
+        SpreadCounter.Text = library.Entries.Count == 1 ? "1 publication" : string.Create(CultureInfo.InvariantCulture, $"{library.Entries.Count} publications");
+
+        if (!scanning)
+            Status.Text = library.Folders.Count == 0 ? "No folder is watched yet. Add one to fill the library." : string.Join(Environment.NewLine, library.Folders);
+    }
+
+    private void ShowReader()
+    {
+        Shelf.IsVisible = false;
+        View.IsVisible = true;
+    }
+
+    private async void OnAddFolderClicked(object? sender, RoutedEventArgs e)
+    {
+        IReadOnlyList<IStorageFolder> folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        {
+            Title = "Add a folder of KOMA publications",
+            AllowMultiple = true
+        });
+
+        // A folder the platform cannot name as a path is one the scanner
+        // cannot walk, so it is not added.
+        string[] added = [.. folders.Select(f => f.TryGetLocalPath()).OfType<string>().Except(library.Folders, StringComparer.Ordinal)];
+
+        if (added.Length == 0)
+            return;
+
+        library = library with { Folders = [.. library.Folders, .. added] };
+
+        await ScanAsync();
+    }
+
+    /// <summary>
+    /// Brings the library up to date, off the interface thread.
+    /// </summary>
+    private async Task ScanAsync()
+    {
+        if (scanning)
+            return;
+
+        scanning = true;
+        Status.Text = "Scanning…";
+
+        try
+        {
+            var progress = new Progress<LibraryScanProgress>(step => Status.Text = string.Create(CultureInfo.InvariantCulture, $"Scanning… {step.Done} / {step.Total}"));
+            LibraryIndex scanned = library;
+
+            // Saved on the worker too: writing the index is the scan's last
+            // step, not something the window has to remember to do.
+            library = await Task.Run(() =>
+            {
+                LibraryIndex updated = LibraryScanner.Scan(scanned, store, progress);
+                store.Save(updated);
+
+                return updated;
+            });
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            Status.Text = e.Message;
+            return;
+        }
+        finally
+        {
+            scanning = false;
+        }
+
+        if (Shelf.IsVisible)
+            ShowLibrary();
     }
 
     private void OnViewSizeChanged(object? sender, SizeChangedEventArgs e)
@@ -135,7 +291,7 @@ internal sealed partial class MainWindow : Window, IDisposable
         // pagination groups it with.
         string? anchor = publication.Spreads.Count > 0 ? SpreadLayout.Items(publication.Spreads[current]).FirstOrDefault() : null;
 
-        if (!publication.Paginate(SpreadLayout.FitsTwo(View.Bounds.Width, View.Bounds.Height)))
+        if (!publication.Paginate(SpreadLayout.FitsTwo(ViewHost.Bounds.Width, ViewHost.Bounds.Height)))
             return false;
 
         current = anchor is null ? 0 : SpreadOf(publication.Spreads, anchor) ?? 0;
@@ -145,7 +301,20 @@ internal sealed partial class MainWindow : Window, IDisposable
 
     private void OnNavigationKey(object? sender, KeyEventArgs e)
     {
-        if (publication is null)
+        // Escape goes back to the shelf, from where the publication reopens
+        // where it was left.
+        if (e.Key == Key.Escape)
+        {
+            if (!Shelf.IsVisible)
+            {
+                e.Handled = true;
+                ShowLibrary();
+            }
+
+            return;
+        }
+
+        if (publication is null || Shelf.IsVisible)
             return;
 
         // In the panel, the arrows and Home and End browse the contents, and a
