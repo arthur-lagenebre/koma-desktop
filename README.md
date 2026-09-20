@@ -13,7 +13,11 @@ resolves the version against the portal of §5.0 before judging anything, reads
 the container, manifest, metadata and navigation, and enforces the ZIP profile
 of §3. Navigation labels carry the language §4.4 gives them, and
 `NavigationLabel.Choose` picks the one to show from the reader's languages;
-regions (§9.4) are not read, which §16 allows. The pairing algorithm of §10.4
+regions (§9.4) are not read, which §16 allows. `OpenVocabularies` judges the
+tokens of all twenty-five open vocabularies of §4.5 in whichever document holds
+them. An unknown token is an error of the publication that §16 lets a reader
+read past, so the opener opens the publication with its fallback and carries
+the error; every other error still refuses it. The pairing algorithm of §10.4
 agrees with the reference implementation on all fifteen upstream fixtures,
 which are written by hand from the prose and never regenerated from an
 implementation.
@@ -29,7 +33,7 @@ decode, or a size beyond the pixel limits is withheld and keeps its place in
 the spine; a page with any other fault of the resource layer is decoded and
 shown, and its fault travels with it for the interface to report.
 
-Of the 38 packages in the upstream corpus, 31 are refused with the code the
+Of the 40 packages in the upstream corpus, 33 are refused with the code the
 corpus gives. The remaining seven are a defect no opener can see — an entry
 that under-declares its size is only caught when something reads it — and the
 six packages that have nothing to refuse. `ConformanceCorpusTests` asserts those
@@ -103,7 +107,7 @@ git submodule update --init --recursive
 
 ## Testing against the corpus
 
-`external/koma/corpus/expected.json` states, for each of the 38 packages,
+`external/koma/corpus/expected.json` states, for each of the 40 packages,
 whether a conforming implementation must report it valid, warning or error.
 It is normative by example. The test suite walks it directly rather than
 defining its own fixtures.
@@ -139,12 +143,6 @@ None of these block anything.
   for a reader that cannot apply an embedded profile, and it says the PNG
   `sRGB`, `gAMA` and `cHRM` chunks are honoured. The corpus has no page with a
   profile, so there is nothing yet to test a conversion against.
-- **`background-color` is not validated.** Nothing checks it against the
-  `#RRGGBB` form of §10.5; the reader falls back to white on a value it cannot
-  parse, and accepts colour names it should not.
-- **Unknown tokens are not refused in strict mode.** A landmark type or item
-  role that is a valid token but neither a core nor a private-use one falls
-  back per §4.5.1 without an error, where §4.5 and §5.3 make it one.
 - **Two §2.1 faults have no code of their own**: a data descriptor and extra
   fields on the mimetype entry. Both are reported as `mimetype-content` with
   the reason in the message.

@@ -110,6 +110,9 @@ public sealed class NavigationReaderTests
     [Fact]
     public void KeepsCoreLandmarksAndDropsTheRest()
     {
+        // §4.5.1 ignores a landmark whose type is not recognised. Whether the
+        // type was legal to write is judged by OpenVocabularies, so the reader
+        // itself says nothing about either.
         // §4.5.1 ignores a landmark whose type is not recognised. A private-use
         // type is legal and noted; any other token is dropped as quietly.
         var violations = new List<ContainerViolation>();
@@ -127,8 +130,7 @@ public sealed class NavigationReaderTests
         string[] types = ["front-cover", "body-start"];
 
         Assert.Equal(types, navigation.Landmarks.Select(l => l.Type));
-        Assert.Equal(ContainerViolationCode.PrivateUseToken, Assert.Single(violations).Code);
-        Assert.Equal(ViolationSeverity.Warning, violations[0].Severity);
+        Assert.Empty(violations);
     }
 
     [Fact]

@@ -87,9 +87,8 @@ internal sealed class Publication : IDisposable
     /// decoded already has its place drawn in the right colour.
     /// </summary>
     /// <remarks>
-    /// Nothing checks <c>background-color</c> against the <c>#RRGGBB</c> form
-    /// of §10.5 yet, so a value that does not parse falls back to the default
-    /// rather than failing a page that is otherwise fine to show.
+    /// The opener has already refused a value that is not <c>#RRGGBB</c>, so
+    /// the fallback to white is for an absent value only.
     /// </remarks>
     public IBrush Background(string item) => new ImmutableSolidColorBrush(Color.TryParse(Item(item).BackgroundColor, out Color colour) ? colour : Colors.White);
 

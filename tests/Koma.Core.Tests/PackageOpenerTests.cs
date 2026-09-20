@@ -80,6 +80,8 @@ public sealed class PackageOpenerTests
 
     private static PackageOpenResult Open(MemoryStream buffer, ResourceLimits? limits = null) => PackageOpener.Open(buffer, limits, leaveOpen: true);
 
+    private static string WithBackground(string colour) => Manifest.Replace("roles=\"front-cover\"/>", $"roles=\"front-cover\" background-color=\"{colour}\"/>", StringComparison.Ordinal);
+
     private static string DeclaringNavigation() => Manifest.Replace("metadata=\"koma/metadata.xml\"", "metadata=\"koma/metadata.xml\" navigation=\"koma/nav.xml\"", StringComparison.Ordinal);
 
     [Fact]
@@ -307,6 +309,36 @@ public sealed class PackageOpenerTests
         ContainerViolation violation = Assert.Single(result.Violations);
         Assert.Equal(ContainerViolationCode.MissingRequiredXml, violation.Code);
         Assert.Equal("koma/manifest.xml", violation.EntryName);
+    }
+
+    [Theory]
+    [InlineData("#FFF")]
+    [InlineData("#FFFFFFFF")]
+    [InlineData("#12345G")]
+    [InlineData("white")]
+    public void RejectsABackgroundColourThatIsNotAColor(string colour)
+    {
+        using MemoryStream buffer = Build(Container, WithBackground(colour));
+
+        PackageOpenResult result = Open(buffer);
+
+        Assert.Equal(ContainerViolationCode.SchemaInvalidManifest, Assert.Single(result.Violations).Code);
+    }
+
+    [Fact]
+    public void OpensALowercaseBackgroundColourWithAWarning()
+    {
+        // §4.3: a reader accepts either case; only authoring tools are held
+        // to uppercase.
+        using MemoryStream buffer = Build(Container, WithBackground("#f0f0f0"));
+
+        PackageOpenResult result = Open(buffer);
+
+        using KomaPackage? package = result.Package;
+
+        Assert.Equal(PackageOpenOutcome.Opened, result.Outcome);
+        Assert.Contains(result.Violations, v => v.Code == ContainerViolationCode.ColorLowercase && v.Severity == ViolationSeverity.Warning);
+        Assert.Equal("#f0f0f0", package?.Manifest.Items[0].BackgroundColor);
     }
 
     [Fact]

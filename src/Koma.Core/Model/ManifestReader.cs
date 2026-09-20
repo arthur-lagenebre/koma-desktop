@@ -98,7 +98,7 @@ public static class ManifestReader
         CheckSpineAgainstItems(manifest, entryName, violations);
         CheckFrontCover(manifest, entryName, violations);
         CheckResourcesInSpine(manifest, entryName, violations);
-        CheckPrivateUseTokens(manifest, entryName, violations);
+        CheckColourCase(manifest, entryName, violations);
 
         return manifest;
     }
@@ -189,6 +189,14 @@ public static class ManifestReader
         if (span == "2")
             pageSpan = 2;
 
+        string? colour = element.Attribute("background-color")?.Value;
+
+        if (colour is not null && !IsColour(colour))
+        {
+            violations.Add(Invalid(entryName, $"Item '{id}' has background-color '{colour}'; §4.3 requires # and exactly six hexadecimal digits."));
+            return null;
+        }
+
         XElement? accessibility = element.Element(XName.Get("Accessibility", Namespace));
         bool decorative = accessibility?.Attribute("decorative")?.Value == "true";
 
@@ -204,7 +212,7 @@ public static class ManifestReader
             Height = height,
             Roles = roles,
             PageSpan = pageSpan,
-            BackgroundColor = element.Attribute("background-color")?.Value,
+            BackgroundColor = colour,
             Sha256 = element.Element(XName.Get("Checksum", Namespace))?.Value.Trim(),
             IsDecorative = decorative
         };
@@ -322,23 +330,20 @@ public static class ManifestReader
     }
 
     /// <summary>
-    /// §4.5: a private-use token is legitimate and a reader MUST NOT reject a
-    /// document for carrying one.
+    /// §4.3: a reader accepts either case, and a validator warns about
+    /// lowercase, since authoring tools must write uppercase (§14.1).
     /// </summary>
-    /// <remarks>
-    /// Noted rather than faulted, because §4.5 also says such a token has no
-    /// globally defined meaning: this reader will fall back on §4.5.1 and show
-    /// the page as though the token were absent, which the producer may not
-    /// expect. Reported once per distinct token, not once per item, since it
-    /// is the vocabulary that is private and not each use of it.
-    /// </remarks>
-    private static void CheckPrivateUseTokens(Manifest manifest, string entryName, List<ContainerViolation> violations)
+    private static void CheckColourCase(Manifest manifest, string entryName, List<ContainerViolation> violations)
     {
-        IEnumerable<string> tokens = manifest.Items.SelectMany(i => i.Roles).Where(t => t.StartsWith("x-", StringComparison.Ordinal)).Distinct(StringComparer.Ordinal);
-
-        foreach (string token in tokens)
-            violations.Add(new ContainerViolation(ContainerViolationCode.PrivateUseToken, entryName, $"'{token}' is a private-use role token; §4.5.1 applies and its meaning is the producer's alone.") { Severity = ViolationSeverity.Warning });
+        foreach (ManifestItem item in manifest.Items.Where(i => i.BackgroundColor is { } colour && colour.Any(char.IsAsciiLetterLower)))
+            violations.Add(new ContainerViolation(ContainerViolationCode.ColorLowercase, entryName, $"Item '{item.Id}' has background-color '{item.BackgroundColor}'; authoring tools write it uppercase (§4.3).") { Severity = ViolationSeverity.Warning });
     }
+
+    /// <summary>
+    /// <c>Color</c> of §4.3: <c>#</c> and six hexadecimal digits in either
+    /// case. The 3- and 8-digit forms are invalid, however familiar.
+    /// </summary>
+    private static bool IsColour(string value) => value.Length == 7 && value[0] == '#' && value.Skip(1).All(char.IsAsciiHexDigit);
 
     private static int IndexInSpine(Manifest manifest, string id)
     {

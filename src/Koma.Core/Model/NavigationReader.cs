@@ -256,7 +256,6 @@ public static class NavigationReader
     {
         var landmarks = new List<Landmark>();
         var types = new HashSet<string>(StringComparer.Ordinal);
-        var privateUse = new HashSet<string>(StringComparer.Ordinal);
 
         foreach (XElement element in section.Elements(Core("Landmark")))
         {
@@ -282,16 +281,10 @@ public static class NavigationReader
                 continue;
             }
 
-            // §4.5.1: an unrecognised type drops the entry. A private-use one
-            // is legal and noted once, as roles are, since the producer may not
-            // expect it to vanish.
+            // §4.5.1: an unrecognised type drops the entry. Whether it was
+            // legal to write is OpenVocabularies' question, not the model's.
             if (!CoreLandmarkTypes.Contains(type))
-            {
-                if (KomaTokens.IsPrivateUse(type) && privateUse.Add(type))
-                    violations.Add(new ContainerViolation(ContainerViolationCode.PrivateUseToken, entryName, $"'{type}' is a private-use landmark type; §4.5.1 ignores the landmark.") { Severity = ViolationSeverity.Warning });
-
                 continue;
-            }
 
             landmarks.Add(new Landmark(type, item, labels));
         }

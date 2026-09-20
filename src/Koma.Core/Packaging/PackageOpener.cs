@@ -130,10 +130,11 @@ public sealed class KomaPackage : IDisposable
 /// package, and a reader that validates first reports the wrong thing about it.
 /// </para>
 /// <para>
-/// Only errors stop a package from opening. §8.8 allows a resource outside the
-/// spine and asks that it be noticed, so a reader that refused it would refuse
-/// a publication the specification calls readable; the warnings travel on the
-/// result instead.
+/// Only errors stop a package from opening, and not every error: §16 lets an
+/// unknown token be read past with its fallback. §8.8 allows a resource
+/// outside the spine and asks that it be noticed, so a reader that refused it
+/// would refuse a publication the specification calls readable; the warnings,
+/// and the errors read past, travel on the result instead.
 /// </para>
 /// </remarks>
 public static class PackageOpener
@@ -202,11 +203,11 @@ public static class PackageOpener
 
             bool rootFileValid = CheckRootFile(root, violations);
 
-            Manifest? manifest = rootFileValid ? ReadManifest(archive, version, profile, violations) : null;
+            Manifest? manifest = rootFileValid ? ReadManifest(archive, version, mode, profile, violations) : null;
 
-            (PublicationMetadata? metadata, PublicationNavigation? navigation) = manifest is null ? (null, null) : ReadCompanionDocuments(archive, manifest, version, profile, violations);
+            (PublicationMetadata? metadata, PublicationNavigation? navigation) = manifest is null ? (null, null) : ReadCompanionDocuments(archive, manifest, version, mode, profile, violations);
 
-            if (manifest is null || metadata is null || violations.Any(v => v.Severity == ViolationSeverity.Error))
+            if (manifest is null || metadata is null || violations.Any(PreventsReading))
             {
                 return new PackageOpenResult
                 {
@@ -236,7 +237,7 @@ public static class PackageOpener
     /// <summary>
     /// Loads and reads the root manifest.
     /// </summary>
-    private static Manifest? ReadManifest(ZipArchive archive, KomaVersion version, ResourceLimits profile, List<ContainerViolation> violations)
+    private static Manifest? ReadManifest(ZipArchive archive, KomaVersion version, ProcessingMode mode, ResourceLimits profile, List<ContainerViolation> violations)
     {
         const string path = CorePaths.Manifest;
         XDocument? document = KomaXml.TryLoad(archive, path, out ContainerViolation? xml, profile);
@@ -255,7 +256,12 @@ public static class PackageOpener
 
         CoreDocumentChecks.CheckExtensions(document, path, violations);
 
-        return ManifestReader.Read(document, path, version, violations);
+        Manifest? manifest = ManifestReader.Read(document, path, version, violations);
+
+        if (manifest is not null)
+            OpenVocabularies.Check(document, path, mode, violations);
+
+        return manifest;
     }
 
     /// <summary>
@@ -267,9 +273,9 @@ public static class PackageOpener
     /// content language of the metadata the language of any label that
     /// declares none of its own.
     /// </remarks>
-    private static (PublicationMetadata? Metadata, PublicationNavigation? Navigation) ReadCompanionDocuments(ZipArchive archive, Manifest manifest, KomaVersion version, ResourceLimits profile, List<ContainerViolation> violations)
+    private static (PublicationMetadata? Metadata, PublicationNavigation? Navigation) ReadCompanionDocuments(ZipArchive archive, Manifest manifest, KomaVersion version, ProcessingMode mode, ResourceLimits profile, List<ContainerViolation> violations)
     {
-        PublicationMetadata? metadata = ReadMetadata(archive, version, profile, violations);
+        PublicationMetadata? metadata = ReadMetadata(archive, version, mode, profile, violations);
         bool present = archive.GetEntry(CorePaths.Navigation) is not null;
 
         // §8: the declaration and the package must agree. Whichever of the two
@@ -312,12 +318,15 @@ public static class PackageOpener
         PublicationNavigation? navigation = NavigationReader.Read(document, CorePaths.Navigation, version, metadata?.ContentLanguage, violations);
 
         if (navigation is not null)
+        {
             CoreDocumentChecks.CheckPageTargets(navigation, manifest, CorePaths.Navigation, violations);
+            OpenVocabularies.Check(document, CorePaths.Navigation, mode, violations);
+        }
 
         return (metadata, navigation);
     }
 
-    private static PublicationMetadata? ReadMetadata(ZipArchive archive, KomaVersion version, ResourceLimits profile, List<ContainerViolation> violations)
+    private static PublicationMetadata? ReadMetadata(ZipArchive archive, KomaVersion version, ProcessingMode mode, ResourceLimits profile, List<ContainerViolation> violations)
     {
         const string path = CorePaths.Metadata;
         XDocument? document = KomaXml.TryLoad(archive, path, out ContainerViolation? xml, profile);
@@ -336,7 +345,12 @@ public static class PackageOpener
 
         CoreDocumentChecks.CheckExtensions(document, path, violations);
 
-        return MetadataReader.Read(document, path, version, violations);
+        PublicationMetadata? metadata = MetadataReader.Read(document, path, version, violations);
+
+        if (metadata is not null)
+            OpenVocabularies.Check(document, path, mode, violations);
+
+        return metadata;
     }
 
     /// <summary>
@@ -379,6 +393,16 @@ public static class PackageOpener
 
         return true;
     }
+
+    /// <summary>
+    /// Whether a defect stops the publication from being read.
+    /// </summary>
+    /// <remarks>
+    /// Every error does, but one: §16 lets a reading system read past an
+    /// unknown token, since §4.5.1 gives it a fallback or a way to be ignored.
+    /// It stays an error of the publication, and is reported with the rest.
+    /// </remarks>
+    private static bool PreventsReading(ContainerViolation violation) => violation.Severity == ViolationSeverity.Error && violation.Code != ContainerViolationCode.UnknownToken;
 
     private static readonly ReadOnlyCollection<ContainerViolation> Empty = new List<ContainerViolation>().AsReadOnly();
 

@@ -33,6 +33,7 @@ public sealed class ConformanceCorpusTests
         ContainerViolationCode.AccessibilityHazardConflict,
         ContainerViolationCode.AnimatedPageResource,
         ContainerViolationCode.ChecksumMismatch,
+        ContainerViolationCode.ColorLowercase,
         ContainerViolationCode.CompressionRatioLimit,
         ContainerViolationCode.DecorativeWithAlternativeText,
         ContainerViolationCode.DimensionsMismatch,
@@ -55,6 +56,7 @@ public sealed class ConformanceCorpusTests
         ContainerViolationCode.SpineDuplicateItem,
         ContainerViolationCode.SpineTargetMissing,
         ContainerViolationCode.TokenListDuplicate,
+        ContainerViolationCode.UnknownToken,
         ContainerViolationCode.UnnamespacedElementInExtensions
     ];
 
@@ -102,6 +104,8 @@ public sealed class ConformanceCorpusTests
             violations.AddRange(PageResourceChecks.CheckAll(opened));
         }
 
+        // Refused as a validator refuses: any error. A reading system may still
+        // read past an unknown token (§16), which ReadsPastAnUnknownToken pins.
         bool refused = result.Outcome != PackageOpenOutcome.Opened || violations.Any(v => v.Severity == ViolationSeverity.Error);
         string found = violations.Count == 0 ? "no violations" : string.Join(", ", violations.Select(v => v.Code));
 
@@ -135,6 +139,21 @@ public sealed class ConformanceCorpusTests
     }
 
     [Fact]
+    public void ReadsPastAnUnknownToken()
+    {
+        // §16: an unknown token is an error of the publication that §4.5.1
+        // gives a fallback, so the reader opens it and carries the error.
+        using FileStream file = File.OpenRead(Path.Combine(CorpusRoot(), "packages", "L3-unknown-token.koma"));
+        PackageOpenResult result = PackageOpener.Open(file, leaveOpen: true);
+
+        using KomaPackage? package = result.Package;
+
+        Assert.Equal(PackageOpenOutcome.Opened, result.Outcome);
+        ContainerViolation unknown = Assert.Single(result.Violations, v => v.Code == ContainerViolationCode.UnknownToken);
+        Assert.Equal(ViolationSeverity.Error, unknown.Severity);
+    }
+
+    [Fact]
     public void CoverageIsWhatWeThinkItIs()
     {
         // Guards the three buckets above against the corpus moving under them.
@@ -142,13 +161,13 @@ public sealed class ConformanceCorpusTests
         // otherwise be filed as out of scope and pass.
         CorpusCase[] cases = LoadExpected();
 
-        Assert.Equal(38, cases.Length);
+        Assert.Equal(40, cases.Length);
 
         int covered = cases.Count(c => c.Code is not null && Implemented.Contains(c.Code));
         int misnamed = cases.Count(c => c.Code is not null && Misnamed.ContainsKey(c.Code));
         int outOfScope = cases.Length - covered - misnamed;
 
-        Assert.Equal(31, covered);
+        Assert.Equal(33, covered);
         Assert.Equal(0, misnamed);
         Assert.Equal(7, outOfScope);
     }
