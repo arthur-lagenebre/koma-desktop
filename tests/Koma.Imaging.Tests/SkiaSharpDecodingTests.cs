@@ -34,6 +34,7 @@ public sealed class SkiaSharpDecodingTests
     private const string Animated = "L4-animated-page.koma";
     private const string ExifResidue = "L4-residual-exif-orientation.koma";
     private const string ExifPage = "pages/001.jpg";
+    private const string IccProfiles = "valid-icc-profiles.koma";
 
     [Fact]
     public void Codec_DecodesStaticWebP()
@@ -122,6 +123,57 @@ public sealed class SkiaSharpDecodingTests
         SKCodec? codec = SKCodec.Create(data);
         Assert.NotNull(codec);
         return codec;
+    }
+
+    [Theory]
+    [InlineData("pages/001.jpg")]
+    [InlineData("pages/002.png")]
+    [InlineData("pages/004.webp")]
+    public void Codec_ConvertsAnEmbeddedProfileWhenAskedForSrgb(string entry)
+    {
+        // valid-icc-profiles stores (200, 50, 50) in a wide-gamut profile,
+        // which is about (232, 46, 46) in sRGB. The lossy formats may move a
+        // flat field by a step or two.
+        using SKCodec codec = OpenCodec(CorpusPage.Read(IccProfiles, entry));
+        using SKBitmap bitmap = Decode(codec, SKColorSpace.CreateSrgb());
+
+        AssertColour((232, 46, 46), bitmap.GetPixel(bitmap.Width / 2, bitmap.Height / 2), tolerance: 3);
+    }
+
+    [Fact]
+    public void Codec_LeavesAnEmbeddedProfileAloneWithoutADestination()
+    {
+        // This is what PageDecoder did before it named sRGB, and why it must.
+        using SKCodec codec = OpenCodec(CorpusPage.Read(IccProfiles, "pages/002.png"));
+        using SKBitmap bitmap = DecodeAsStored(codec);
+
+        AssertColour((200, 50, 50), bitmap.GetPixel(400, 600), tolerance: 0);
+    }
+
+    [Fact]
+    public void Codec_HonoursPngGammaWhenAskedForSrgb()
+    {
+        // valid-png-gamma stores grey 128 as linear light: half the light,
+        // which sRGB writes as about 188.
+        using SKCodec codec = OpenCodec(CorpusPage.Read("valid-png-gamma.koma", "pages/002.png"));
+        using SKBitmap bitmap = Decode(codec, SKColorSpace.CreateSrgb());
+
+        AssertGrey(188, bitmap.GetPixel(400, 600), tolerance: 2);
+    }
+
+    private static SKBitmap Decode(SKCodec codec, SKColorSpace colourSpace)
+    {
+        var info = new SKImageInfo(codec.Info.Width, codec.Info.Height, SKColorType.Rgba8888, SKAlphaType.Premul, colourSpace);
+        var bitmap = new SKBitmap(info);
+        Assert.Equal(SKCodecResult.Success, codec.GetPixels(info, bitmap.GetPixels()));
+        return bitmap;
+    }
+
+    private static void AssertColour((int Red, int Green, int Blue) expected, SKColor actual, int tolerance)
+    {
+        Assert.InRange(actual.Red, expected.Red - tolerance, expected.Red + tolerance);
+        Assert.InRange(actual.Green, expected.Green - tolerance, expected.Green + tolerance);
+        Assert.InRange(actual.Blue, expected.Blue - tolerance, expected.Blue + tolerance);
     }
 
     private static SKBitmap DecodeAsStored(SKCodec codec)

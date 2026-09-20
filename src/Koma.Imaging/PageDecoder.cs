@@ -19,8 +19,10 @@ namespace Koma.Imaging;
 /// <para>
 /// Decoding goes through <see cref="SKCodec"/> only, which reports EXIF
 /// orientation without applying it (§8.2); <c>SkiaSharpDecodingTests</c> is
-/// where that is established. Embedded colour profiles are not applied yet,
-/// which leaves the data treated as sRGB: the fallback §8.3 allows.
+/// where that is established. Pixels come out in sRGB (§8.3): the codec
+/// converts from an embedded profile, in any of the three formats, or from
+/// the PNG <c>sRGB</c>, <c>gAMA</c> and <c>cHRM</c> chunks, and treats data
+/// with neither, or with a profile that does not parse, as sRGB already.
 /// </para>
 /// <para>
 /// This answers whether a page can be decoded, not whether it should be shown.
@@ -30,6 +32,10 @@ namespace Koma.Imaging;
 /// </remarks>
 public static class PageDecoder
 {
+    // Naming the destination space is what makes the codec convert: without
+    // it, the pixels would come out in whatever space the page was stored in.
+    private static readonly SKColorSpace Srgb = SKColorSpace.CreateSrgb();
+
     /// <summary>
     /// Decodes a page resource, or says why it will not.
     /// </summary>
@@ -76,7 +82,7 @@ public static class PageDecoder
             return null;
         }
 
-        var info = new SKImageInfo(facts.Width, facts.Height, SKColorType.Rgba8888, SKAlphaType.Premul);
+        var info = new SKImageInfo(facts.Width, facts.Height, SKColorType.Rgba8888, SKAlphaType.Premul, Srgb);
         var bitmap = new SKBitmap();
 
         // Within the limits, a failed allocation is the machine's shortfall and

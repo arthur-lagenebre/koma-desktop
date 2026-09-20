@@ -33,10 +33,10 @@ decode, or a size beyond the pixel limits is withheld and keeps its place in
 the spine; a page with any other fault of the resource layer is decoded and
 shown, and its fault travels with it for the interface to report.
 
-Of the 40 packages in the upstream corpus, 33 are refused with the code the
-corpus gives. The remaining seven are a defect no opener can see — an entry
-that under-declares its size is only caught when something reads it — and the
-six packages that have nothing to refuse. `ConformanceCorpusTests` asserts those
+Of the 42 packages in the upstream corpus, 33 are refused with the code the
+corpus gives. The remaining nine are a defect no opener can see — an entry that
+under-declares its size is only caught when something reads it — and the eight
+packages that have nothing to refuse. `ConformanceCorpusTests` asserts those
 counts, so a case that moves is reported rather than quietly reclassified.
 
 `Koma.Desktop` is a first reader: it opens a publication from a file picker or
@@ -107,7 +107,7 @@ git submodule update --init --recursive
 
 ## Testing against the corpus
 
-`external/koma/corpus/expected.json` states, for each of the 40 packages,
+`external/koma/corpus/expected.json` states, for each of the 42 packages,
 whether a conforming implementation must report it valid, warning or error.
 It is normative by example. The test suite walks it directly rather than
 defining its own fixtures.
@@ -138,11 +138,6 @@ None of these block anything.
   moves to the `koma` repository.
 - **The corpus does not exercise every code of §15.1**, which criterion 3 of
   §5.0.1 will eventually require.
-- **Colour profiles are not applied.** `PageDecoder` hands back pixels as
-  stored, which treats every page as sRGB. §8.3 allows that only as a fallback
-  for a reader that cannot apply an embedded profile, and it says the PNG
-  `sRGB`, `gAMA` and `cHRM` chunks are honoured. The corpus has no page with a
-  profile, so there is nothing yet to test a conversion against.
 - **Two §2.1 faults have no code of their own**: a data descriptor and extra
   fields on the mimetype entry. Both are reported as `mimetype-content` with
   the reason in the message.
@@ -181,6 +176,15 @@ therefore decoded through `SKCodec` only, and Avalonia is never handed encoded
 bytes. `SkiaSharpDecodingTests` pins all three, along with a quirk of the
 binding: `SKCodec.FrameCount` is 0 for any still image, where native Skia says
 1, so animation is judged by `PageImageReader` and never by a frame count.
+
+**Colour.** §8.3 asks a reading system to apply an embedded profile and to
+honour the PNG `sRGB`, `gAMA` and `cHRM` chunks. `SKCodec` does both, in all
+three formats, as soon as it is given sRGB as the destination space; without
+a destination it leaves the pixels in their stored space. On a profile that
+does not parse, Skia falls back to sRGB, which was checked against Skia itself:
+no corpus page carries a broken profile yet. `PageDecoder` therefore names sRGB, and
+`SkiaSharpDecodingTests` pins both behaviours against `valid-icc-profiles` and
+`valid-png-gamma`, whose notes give the colour to expect.
 
 **Core document paths.** §1 fixes them, and the attributes of §6 and §8 that
 name them must carry exactly those values. `CorePaths` holds the four; the

@@ -35,6 +35,47 @@ public sealed class PageDecoderTests
         Assert.Equal(new SKColor(220, 220, 220), bitmap.GetPixel(400, 600));
     }
 
+    [Theory]
+    [InlineData("pages/001.jpg")]
+    [InlineData("pages/002.png")]
+    [InlineData("pages/004.webp")]
+    public void ConvertsAnEmbeddedProfileToSrgb(string entry)
+    {
+        // §8.3: (200, 50, 50) in the corpus's wide-gamut profile is about
+        // (232, 46, 46) in sRGB. A decoder that ignored the profile would
+        // hand back the stored value.
+        using SKBitmap? bitmap = Decode("valid-icc-profiles.koma", entry, ResourceLimits.Default, out ContainerViolation? violation);
+
+        Assert.Null(violation);
+        Assert.NotNull(bitmap);
+
+        SKColor pixel = bitmap.GetPixel(bitmap.Width / 2, bitmap.Height / 2);
+
+        Assert.InRange(pixel.Red, 229, 235);
+        Assert.InRange(pixel.Green, 43, 49);
+        Assert.InRange(pixel.Blue, 43, 51);
+    }
+
+    [Fact]
+    public void HonoursPngGamma()
+    {
+        // No profile, gAMA 1.0: stored grey 128 is linear, about 188 in sRGB.
+        using SKBitmap? bitmap = Decode("valid-png-gamma.koma", "pages/002.png", ResourceLimits.Default, out _);
+
+        Assert.NotNull(bitmap);
+        Assert.InRange(bitmap.GetPixel(400, 600).Red, 186, 190);
+    }
+
+    [Fact]
+    public void LeavesAPageWithoutColourInformationAsItIs()
+    {
+        // Page 3 of the same package has no profile: sRGB already, unchanged.
+        using SKBitmap? bitmap = Decode("valid-icc-profiles.koma", "pages/003.png", ResourceLimits.Default, out _);
+
+        Assert.NotNull(bitmap);
+        Assert.Equal(new SKColor(220, 220, 220), bitmap.GetPixel(400, 600));
+    }
+
     [Fact]
     public void RendersPixelsAsStoredWhateverTheExifSays()
     {
