@@ -48,7 +48,9 @@ public sealed class ConformanceCorpusTests
         ContainerViolationCode.NavigationDeclarationMismatch,
         ContainerViolationCode.NavigationTargetOutsideSpine,
         ContainerViolationCode.PagePixelLimit,
+        ContainerViolationCode.PageTargetDuplicate,
         ContainerViolationCode.PathTraversal,
+        ContainerViolationCode.Span1PageTargetPosition,
         ContainerViolationCode.Span2SpreadPosition,
         ContainerViolationCode.SpineDuplicateItem,
         ContainerViolationCode.SpineTargetMissing,
@@ -140,15 +142,15 @@ public sealed class ConformanceCorpusTests
         // otherwise be filed as out of scope and pass.
         CorpusCase[] cases = LoadExpected();
 
-        Assert.Equal(35, cases.Length);
+        Assert.Equal(38, cases.Length);
 
         int covered = cases.Count(c => c.Code is not null && Implemented.Contains(c.Code));
         int misnamed = cases.Count(c => c.Code is not null && Misnamed.ContainsKey(c.Code));
         int outOfScope = cases.Length - covered - misnamed;
 
-        Assert.Equal(29, covered);
+        Assert.Equal(31, covered);
         Assert.Equal(0, misnamed);
-        Assert.Equal(6, outOfScope);
+        Assert.Equal(7, outOfScope);
     }
 
     [Fact]
@@ -178,7 +180,8 @@ public sealed class ConformanceCorpusTests
     /// <summary>
     /// Finds <c>external/koma/corpus</c> by walking up from the test assembly.
     /// </summary>
-    private static string CorpusRoot()
+    /// <remarks>Shared with the tests that open one corpus package by name.</remarks>
+    internal static string CorpusRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
 

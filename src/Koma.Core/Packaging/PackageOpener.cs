@@ -311,6 +311,9 @@ public static class PackageOpener
 
         PublicationNavigation? navigation = NavigationReader.Read(document, CorePaths.Navigation, version, metadata?.ContentLanguage, violations);
 
+        if (navigation is not null)
+            CoreDocumentChecks.CheckPageTargets(navigation, manifest, CorePaths.Navigation, violations);
+
         return (metadata, navigation);
     }
 

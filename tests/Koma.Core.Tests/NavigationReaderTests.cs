@@ -93,6 +93,20 @@ public sealed class NavigationReaderTests
         Assert.Equal(expected, navigation.PageList);
     }
 
+    [Theory]
+    [InlineData("""<PageTarget item="p004" label="3" spread-position="right"/><PageTarget item="p004" label="4" spread-position="right"/>""")]
+    [InlineData("""<PageTarget item="p002" label="1"/><PageTarget item="p002" label="1bis"/>""")]
+    public void RejectsTwoLabelsForOneHalf(string targets)
+    {
+        // The second case is two whole-resource labels: §9.2 counts an absent
+        // spread-position as a value of its own.
+        var violations = new List<ContainerViolation>();
+        PublicationNavigation navigation = Read($"""<Navigation xmlns="urn:koma:navigation" version="0.9"><PageList>{targets}</PageList></Navigation>""", violations: violations);
+
+        Assert.Single(navigation.PageList);
+        Assert.Equal(ContainerViolationCode.PageTargetDuplicate, Assert.Single(violations).Code);
+    }
+
     [Fact]
     public void KeepsCoreLandmarksAndDropsTheRest()
     {

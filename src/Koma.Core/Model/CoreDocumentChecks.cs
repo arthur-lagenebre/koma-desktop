@@ -4,8 +4,8 @@ using Koma.Core.Packaging;
 namespace Koma.Core.Model;
 
 /// <summary>
-/// Checks that apply to a core document whatever it is, and the navigation
-/// targets of §9.
+/// Checks that apply to a core document whatever it is, and the rules of §9
+/// that need the manifest.
 /// </summary>
 /// <remarks>
 /// These are here rather than in <see cref="ManifestReader"/> because neither
@@ -93,4 +93,24 @@ public static class CoreDocumentChecks
         ns.Length > 0 && !CoreNamespaces.Contains(ns, StringComparer.Ordinal);
 
     private static string Describe(string ns) => ns.Length == 0 ? "no namespace" : $"'{ns}'";
+
+    /// <summary>
+    /// §9.2: a page label names one half only of a resource that has two.
+    /// </summary>
+    /// <remarks>
+    /// An item missing from the manifest is left alone: whatever targets it is
+    /// already a navigation target outside the spine, and that is the cause.
+    /// </remarks>
+    public static void CheckPageTargets(PublicationNavigation navigation, Manifest manifest, string entryName, List<ContainerViolation> violations)
+    {
+        ArgumentNullException.ThrowIfNull(navigation);
+        ArgumentNullException.ThrowIfNull(manifest);
+        ArgumentNullException.ThrowIfNull(violations);
+
+        foreach (PageTarget target in navigation.PageList.Where(t => t.Side is not null))
+        {
+            if (manifest.Item(target.Item) is { PageSpan: not 2 })
+                violations.Add(new ContainerViolation(ContainerViolationCode.Span1PageTargetPosition, entryName, $"A page label names one half of item '{target.Item}', which is a single page (§9.2)."));
+        }
+    }
 }

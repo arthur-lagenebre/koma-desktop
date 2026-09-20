@@ -77,9 +77,10 @@ public sealed record PublicationNavigation(ReadOnlyCollection<TocEntry> TableOfC
 /// </summary>
 /// <remarks>
 /// Structure the model depends on is checked here and reported against the
-/// schema, since that is where §17 places it. Targets are checked by
-/// <see cref="CoreDocumentChecks.CheckNavigationTargets"/>, which predates
-/// this reader and covers every section, regions included.
+/// schema, since that is where §17 places it, and so are the rules that need
+/// nothing but <c>nav.xml</c>. Rules that need the manifest are in
+/// <see cref="CoreDocumentChecks"/>: the targets of every section, regions
+/// included, and the page spans the page list relies on.
 /// </remarks>
 public static class NavigationReader
 {
@@ -213,6 +214,7 @@ public static class NavigationReader
     private static ReadOnlyCollection<PageTarget>? ReadPageList(IEnumerable<XElement> section, string entryName, List<ContainerViolation> violations)
     {
         var targets = new List<PageTarget>();
+        var seen = new HashSet<(string Item, PhysicalSide? Side)>();
 
         foreach (XElement element in section.Elements(Core("PageTarget")))
         {
@@ -234,7 +236,17 @@ public static class NavigationReader
                 return null;
             }
 
-            targets.Add(new PageTarget(item, label, side switch { "left" => PhysicalSide.Left, "right" => PhysicalSide.Right, _ => null }));
+            var target = new PageTarget(item, label, side switch { "left" => PhysicalSide.Left, "right" => PhysicalSide.Right, _ => null });
+
+            // §9.2 counts an absent spread-position as a value of its own, so
+            // two whole-resource labels for one item collide as well.
+            if (!seen.Add((target.Item, target.Side)))
+            {
+                violations.Add(new ContainerViolation(ContainerViolationCode.PageTargetDuplicate, entryName, $"Two page labels target item '{item}' with the same spread-position (§9.2)."));
+                continue;
+            }
+
+            targets.Add(target);
         }
 
         return targets.AsReadOnly();

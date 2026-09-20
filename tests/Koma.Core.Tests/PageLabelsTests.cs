@@ -1,4 +1,5 @@
 using Koma.Core.Model;
+using Koma.Core.Packaging;
 using Koma.Core.Rendering;
 
 namespace Koma.Core.Tests;
@@ -41,6 +42,25 @@ public sealed class PageLabelsTests
         string[] expected = [first, second];
 
         Assert.Equal(expected, PageLabels.Of(new CenteredSpread("p004"), PageList, direction));
+    }
+
+    [Fact]
+    public void NumbersTheCorpusPublicationInReadingOrder()
+    {
+        // valid-page-list reads right to left, pairs its first two story pages
+        // and ends on a two-page spread labelled half by half: the labels of
+        // its spreads, taken in turn, must count up.
+        using FileStream file = File.OpenRead(Path.Combine(ConformanceCorpusTests.CorpusRoot(), "packages", "valid-page-list.koma"));
+        PackageOpenResult result = PackageOpener.Open(file, leaveOpen: true);
+
+        using KomaPackage? package = result.Package;
+        Assert.NotNull(package);
+        Assert.NotNull(package.Navigation);
+
+        string[] expected = ["i", "1", "2", "3", "4"];
+        IEnumerable<string> labels = package.Paginate(viewportFitsTwo: true).SelectMany(spread => PageLabels.Of(spread, package.Navigation.PageList, package.Metadata.Direction));
+
+        Assert.Equal(expected, labels);
     }
 
     [Fact]

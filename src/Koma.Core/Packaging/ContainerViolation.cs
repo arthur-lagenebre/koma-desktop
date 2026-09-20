@@ -46,6 +46,8 @@ public static class ContainerViolationCode
     public const string SpineTargetMissing = "spine-target-missing";
     public const string SpineDuplicateItem = "spine-duplicate-item";
     public const string Span2SpreadPosition = "span2-spread-position";
+    public const string PageTargetDuplicate = "pagetarget-duplicate";
+    public const string Span1PageTargetPosition = "span1-pagetarget-position";
     public const string DecorativeWithAlternativeText = "decorative-with-alternative-text";
     public const string ResourceOutsideSpine = "resource-outside-spine";
     public const string NavigationTargetOutsideSpine = "navigation-target-outside-spine";

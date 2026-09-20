@@ -29,10 +29,10 @@ decode, or a size beyond the pixel limits is withheld and keeps its place in
 the spine; a page with any other fault of the resource layer is decoded and
 shown, and its fault travels with it for the interface to report.
 
-Of the 35 packages in the upstream corpus, 29 are refused with the code the
-corpus gives. The remaining six are a defect no opener can see — an entry that
-under-declares its size is only caught when something reads it — and the five
-packages that have nothing to refuse. `ConformanceCorpusTests` asserts those
+Of the 38 packages in the upstream corpus, 31 are refused with the code the
+corpus gives. The remaining seven are a defect no opener can see — an entry
+that under-declares its size is only caught when something reads it — and the
+six packages that have nothing to refuse. `ConformanceCorpusTests` asserts those
 counts, so a case that moves is reported rather than quietly reclassified.
 
 `Koma.Desktop` is a first reader: it opens a publication from a file picker or
@@ -103,7 +103,7 @@ git submodule update --init --recursive
 
 ## Testing against the corpus
 
-`external/koma/corpus/expected.json` states, for each of the 35 packages,
+`external/koma/corpus/expected.json` states, for each of the 38 packages,
 whether a conforming implementation must report it valid, warning or error.
 It is normative by example. The test suite walks it directly rather than
 defining its own fixtures.
@@ -142,9 +142,6 @@ None of these block anything.
 - **`background-color` is not validated.** Nothing checks it against the
   `#RRGGBB` form of §10.5; the reader falls back to white on a value it cannot
   parse, and accepts colour names it should not.
-- **Two §9.2 rules are not checked**: two `PageTarget` elements sharing an
-  item and a `spread-position`, and a `spread-position` on an item whose
-  `page-span` is 1. §15 lists both as errors, and §15.1 gives neither a code.
 - **Unknown tokens are not refused in strict mode.** A landmark type or item
   role that is a valid token but neither a core nor a private-use one falls
   back per §4.5.1 without an error, where §4.5 and §5.3 make it one.
