@@ -83,6 +83,15 @@ public static class PageResourceChecks
             return;
         }
 
+        // §13.1 judges the pixel limits from the header, which is all this pass
+        // ever reads. A page beyond them is not decoded by anyone, so nothing
+        // more is worth saying about it; the reference validator stops here too.
+        if (package.Limits.ExceedsPixelLimits(facts.Width, facts.Height))
+        {
+            violations.Add(new ContainerViolation(ContainerViolationCode.PagePixelLimit, item.Href, string.Create(CultureInfo.InvariantCulture, $"Item '{item.Id}' is {facts.Width}x{facts.Height}, beyond {package.Limits.MaxPixelsPerSide} pixels per side or {package.Limits.MaxPixelsPerPage} per page (§13.1).")));
+            return;
+        }
+
         if (facts.Width != item.Width || facts.Height != item.Height)
             violations.Add(new ContainerViolation(ContainerViolationCode.DimensionsMismatch, item.Href, string.Create(CultureInfo.InvariantCulture, $"Item '{item.Id}' declares {item.Width}x{item.Height} and the bytes are {facts.Width}x{facts.Height} (§8.2).")));
 

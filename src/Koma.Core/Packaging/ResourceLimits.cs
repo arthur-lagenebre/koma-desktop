@@ -13,9 +13,9 @@ namespace Koma.Core.Packaging;
 /// effect — which is what <see cref="IsDefaultProfile"/> exists to answer.
 /// </para>
 /// <para>
-/// The image and XML limits are declared here so that the profile is one
-/// object rather than several, but nothing enforces them yet: they belong to
-/// the image pipeline and the XML reader.
+/// The XML limits are enforced where core documents are read, and the pixel
+/// limits by the resource pass, from the image header: §13.1 forbids decoding
+/// a page to learn its size, since that is the allocation the limit prevents.
 /// </para>
 /// </remarks>
 public sealed record ResourceLimits
@@ -42,16 +42,16 @@ public sealed record ResourceLimits
     /// <summary>Number of ZIP entries.</summary>
     public int MaxEntries { get; init; } = 10_000;
 
-    /// <summary>Size of a single core XML document. Not enforced yet.</summary>
+    /// <summary>Size of a single core XML document.</summary>
     public long MaxCoreDocumentBytes { get; init; } = 16L * 1024 * 1024;
 
-    /// <summary>XML element nesting depth. Not enforced yet.</summary>
+    /// <summary>XML element nesting depth.</summary>
     public int MaxXmlDepth { get; init; } = 100;
 
-    /// <summary>Pixels in one page resource. Not enforced yet.</summary>
+    /// <summary>Pixels in one page resource.</summary>
     public long MaxPixelsPerPage { get; init; } = 100_000_000;
 
-    /// <summary>Pixels along either side of a page resource. Not enforced yet.</summary>
+    /// <summary>Pixels along either side of a page resource.</summary>
     public int MaxPixelsPerSide { get; init; } = 65_535;
 
     /// <summary>
@@ -96,4 +96,10 @@ public sealed record ResourceLimits
 
         return uncompressedBytes > compressedBytes * MaxCompressionRatio;
     }
+
+    /// <summary>
+    /// Whether a page of the given dimensions lies beyond the pixel limits.
+    /// Both are "at most" in §13.1, so a page exactly at either one is legal.
+    /// </summary>
+    public bool ExceedsPixelLimits(int width, int height) => width > MaxPixelsPerSide || height > MaxPixelsPerSide || (long)width * height > MaxPixelsPerPage;
 }

@@ -16,8 +16,8 @@ namespace Koma.Core.Tests;
 /// mode of a test suite that grades its own homework.
 /// </para>
 /// <para>
-/// This build implements part of layer 1 and none of layers 3 and 4, so the
-/// cases are sorted into three buckets below. The sorting is the point: a case
+/// This build implements part of each of the four layers, so the cases are
+/// sorted into three buckets below. The sorting is the point: a case
 /// that moves bucket is either progress or a regression, and either way the
 /// test says so instead of quietly passing.
 /// </para>
@@ -47,6 +47,7 @@ public sealed class ConformanceCorpusTests
         ContainerViolationCode.MimetypePosition,
         ContainerViolationCode.NavigationDeclarationMismatch,
         ContainerViolationCode.NavigationTargetOutsideSpine,
+        ContainerViolationCode.PagePixelLimit,
         ContainerViolationCode.PathTraversal,
         ContainerViolationCode.Span2SpreadPosition,
         ContainerViolationCode.SpineDuplicateItem,
@@ -139,13 +140,13 @@ public sealed class ConformanceCorpusTests
         // otherwise be filed as out of scope and pass.
         CorpusCase[] cases = LoadExpected();
 
-        Assert.Equal(33, cases.Length);
+        Assert.Equal(35, cases.Length);
 
         int covered = cases.Count(c => c.Code is not null && Implemented.Contains(c.Code));
         int misnamed = cases.Count(c => c.Code is not null && Misnamed.ContainsKey(c.Code));
         int outOfScope = cases.Length - covered - misnamed;
 
-        Assert.Equal(27, covered);
+        Assert.Equal(29, covered);
         Assert.Equal(0, misnamed);
         Assert.Equal(6, outOfScope);
     }

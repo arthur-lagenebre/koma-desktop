@@ -20,7 +20,7 @@ each check reads a whole image, so running them on open would decompress the
 publication before the first page could be shown, and make scanning a library
 cost as much as reading it.
 
-Of the 33 packages in the upstream corpus, 27 are refused with the code the
+Of the 35 packages in the upstream corpus, 29 are refused with the code the
 corpus gives. The remaining six are a defect no opener can see — an entry that
 under-declares its size is only caught when something reads it — and the five
 packages that have nothing to refuse. `ConformanceCorpusTests` asserts those
@@ -81,7 +81,7 @@ git submodule update --init --recursive
 
 ## Testing against the corpus
 
-`external/koma/corpus/expected.json` states, for each of the 33 packages,
+`external/koma/corpus/expected.json` states, for each of the 35 packages,
 whether a conforming implementation must report it valid, warning or error.
 It is normative by example. The test suite walks it directly rather than
 defining its own fixtures.

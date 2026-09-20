@@ -51,6 +51,7 @@ public static class ContainerViolationCode
     public const string NavigationTargetOutsideSpine = "navigation-target-outside-spine";
     public const string MediaTypeMismatch = "media-type-mismatch";
     public const string DimensionsMismatch = "dimensions-mismatch";
+    public const string PagePixelLimit = "page-pixel-limit";
     public const string AnimatedPageResource = "animated-page-resource";
     public const string ChecksumMismatch = "checksum-mismatch";
     public const string ExifOrientationResidue = "exif-orientation-residue";

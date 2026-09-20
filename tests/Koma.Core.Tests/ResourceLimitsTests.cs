@@ -3,7 +3,7 @@ using Koma.Core.Packaging;
 namespace Koma.Core.Tests;
 
 /// <summary>
-/// The default profile of §13.1 and its two arithmetic rules.
+/// The default profile of §13.1 and its three arithmetic rules.
 /// </summary>
 public sealed class ResourceLimitsTests
 {
@@ -93,6 +93,25 @@ public sealed class ResourceLimitsTests
         // Content out of nothing. The division has no answer, and the safe
         // reading is the one that refuses.
         Assert.True(ResourceLimits.Default.IsRatioExcessive(0, 8 * 1024 * 1024));
+    }
+
+    [Theory]
+    [InlineData(65_535, 1, false)]
+    [InlineData(65_536, 1, true)]
+    [InlineData(1, 65_536, true)]
+    [InlineData(10_000, 10_000, false)]
+    [InlineData(10_001, 10_000, true)]
+    public void PixelRule_TreatsBothLimitsAsInclusive(int width, int height, bool exceeds)
+    {
+        Assert.Equal(exceeds, ResourceLimits.Default.ExceedsPixelLimits(width, height));
+    }
+
+    [Fact]
+    public void PixelRule_DoesNotOverflowAtTheSideLimit()
+    {
+        // Within the side limit both ways, and 65 535 squared overflows an int
+        // into a negative area, which would pass any per-page limit.
+        Assert.True(ResourceLimits.Default.ExceedsPixelLimits(65_535, 65_535));
     }
 }
 
