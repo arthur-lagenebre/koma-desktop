@@ -46,13 +46,19 @@ internal sealed class SpreadView : Control
         foreach (PlacedItem placed in SpreadLayout.Arrange(spread, publication.DeclaredSize, Bounds.Width, Bounds.Height))
         {
             var bounds = new Rect(placed.Bounds.X, placed.Bounds.Y, placed.Bounds.Width, placed.Bounds.Height);
-            ShownPage page = publication.Page(placed.Item);
 
             // §10.5 composites over the item's background, and §10.4 fills an
             // empty half with its companion's.
-            context.FillRectangle(page.Background, bounds);
+            context.FillRectangle(publication.Background(placed.Item), bounds);
 
             if (placed.IsEmptyHalf)
+                continue;
+
+            // Still being decoded: the background holds the place until the
+            // page is ready and the window asks for another frame.
+            ShownPage? page = publication.Loaded(placed.Item);
+
+            if (page is null)
                 continue;
 
             // The whole raster goes into the declared box: §16 scales a page

@@ -1,4 +1,7 @@
+using System.Collections.Concurrent;
 using Avalonia;
+using Avalonia.Media;
+using Avalonia.Media.Immutable;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using Koma.Core.Model;
@@ -14,20 +17,36 @@ namespace Koma.Desktop;
 /// near the reader decoded.
 /// </summary>
 /// <remarks>
-/// Pages are decoded when the reader reaches them and dropped once the reader
-/// has moved two spreads away: a long publication read to the end must not
-/// hold every page it has shown.
+/// <para>
+/// Pages are decoded on a worker by <see cref="PageCache{TPage}"/>, which is
+/// the only code that reads the archive once it is open. Everything the
+/// interface thread asks of this class — pagination, declared sizes,
+/// backgrounds — comes from the manifest and the metadata, which are in
+/// memory, so the interface never waits on the archive.
+/// </para>
+/// <para>
+/// Only the pages near the reader are kept: a long publication read to the
+/// end must not hold every page it has shown.
+/// </para>
 /// </remarks>
-internal sealed class Publication(KomaPackage package, IReadOnlyList<ContainerViolation> openingNotes) : IDisposable
+internal sealed class Publication : IDisposable
 {
-    private readonly Dictionary<string, ShownPage> pages = [];
-    private readonly HashSet<string> withheld = [];
+    private readonly KomaPackage package;
+    private readonly PageCache<ShownPage> pages;
+    private readonly ConcurrentDictionary<string, bool> withheld = new();
     private bool? fitsTwo;
+
+    public Publication(KomaPackage package, IReadOnlyList<ContainerViolation> openingNotes)
+    {
+        this.package = package;
+        OpeningNotes = openingNotes;
+        pages = new PageCache<ShownPage>(Build);
+    }
 
     public ReadingDirection Direction => package.Metadata.Direction;
 
     /// <summary>The warnings the opener raised, which the reader is shown throughout.</summary>
-    public IReadOnlyList<ContainerViolation> OpeningNotes { get; } = openingNotes;
+    public IReadOnlyList<ContainerViolation> OpeningNotes { get; }
 
     public IReadOnlyList<Spread> Spreads { get; private set; } = [];
 
@@ -59,40 +78,44 @@ internal sealed class Publication(KomaPackage package, IReadOnlyList<ContainerVi
         return (declared.Width, declared.Height);
     }
 
-    public ShownPage Page(string item)
-    {
-        if (pages.TryGetValue(item, out ShownPage? page))
-            return page;
+    /// <summary>
+    /// What shows through transparency (§10.5), and what fills an empty half
+    /// beside the item (§10.4). It comes from the manifest, so a page not yet
+    /// decoded already has its place drawn in the right colour.
+    /// </summary>
+    /// <remarks>
+    /// Nothing checks <c>background-color</c> against the <c>#RRGGBB</c> form
+    /// of §10.5 yet, so a value that does not parse falls back to the default
+    /// rather than failing a page that is otherwise fine to show.
+    /// </remarks>
+    public IBrush Background(string item) => new ImmutableSolidColorBrush(Color.TryParse(Item(item).BackgroundColor, out Color colour) ? colour : Colors.White);
 
-        using LoadedPage loaded = PageLoader.Load(package, Item(item));
-        page = new ShownPage(loaded.Item, loaded.Bitmap is null ? null : ToAvalonia(loaded.Bitmap), loaded.Violations);
-        pages.Add(item, page);
+    /// <summary>The page if it is decoded, without waiting for it.</summary>
+    public ShownPage? Loaded(string item) => pages.TryGet(item);
 
-        if (page.IsWithheld)
-            withheld.Add(item);
+    /// <summary>The page, decoded on the worker if it is not already.</summary>
+    public Task<ShownPage> PageAsync(string item) => pages.GetAsync(item);
 
-        return page;
-    }
-
-    /// <summary>Drops every decoded page but those of the given items.</summary>
-    public void Retain(IEnumerable<string> items)
-    {
-        HashSet<string> keep = [.. items];
-
-        foreach (string item in pages.Keys.Where(item => !keep.Contains(item)).ToList())
-        {
-            pages[item].Dispose();
-            pages.Remove(item);
-        }
-    }
+    /// <summary>Drops every decoded or queued page but those of the given items.</summary>
+    public void Retain(IEnumerable<string> items) => pages.Retain(items);
 
     public void Dispose()
     {
-        foreach (ShownPage page in pages.Values)
-            page.Dispose();
-
-        pages.Clear();
+        // The cache waits for the page in flight, so the archive is closed
+        // with nothing still reading it.
+        pages.Dispose();
         package.Dispose();
+    }
+
+    private ShownPage Build(string item)
+    {
+        using LoadedPage loaded = PageLoader.Load(package, Item(item));
+        var page = new ShownPage(loaded.Item, loaded.Bitmap is null ? null : ToAvalonia(loaded.Bitmap), loaded.Violations);
+
+        if (page.IsWithheld)
+            withheld.TryAdd(item, true);
+
+        return page;
     }
 
     // Spine targets are checked at open (§8.8), so every item a spread names

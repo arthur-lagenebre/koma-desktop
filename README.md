@@ -35,9 +35,12 @@ counts, so a case that moves is reported rather than quietly reclassified.
 `Koma.Desktop` is a first reader: it opens a publication from a file picker
 or the command line, paginates it for the window (§10.1), and turns spreads
 with the arrow keys along the reading direction, Page Up and Page Down, Home
-and End. Pages are laid out from their declared sizes (§16) and decoded as the
-reader reaches them. Warnings from opening, the faults of the pages on screen
-and a withheld page are reported in a status line.
+and End. Pages are laid out from their declared sizes (§16) and decoded on a
+worker, one at a time, as the reader reaches them. The spreads either side
+follow, so that a turn usually finds its pages ready, and a page queued for a
+spread the reader has left is dropped before it is decoded. Warnings from
+opening, the faults of the pages on screen and a withheld page are reported
+in a status line.
 
 The format itself is at pre-release draft `0.9`. Per §5.0 of the specification,
 a reader supporting one `0.x` version **must reject every other `0.x`**, and
@@ -134,8 +137,6 @@ None of these block anything.
 - **`background-color` is not validated.** Nothing checks it against the
   `#RRGGBB` form of §10.5; the reader falls back to white on a value it cannot
   parse, and accepts colour names it should not.
-- **Pages are decoded on the interface thread.** Turning to a spread of large
-  pages blocks the window for as long as they take to decode.
 - **Two §2.1 faults have no code of their own**: a data descriptor and extra
   fields on the mimetype entry. Both are reported as `mimetype-content` with
   the reason in the message.

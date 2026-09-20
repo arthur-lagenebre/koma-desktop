@@ -174,19 +174,59 @@ internal sealed partial class MainWindow : Window, IDisposable
 
         IReadOnlyList<Spread> spreads = publication.Spreads;
         Spread spread = spreads[current];
+        List<string> onScreen = [.. SpreadLayout.Items(spread)];
+        List<string> near = [.. Enumerable.Range(current - 1, 3).Where(i => i >= 0 && i < spreads.Count).SelectMany(i => SpreadLayout.Items(spreads[i]))];
 
-        // Decoded here rather than when drawn, so that the status can report
-        // the faults of what is on screen, as §16 requires.
-        List<ShownPage> shown = [.. SpreadLayout.Items(spread).Select(publication.Page)];
-        IEnumerable<string> near = Enumerable.Range(current - 1, 3).Where(i => i >= 0 && i < spreads.Count).SelectMany(i => SpreadLayout.Items(spreads[i]));
+        // Dropped first, so that pages queued for a spread the reader has
+        // left do not hold up the ones now wanted.
         publication.Retain(near);
 
         View.Show(publication, spread);
         SpreadCounter.Text = string.Create(CultureInfo.InvariantCulture, $"{current + 1} / {spreads.Count}");
-        Status.Text = StatusOf(publication, shown);
+        Status.Text = StatusOf(publication, onScreen);
+
+        _ = LoadAsync(publication, spread, onScreen, near);
     }
 
-    private static string StatusOf(Publication publication, IEnumerable<ShownPage> shown)
+    /// <summary>
+    /// Decodes the pages on screen, then the ones either side, and redraws
+    /// once the first are ready if the reader is still there.
+    /// </summary>
+    private async Task LoadAsync(Publication shown, Spread spread, List<string> onScreen, List<string> near)
+    {
+        try
+        {
+            await Task.WhenAll(onScreen.Select(shown.PageAsync));
+        }
+        catch (Exception e) when (e is OperationCanceledException or ObjectDisposedException)
+        {
+            // The reader turned the page, or closed the publication, before
+            // these were ready. Whatever is shown now has its own load.
+            return;
+        }
+        catch (InsufficientMemoryException e)
+        {
+            if (IsShowing(shown, spread))
+                Status.Text = StatusOf(shown, onScreen) + Environment.NewLine + e.Message;
+
+            return;
+        }
+
+        if (!IsShowing(shown, spread))
+            return;
+
+        View.InvalidateVisual();
+        Status.Text = StatusOf(shown, onScreen);
+
+        // The next turn, either way, finds its pages decoded. A neighbour
+        // that fails is reported when it comes on screen, not before.
+        foreach (string item in near.Except(onScreen))
+            _ = shown.PageAsync(item);
+    }
+
+    private bool IsShowing(Publication shown, Spread spread) => ReferenceEquals(shown, publication) && current < shown.Spreads.Count && shown.Spreads[current] == spread;
+
+    private static string StatusOf(Publication publication, IEnumerable<string> onScreen)
     {
         var text = new StringBuilder();
 
@@ -195,7 +235,9 @@ internal sealed partial class MainWindow : Window, IDisposable
         foreach (ContainerViolation note in publication.OpeningNotes)
             text.AppendLine(Describe(note));
 
-        foreach (ShownPage page in shown)
+        // Only decoded pages have faults to report; a page still on the worker
+        // is reported when the redraw that follows its decoding comes.
+        foreach (ShownPage page in onScreen.Select(publication.Loaded).OfType<ShownPage>())
         {
             foreach (ContainerViolation fault in page.Faults)
                 text.AppendLine(page.Item.Id + ": " + Describe(fault));
