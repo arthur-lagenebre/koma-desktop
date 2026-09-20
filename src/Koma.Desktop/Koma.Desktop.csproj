@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Avalonia.Skia 12.1.2 asks for SkiaSharp 3.119.4 or later, and
+         Koma.Imaging pins exactly that, so the application loads the version
+         SkiaSharpDecodingTests characterises. Moving Avalonia means rereading
+         its SkiaSharp floor. -->
+    <PackageReference Include="Avalonia" Version="12.1.2" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.1.2" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Koma.Core\Koma.Core.csproj" />
+    <ProjectReference Include="..\Koma.Imaging\Koma.Imaging.csproj" />
+  </ItemGroup>
+
+</Project>

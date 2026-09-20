@@ -1,0 +1,16 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:Koma.Desktop"
+        x:Class="Koma.Desktop.MainWindow"
+        Title="KOMA"
+        Width="1200"
+        Height="800">
+    <DockPanel>
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="12" Margin="8">
+            <Button x:Name="OpenButton" Content="Open…" />
+            <TextBlock x:Name="SpreadCounter" VerticalAlignment="Center" />
+        </StackPanel>
+        <TextBlock x:Name="Status" DockPanel.Dock="Bottom" Margin="8" TextWrapping="Wrap" />
+        <local:SpreadView x:Name="View" />
+    </DockPanel>
+</Window>

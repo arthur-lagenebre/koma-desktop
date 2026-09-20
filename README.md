@@ -32,7 +32,12 @@ under-declares its size is only caught when something reads it — and the five
 packages that have nothing to refuse. `ConformanceCorpusTests` asserts those
 counts, so a case that moves is reported rather than quietly reclassified.
 
-There is no user interface yet.
+`Koma.Desktop` is a first reader: it opens a publication from a file picker
+or the command line, paginates it for the window (§10.1), and turns spreads
+with the arrow keys along the reading direction, Page Up and Page Down, Home
+and End. Pages are laid out from their declared sizes (§16) and decoded as the
+reader reaches them. Warnings from opening, the faults of the pages on screen
+and a withheld page are reported in a status line.
 
 The format itself is at pre-release draft `0.9`. Per §5.0 of the specification,
 a reader supporting one `0.x` version **must reject every other `0.x`**, and
@@ -58,6 +63,7 @@ This is **not** a conforming KOMA Validator: that requires all four layers of
 ```
 src/Koma.Core             format model, reader, writer, rendering, limits — no UI
 src/Koma.Cli              command-line front end over Koma.Core
+src/Koma.Desktop          the Avalonia reader
 src/Koma.Imaging          page loading and decoding over SkiaSharp — no UI
 tests/Koma.Core.Tests     xUnit, driven by the upstream conformance corpus
 tests/Koma.Imaging.Tests  SkiaSharp and the decoder, over the corpus page images
@@ -125,6 +131,11 @@ None of these block anything.
   for a reader that cannot apply an embedded profile, and it says the PNG
   `sRGB`, `gAMA` and `cHRM` chunks are honoured. The corpus has no page with a
   profile, so there is nothing yet to test a conversion against.
+- **`background-color` is not validated.** Nothing checks it against the
+  `#RRGGBB` form of §10.5; the reader falls back to white on a value it cannot
+  parse, and accepts colour names it should not.
+- **Pages are decoded on the interface thread.** Turning to a spread of large
+  pages blocks the window for as long as they take to decode.
 - **Two §2.1 faults have no code of their own**: a data descriptor and extra
   fields on the mimetype entry. Both are reported as `mimetype-content` with
   the reason in the message.
