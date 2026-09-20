@@ -3,22 +3,34 @@ using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
+using Avalonia.Media.Immutable;
 using Koma.Library;
 
 namespace Koma.Desktop;
 
 /// <summary>
-/// The shelf: one card per publication, with its cover and its title.
+/// The shelf: one card per publication, with its cover, its title and the
+/// file it came from.
 /// </summary>
 /// <remarks>
 /// Built from the index alone, so a library of a thousand volumes is shown
 /// without opening one of them. A publication that cannot be opened keeps its
 /// place, disabled, with the reason where the page count would be: a file that
-/// has gone wrong is worth seeing.
+/// has gone wrong is worth seeing, after those that can be read.
 /// </remarks>
 internal sealed class LibraryView : ScrollViewer
 {
-    private readonly WrapPanel shelf = new() { Margin = new Thickness(8) };
+    private const double CardWidth = 232;
+    private const double CoverHeight = 260;
+
+    // Every card is the same height, cover or no cover, so that the rows line
+    // up instead of stepping around the ones that have none: the cover, then
+    // two lines of title, one of file name and three of whatever is left.
+    private const double CardHeight = 430;
+
+    private static readonly IBrush MissingCover = new ImmutableSolidColorBrush(Color.FromRgb(0x3A, 0x3A, 0x3A));
+
+    private readonly WrapPanel shelf = new() { Margin = new Thickness(8), ItemWidth = CardWidth, ItemHeight = CardHeight };
 
     public LibraryView()
     {
@@ -35,37 +47,58 @@ internal sealed class LibraryView : ScrollViewer
 
         shelf.Children.Clear();
 
-        foreach (LibraryEntry entry in entries.OrderBy(e => e.Title ?? Path.GetFileName(e.Path), StringComparer.CurrentCultureIgnoreCase))
+        // What can be read first, then by title, then by file name: a title
+        // says little when two editions of one volume share it, and nothing
+        // at all when a producer leaves it on its default.
+        IOrderedEnumerable<LibraryEntry> shelved = entries
+            .OrderBy(e => e.Unreadable is null ? 0 : 1)
+            .ThenBy(e => e.Title ?? string.Empty, StringComparer.CurrentCultureIgnoreCase)
+            .ThenBy(e => Path.GetFileName(e.Path), StringComparer.CurrentCultureIgnoreCase);
+
+        foreach (LibraryEntry entry in shelved)
             shelf.Children.Add(Card(entry, store));
     }
 
     private Button Card(LibraryEntry entry, LibraryStore store)
     {
-        var contents = new StackPanel { Spacing = 6 };
-        Bitmap? cover = Cover(entry, store);
+        var contents = new StackPanel { Spacing = 4 };
 
-        if (cover is not null)
-            contents.Children.Add(new Image { Source = cover, Height = 260, Stretch = Stretch.Uniform });
-
-        contents.Children.Add(new TextBlock { Text = entry.Title ?? Path.GetFileName(entry.Path), TextWrapping = TextWrapping.Wrap, FontWeight = FontWeight.SemiBold });
-        contents.Children.Add(new TextBlock { Text = Subtitle(entry), TextWrapping = TextWrapping.Wrap, Opacity = 0.7 });
+        contents.Children.Add(Cover(entry, store));
+        contents.Children.Add(Line(entry.Title ?? Path.GetFileName(entry.Path), FontWeight.SemiBold, lines: 2));
+        contents.Children.Add(Line(Path.GetFileName(entry.Path), FontWeight.Normal, lines: 1, opacity: 0.55));
+        contents.Children.Add(Line(Subtitle(entry), FontWeight.Normal, lines: 3, opacity: 0.75));
 
         var card = new Button
         {
             Content = contents,
-            Width = 220,
             Margin = new Thickness(6),
             Padding = new Thickness(8),
             HorizontalContentAlignment = HorizontalAlignment.Stretch,
+            VerticalContentAlignment = VerticalAlignment.Top,
             IsEnabled = entry.Unreadable is null
         };
 
+        // The reason a package was refused runs longer than a card; the card
+        // shows what it can and the tip holds the rest.
+        ToolTip.SetTip(card, entry.Unreadable is null ? entry.Path : $"{entry.Path}{Environment.NewLine}{entry.Unreadable}");
         card.Click += (_, _) => Chosen?.Invoke(this, entry.Path);
 
         return card;
     }
 
-    private static Bitmap? Cover(LibraryEntry entry, LibraryStore store)
+    private static Border Cover(LibraryEntry entry, LibraryStore store)
+    {
+        Bitmap? cover = Thumbnail(entry, store);
+
+        return new Border
+        {
+            Height = CoverHeight,
+            Background = cover is null ? MissingCover : null,
+            Child = cover is null ? null : new Image { Source = cover, Stretch = Stretch.Uniform }
+        };
+    }
+
+    private static Bitmap? Thumbnail(LibraryEntry entry, LibraryStore store)
     {
         if (entry.Thumbnail is null)
             return null;
@@ -80,6 +113,19 @@ internal sealed class LibraryView : ScrollViewer
             // cover, which is better than a shelf that will not draw.
             return null;
         }
+    }
+
+    private static TextBlock Line(string text, FontWeight weight, int lines, double opacity = 1)
+    {
+        return new TextBlock
+        {
+            Text = text,
+            FontWeight = weight,
+            Opacity = opacity,
+            TextWrapping = TextWrapping.Wrap,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            MaxLines = lines
+        };
     }
 
     private static string Subtitle(LibraryEntry entry)
