@@ -40,6 +40,15 @@ under-declares its size is only caught when something reads it — and the eight
 packages that have nothing to refuse. `ConformanceCorpusTests` asserts those
 counts, so a case that moves is reported rather than quietly reclassified.
 
+`Koma.Library` keeps what the reader needs to list publications without
+opening them again: one JSON file and a folder of cover thumbnails, under the
+user's application data. It is a cache, rebuilt by a scan from the folders it
+watches, apart from the reading positions, which are kept as the first item of
+the last spread shown rather than as a spread number: pagination changes with
+the shape of the window, and an item does not. A publication is opened again
+only when its path, size or modification time has changed. Nothing of this is
+on screen yet.
+
 `Koma.Desktop` is a first reader: it opens a publication from a file picker or
 the command line, paginates it for the window (§10.1), and turns spreads with
 the arrow keys along the reading direction, Page Up and Page Down, Home and
@@ -78,8 +87,11 @@ src/Koma.Core             format model, reader, writer, rendering, limits — no
 src/Koma.Cli              command-line front end over Koma.Core
 src/Koma.Desktop          the Avalonia reader
 src/Koma.Imaging          page loading and decoding over SkiaSharp — no UI
+src/Koma.Library          the library: its index, its covers, its scan — no UI
 tests/Koma.Core.Tests     xUnit, driven by the upstream conformance corpus
 tests/Koma.Imaging.Tests  SkiaSharp and the decoder, over the corpus page images
+tests/Koma.Library.Tests  the library, over a folder of corpus packages
+tests/Koma.TestSupport    finds the corpus for the three test projects
 external/koma             git submodule: the specification, schemas and corpus
 ```
 

@@ -62,6 +62,15 @@ public sealed record Manifest
     public required ReadOnlyCollection<SpineItemRef> Spine { get; init; }
 
     /// <summary>Looks an item up by id.</summary>
+    /// <summary>
+    /// The front cover, which §8.4 requires exactly one item to carry and the
+    /// reader refuses a manifest without.
+    /// </summary>
+    public ManifestItem? FrontCover => Items.FirstOrDefault(i => i.Roles.Contains(FrontCoverRole, StringComparer.Ordinal));
+
+    /// <summary>The role of §8.4 that names the cover.</summary>
+    public const string FrontCoverRole = "front-cover";
+
     public ManifestItem? Item(string id) => Items.FirstOrDefault(i => i.Id == id);
 
     /// <summary>

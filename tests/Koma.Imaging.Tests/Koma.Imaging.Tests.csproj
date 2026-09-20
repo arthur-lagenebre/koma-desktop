@@ -20,6 +20,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Koma.TestSupport\Koma.TestSupport.csproj" />
     <ProjectReference Include="..\..\src\Koma.Core\Koma.Core.csproj" />
     <ProjectReference Include="..\..\src\Koma.Imaging\Koma.Imaging.csproj" />
   </ItemGroup>

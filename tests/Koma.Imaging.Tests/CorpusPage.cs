@@ -1,4 +1,5 @@
 using System.IO.Compression;
+using Koma.TestSupport;
 
 namespace Koma.Imaging.Tests;
 
@@ -26,16 +27,5 @@ internal static class CorpusPage
         return buffer.ToArray();
     }
 
-    private static string PackagesDirectory()
-    {
-        for (DirectoryInfo? directory = new(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)
-        {
-            string candidate = Path.Combine(directory.FullName, "external", "koma", "corpus", "packages");
-
-            if (Directory.Exists(candidate))
-                return candidate;
-        }
-
-        throw new DirectoryNotFoundException("external/koma/corpus/packages is not above the test assembly. Was the submodule initialised?");
-    }
+    private static string PackagesDirectory() => Path.Combine(Corpus.Root(), "packages");
 }

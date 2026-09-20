@@ -5,6 +5,9 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- The covers are decoded and re-encoded here, so the Linux natives are
+         needed as they are in Koma.Imaging.Tests. -->
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="3.119.4" />
     <PackageReference Include="coverlet.collector" Version="6.0.4" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="xunit" Version="2.9.3" />
@@ -16,8 +19,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\Koma.Library\Koma.Library.csproj" />
     <ProjectReference Include="..\Koma.TestSupport\Koma.TestSupport.csproj" />
-    <ProjectReference Include="..\..\src\Koma.Core\Koma.Core.csproj" />
   </ItemGroup>
 
 </Project>

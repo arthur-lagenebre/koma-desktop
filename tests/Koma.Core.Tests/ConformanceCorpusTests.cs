@@ -1,6 +1,7 @@
 using Koma.Core.Model;
 using Koma.Core.Packaging;
 using System.Text.Json;
+using Koma.TestSupport;
 using System.Text.Json.Serialization;
 
 namespace Koma.Core.Tests;
@@ -196,26 +197,8 @@ public sealed class ConformanceCorpusTests
         return JsonSerializer.Deserialize<CorpusExpectations>(file)?.Cases ?? throw new InvalidDataException($"{path} has no cases.");
     }
 
-    /// <summary>
-    /// Finds <c>external/koma/corpus</c> by walking up from the test assembly.
-    /// </summary>
-    /// <remarks>Shared with the tests that open one corpus package by name.</remarks>
-    internal static string CorpusRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-
-        while (directory is not null)
-        {
-            string candidate = Path.Combine(directory.FullName, "external", "koma", "corpus");
-
-            if (Directory.Exists(candidate))
-                return candidate;
-
-            directory = directory.Parent;
-        }
-
-        throw new DirectoryNotFoundException("The conformance corpus is not on disk. It is a submodule: run git submodule update --init --recursive.");
-    }
+    /// <summary>The corpus folder, shared with the tests that open one package by name.</summary>
+    internal static string CorpusRoot() => Corpus.Root();
 
     private sealed record CorpusExpectations
     {

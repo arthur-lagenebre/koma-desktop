@@ -4,9 +4,12 @@
     <Project Path="src/Koma.Core/Koma.Core.csproj" />
     <Project Path="src/Koma.Desktop/Koma.Desktop.csproj" />
     <Project Path="src/Koma.Imaging/Koma.Imaging.csproj" />
+    <Project Path="src/Koma.Library/Koma.Library.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Koma.Core.Tests/Koma.Core.Tests.csproj" />
     <Project Path="tests/Koma.Imaging.Tests/Koma.Imaging.Tests.csproj" />
+    <Project Path="tests/Koma.Library.Tests/Koma.Library.Tests.csproj" />
+    <Project Path="tests/Koma.TestSupport/Koma.TestSupport.csproj" />
   </Folder>
 </Solution>
