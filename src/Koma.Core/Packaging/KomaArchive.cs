@@ -46,6 +46,17 @@ public static class KomaArchive
     /// Whether to leave <paramref name="stream"/> open once the archive is
     /// disposed.
     /// </param>
+    /// <summary>
+    /// The timestamp every entry of a reproducible archive carries (§14.2).
+    /// </summary>
+    /// <remarks>
+    /// The earliest a ZIP can express. §2.1 fixes where the time bytes of the
+    /// mimetype entry sit, not what they say, and §14.2 asks only that the
+    /// value be fixed; a constant makes the same publication give the same
+    /// bytes, written today or next year.
+    /// </remarks>
+    public static readonly DateTimeOffset FixedTimestamp = new(1980, 1, 1, 0, 0, 0, TimeSpan.Zero);
+
     public static ZipArchive Create(Stream stream, bool leaveOpen = false)
     {
         ArgumentNullException.ThrowIfNull(stream);
@@ -74,6 +85,7 @@ public static class KomaArchive
         // honours that, and whether it refrains from emitting extra fields, is
         // exactly what MimetypeEntryTests measures.
         ZipArchiveEntry entry = archive.CreateEntry(KomaMediaType.EntryName, CompressionLevel.NoCompression);
+        entry.LastWriteTime = FixedTimestamp;
 
         using Stream stream = entry.Open();
         stream.Write(KomaMediaType.Utf8);
