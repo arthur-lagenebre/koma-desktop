@@ -55,6 +55,7 @@ public static class ContainerViolationCode
     public const string ChecksumMismatch = "checksum-mismatch";
     public const string ExifOrientationResidue = "exif-orientation-residue";
     public const string NoNavigationDocument = "no-navigation-document";
+    public const string NavigationDeclarationMismatch = "navigation-declaration-mismatch";
     public const string PrivateUseToken = "private-use-token";
 
     // Defined by §15.1; no corpus package yet.

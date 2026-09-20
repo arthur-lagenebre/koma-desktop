@@ -50,11 +50,11 @@ public sealed record Manifest
 {
     public required KomaVersion Version { get; init; }
 
-    /// <summary>Required (§8).</summary>
-    public required string MetadataPath { get; init; }
-
-    /// <summary>Omitted when <c>nav.xml</c> is absent (§8).</summary>
-    public string? NavigationPath { get; init; }
+    /// <summary>
+    /// Whether <c>@navigation</c> is present. §1 fixes where the navigation
+    /// document lives, so presence is all the attribute can say.
+    /// </summary>
+    public bool DeclaresNavigation { get; init; }
 
     public required ReadOnlyCollection<ManifestItem> Items { get; init; }
 

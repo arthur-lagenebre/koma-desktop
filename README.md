@@ -20,7 +20,7 @@ each check reads a whole image, so running them on open would decompress the
 publication before the first page could be shown, and make scanning a library
 cost as much as reading it.
 
-Of the 31 packages in the upstream corpus, 25 are refused with the code the
+Of the 33 packages in the upstream corpus, 27 are refused with the code the
 corpus gives. The remaining six are a defect no opener can see — an entry that
 under-declares its size is only caught when something reads it — and the five
 packages that have nothing to refuse. `ConformanceCorpusTests` asserts those
@@ -50,14 +50,17 @@ This is **not** a conforming KOMA Validator: that requires all four layers of
 ## Layout
 
 ```
-src/Koma.Core        format model, reader, writer, rendering, limits — no UI
-src/Koma.Cli         command-line front end over Koma.Core
-tests/Koma.Core.Tests  xUnit, driven by the upstream conformance corpus
-external/koma        git submodule: the specification, schemas and corpus
+src/Koma.Core             format model, reader, writer, rendering, limits — no UI
+src/Koma.Cli              command-line front end over Koma.Core
+tests/Koma.Core.Tests     xUnit, driven by the upstream conformance corpus
+tests/Koma.Imaging.Tests  what SkiaSharp does with the corpus page images
+external/koma             git submodule: the specification, schemas and corpus
 ```
 
 `Koma.Core` must never reference a UI package. That separation is what keeps
-the conformance work testable without a running window.
+the conformance work testable without a running window. It references no
+imaging library either: what a page declares about itself is read from its
+header by hand, and decoding belongs to the layer above.
 
 ## Building
 
@@ -78,26 +81,25 @@ git submodule update --init --recursive
 
 ## Testing against the corpus
 
-`external/koma/corpus/expected.json` states, for each of the 28 packages,
+`external/koma/corpus/expected.json` states, for each of the 33 packages,
 whether a conforming implementation must report it valid, warning or error.
 It is normative by example. The test suite walks it directly rather than
 defining its own fixtures.
 
-The pairing cases in `external/koma/tools/spread_cases.py` are written by hand
-from the prose of §10 and are never regenerated from an implementation. They
-are ported to xUnit here for the same reason.
+The pairing cases in `external/koma/corpus/spread-cases.json` are written by
+hand from the prose of §10 and are never regenerated from an implementation.
+The tests read that file directly, as the reference implementation does, so
+the two are graded against the same text.
+
+The page images of the corpus serve as decoding fixtures too. They were
+written by Pillow, so SkiaSharp is never judged on its own output.
 
 ## Open technical questions
-
-These are unresolved:
 
 1. **RELAX NG.** .NET validates XSD and DTD, not RELAX NG. Options are Trang
    conversion to XSD (lossy), the unmaintained `Commons.Xml.Relaxng`, or
    hand-written structural checks. §17 notes the schemas are only layer 2 of
    four in any case.
-2. **WebP and EXIF.** §16 makes WebP support mandatory and requires EXIF
-   orientation to be ignored. Verify SkiaSharp's behaviour on both before
-   building the render pipeline around it.
 
 ## Debts
 
@@ -110,9 +112,6 @@ None of these block anything.
   moves to the `koma` repository.
 - **The corpus does not exercise every code of §15.1**, which criterion 3 of
   §5.0.1 will eventually require.
-- **Two warnings the corpus declares are not produced here**:
-  `no-navigation-document` and `private-use-token`. The packages carrying them
-  open, which the tests accept, but the corpus expects a warning.
 - **Two §2.1 faults have no code of their own**: a data descriptor and extra
   fields on the mimetype entry. Both are reported as `mimetype-content` with
   the reason in the message.
@@ -131,6 +130,9 @@ with several arms — keep their lines.
 No trailing commas. `var` only where the type is apparent on the right-hand
 side. Braces on multi-line bodies only. Comments say why, not what.
 
+Project files carry only what differs from `Directory.Build.props`. The target
+framework, nullability and implicit usings are set there and nowhere else.
+
 ## Settled
 
 **ZIP writing.** §2.1 fixes bytes 0–61 of the file, and it was not established
@@ -138,6 +140,23 @@ that `System.IO.Compression` could satisfy that. It can: `MimetypeEntryTests`
 asserts the local header field by field, on Windows and on Linux, so no
 third-party ZIP writer is needed. The tests stay because a future runtime could
 change what `CompressionLevel.NoCompression` emits.
+
+**WebP and EXIF.** §16 makes WebP mandatory and §8.2 requires EXIF orientation
+to be ignored. SkiaSharp 3.119.4, the version Avalonia.Skia 12.1 loads, decodes
+static WebP. On orientation its two decoding roads disagree: `SKCodec` and
+`SKBitmap.Decode` report the EXIF origin and render pixels as stored, while
+`SKImage.FromEncodedData` applies it and swaps width and height. Pages are
+therefore decoded through `SKCodec` only, and Avalonia is never handed encoded
+bytes. `SkiaSharpDecodingTests` pins all three, along with a quirk of the
+binding: `SKCodec.FrameCount` is 0 for any still image, where native Skia says
+1, so animation is judged by `PageImageReader` and never by a frame count.
+
+**Core document paths.** §1 fixes them, and the attributes of §6 and §8 that
+name them must carry exactly those values. `CorePaths` holds the four; the
+opener checks the attributes against it and reads from it, and never follows
+an attribute. A manifest whose `@navigation` disagrees with the presence of
+`koma/nav.xml`, in either direction, is refused with
+`navigation-declaration-mismatch`.
 
 ## Licence
 

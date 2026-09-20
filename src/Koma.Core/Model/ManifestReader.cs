@@ -71,12 +71,11 @@ public static class ManifestReader
             return null;
         }
 
-        string? metadata = RequiredPath(root, "metadata", entryName, violations);
-
-        if (metadata is null)
+        if (!HasFixedPath(root, "metadata", CorePaths.Metadata, required: true, entryName, violations))
             return null;
 
-        string? navigation = OptionalPath(root, "navigation", entryName, violations);
+        if (!HasFixedPath(root, "navigation", CorePaths.Navigation, required: false, entryName, violations))
+            return null;
 
         List<ManifestItem>? items = ReadItems(root, entryName, violations);
 
@@ -91,8 +90,7 @@ public static class ManifestReader
         var manifest = new Manifest
         {
             Version = version,
-            MetadataPath = metadata,
-            NavigationPath = navigation,
+            DeclaresNavigation = root.Attribute("navigation") is not null,
             Items = items.AsReadOnly(),
             Spine = spine.AsReadOnly()
         };
@@ -417,31 +415,20 @@ public static class ManifestReader
 
     private static bool IsTokenEdge(char c) => c is >= 'a' and <= 'z' or >= '0' and <= '9';
 
-    private static string? RequiredPath(XElement root, string name, string entryName, List<ContainerViolation> violations)
+    /// <summary>
+    /// An attribute naming a core document, which §1 allows one value only.
+    /// </summary>
+    private static bool HasFixedPath(XElement root, string name, string path, bool required, string entryName, List<ContainerViolation> violations)
     {
         string? value = root.Attribute(name)?.Value;
 
-        if (IsPath(value))
-            return value;
+        if (value == path || (value is null && !required))
+            return true;
 
-        violations.Add(Invalid(entryName, $"Manifest/@{name} is required and must be a Path (§8, §4.3)."));
+        string message = value is null ? $"Manifest/@{name} is required (§8)." : $"Manifest/@{name} is '{value}'; §8 requires {path}.";
+        violations.Add(Invalid(entryName, message));
 
-        return null;
-    }
-
-    private static string? OptionalPath(XElement root, string name, string entryName, List<ContainerViolation> violations)
-    {
-        string? value = root.Attribute(name)?.Value;
-
-        if (value is null)
-            return null;
-
-        if (IsPath(value))
-            return value;
-
-        violations.Add(Invalid(entryName, $"Manifest/@{name} is not a Path (§4.3)."));
-
-        return null;
+        return false;
     }
 
     /// <summary>

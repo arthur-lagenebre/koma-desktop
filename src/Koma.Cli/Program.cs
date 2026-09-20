@@ -77,9 +77,7 @@ internal static class Program
                 {
                     Field("version", package.Version.ToString());
                     Field("mode", package.Mode.ToString());
-                    Field("manifest", package.RootManifestPath);
-                    Field("metadata", package.Manifest.MetadataPath);
-                    Field("navigation", package.Manifest.NavigationPath ?? "none");
+                    Field("navigation", package.Manifest.DeclaresNavigation ? "present" : "none");
                     Field("resources", Count(package.Manifest.Items.Count));
                     Field("spine", Count(package.Manifest.Spine.Count));
                     Field("entries", Count(package.EntryCount));

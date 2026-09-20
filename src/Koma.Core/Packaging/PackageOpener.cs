@@ -52,12 +52,11 @@ public sealed class KomaPackage : IDisposable
 {
     private readonly ZipArchive archive;
 
-    internal KomaPackage(ZipArchive archive, KomaVersion version, ProcessingMode mode, string rootManifestPath, Manifest manifest, PublicationMetadata metadata, ResourceLimits limits)
+    internal KomaPackage(ZipArchive archive, KomaVersion version, ProcessingMode mode, Manifest manifest, PublicationMetadata metadata, ResourceLimits limits)
     {
         this.archive = archive;
         Version = version;
         Mode = mode;
-        RootManifestPath = rootManifestPath;
         Manifest = manifest;
         Metadata = metadata;
         Limits = limits;
@@ -71,9 +70,6 @@ public sealed class KomaPackage : IDisposable
 
     /// <summary>The processing mode selected by §5.3.</summary>
     public ProcessingMode Mode { get; }
-
-    /// <summary>Path of the root manifest, from the single <c>RootFile</c> of §6.</summary>
-    public string RootManifestPath { get; }
 
     /// <summary>The manifest: the declared resources and the reading order (§8).</summary>
     public Manifest Manifest { get; }
@@ -138,7 +134,6 @@ public sealed class KomaPackage : IDisposable
 /// </remarks>
 public static class PackageOpener
 {
-    private const string ContainerPath = "META-INF/container.xml";
     private const string ContainerNamespace = "urn:koma:container";
     private const string ManifestMediaType = "application/vnd.koma.manifest+xml";
 
@@ -165,23 +160,23 @@ public static class PackageOpener
                 return Rejected(mimetype);
 
             // 2. container.xml, and the version, before anything else is judged.
-            XDocument? container = KomaXml.TryLoad(archive, ContainerPath, out ContainerViolation? xml, profile);
+            XDocument? container = KomaXml.TryLoad(archive, CorePaths.Container, out ContainerViolation? xml, profile);
 
             if (xml is not null)
                 return Rejected(xml);
 
             if (container is null)
-                return Rejected(new ContainerViolation(ContainerViolationCode.MissingRequiredXml, ContainerPath, "The package has no container (§6)."));
+                return Rejected(new ContainerViolation(ContainerViolationCode.MissingRequiredXml, CorePaths.Container, "The package has no container (§6)."));
 
             XElement? root = container.Root;
 
             if (root is null || root.Name != XName.Get("Container", ContainerNamespace))
-                return Rejected(new ContainerViolation(ContainerViolationCode.SchemaInvalidContainer, ContainerPath, $"The root element is not Container in {ContainerNamespace} (§6)."));
+                return Rejected(new ContainerViolation(ContainerViolationCode.SchemaInvalidContainer, CorePaths.Container, $"The root element is not Container in {ContainerNamespace} (§6)."));
 
             string? declared = root.Attribute("version")?.Value;
 
             if (!KomaVersion.TryParse(declared, out KomaVersion version))
-                return Rejected(new ContainerViolation(ContainerViolationCode.SchemaInvalidContainer, ContainerPath, $"'{declared}' is not a version of the form major.minor (§5.1)."));
+                return Rejected(new ContainerViolation(ContainerViolationCode.SchemaInvalidContainer, CorePaths.Container, $"'{declared}' is not a version of the form major.minor (§5.1)."));
 
             ProcessingMode mode = VersionPortal.SelectMode(version);
 
@@ -201,9 +196,9 @@ public static class PackageOpener
             InspectionResult inspection = ArchiveInspector.Inspect(archive, stream.Length, profile);
             violations.AddRange(inspection.Violations);
 
-            string? rootPath = ReadRootFile(root, ContainerPath, violations);
+            bool rootFileValid = CheckRootFile(root, violations);
 
-            Manifest? manifest = rootPath is null ? null : ReadManifest(archive, rootPath, version, profile, violations);
+            Manifest? manifest = rootFileValid ? ReadManifest(archive, version, profile, violations) : null;
 
             PublicationMetadata? metadata = manifest is null ? null : ReadCompanionDocuments(archive, manifest, version, profile, violations);
 
@@ -222,7 +217,7 @@ public static class PackageOpener
             return new PackageOpenResult
             {
                 Outcome = PackageOpenOutcome.Opened,
-                Package = new KomaPackage(archive, version, mode, rootPath!, manifest, metadata, profile),
+                Package = new KomaPackage(archive, version, mode, manifest, metadata, profile),
                 DeclaredVersion = version,
                 Violations = violations.AsReadOnly()
             };
@@ -237,8 +232,9 @@ public static class PackageOpener
     /// <summary>
     /// Loads and reads the root manifest.
     /// </summary>
-    private static Manifest? ReadManifest(ZipArchive archive, string path, KomaVersion version, ResourceLimits profile, List<ContainerViolation> violations)
+    private static Manifest? ReadManifest(ZipArchive archive, KomaVersion version, ResourceLimits profile, List<ContainerViolation> violations)
     {
+        const string path = CorePaths.Manifest;
         XDocument? document = KomaXml.TryLoad(archive, path, out ContainerViolation? xml, profile);
 
         if (xml is not null)
@@ -249,7 +245,7 @@ public static class PackageOpener
 
         if (document is null)
         {
-            violations.Add(new ContainerViolation(ContainerViolationCode.MissingRequiredXml, path, "The container points at a manifest the package does not contain (§6)."));
+            violations.Add(new ContainerViolation(ContainerViolationCode.MissingRequiredXml, path, "The package has no manifest (§1)."));
             return null;
         }
 
@@ -259,8 +255,8 @@ public static class PackageOpener
     }
 
     /// <summary>
-    /// Reads the documents the manifest points at: metadata, which §8 requires,
-    /// and navigation, which it declares only when <c>nav.xml</c> is present.
+    /// Reads the documents beside the manifest: metadata, which §1 requires,
+    /// and navigation, which the manifest declares exactly when it is present.
     /// </summary>
     /// <remarks>
     /// Neither is modelled here. They are loaded so that the checks of §4.6 and
@@ -269,19 +265,31 @@ public static class PackageOpener
     /// </remarks>
     private static PublicationMetadata? ReadCompanionDocuments(ZipArchive archive, Manifest manifest, KomaVersion version, ResourceLimits profile, List<ContainerViolation> violations)
     {
-        PublicationMetadata? metadata = ReadMetadata(archive, manifest.MetadataPath, version, profile, violations);
+        PublicationMetadata? metadata = ReadMetadata(archive, version, profile, violations);
+        bool present = archive.GetEntry(CorePaths.Navigation) is not null;
 
-        if (manifest.NavigationPath is null)
+        // §8: the declaration and the package must agree. Whichever of the two
+        // is wrong, a reader that picked one would be guessing, so neither is
+        // believed and the navigation is not read.
+        if (manifest.DeclaresNavigation != present)
         {
-            // §8 makes nav.xml optional and §15 notes its absence: a
-            // publication without one is readable but has no table of
-            // contents, no page list and no landmarks.
-            violations.Add(new ContainerViolation(ContainerViolationCode.NoNavigationDocument, manifest.MetadataPath, "The publication declares no navigation document (§8).") { Severity = ViolationSeverity.Warning });
+            string message = present ? "The package contains nav.xml and the manifest does not declare it (§8)." : "The manifest declares nav.xml and the package does not contain it (§8).";
+            violations.Add(new ContainerViolation(ContainerViolationCode.NavigationDeclarationMismatch, CorePaths.Manifest, message));
 
             return metadata;
         }
 
-        XDocument? navigation = KomaXml.TryLoad(archive, manifest.NavigationPath, out ContainerViolation? navigationXml, profile);
+        if (!present)
+        {
+            // §1 makes nav.xml optional and §15 notes its absence: a
+            // publication without one is readable but has no table of
+            // contents, no page list and no landmarks.
+            violations.Add(new ContainerViolation(ContainerViolationCode.NoNavigationDocument, CorePaths.Manifest, "The publication has no navigation document (§1).") { Severity = ViolationSeverity.Warning });
+
+            return metadata;
+        }
+
+        XDocument? navigation = KomaXml.TryLoad(archive, CorePaths.Navigation, out ContainerViolation? navigationXml, profile);
 
         if (navigationXml is not null)
         {
@@ -289,20 +297,20 @@ public static class PackageOpener
             return metadata;
         }
 
+        // TryLoad answers null for an absent entry, which the check above has
+        // ruled out; the compiler cannot know that.
         if (navigation is null)
-        {
-            violations.Add(new ContainerViolation(ContainerViolationCode.MissingRequiredXml, manifest.NavigationPath, "The manifest declares navigation the package does not contain (§8)."));
             return metadata;
-        }
 
-        CoreDocumentChecks.CheckExtensions(navigation, manifest.NavigationPath, violations);
-        CoreDocumentChecks.CheckNavigationTargets(navigation, manifest, manifest.NavigationPath, violations);
+        CoreDocumentChecks.CheckExtensions(navigation, CorePaths.Navigation, violations);
+        CoreDocumentChecks.CheckNavigationTargets(navigation, manifest, CorePaths.Navigation, violations);
 
         return metadata;
     }
 
-    private static PublicationMetadata? ReadMetadata(ZipArchive archive, string path, KomaVersion version, ResourceLimits profile, List<ContainerViolation> violations)
+    private static PublicationMetadata? ReadMetadata(ZipArchive archive, KomaVersion version, ResourceLimits profile, List<ContainerViolation> violations)
     {
+        const string path = CorePaths.Metadata;
         XDocument? document = KomaXml.TryLoad(archive, path, out ContainerViolation? xml, profile);
 
         if (xml is not null)
@@ -313,7 +321,7 @@ public static class PackageOpener
 
         if (document is null)
         {
-            violations.Add(new ContainerViolation(ContainerViolationCode.MissingRequiredXml, path, "The manifest points at metadata the package does not contain (§8)."));
+            violations.Add(new ContainerViolation(ContainerViolationCode.MissingRequiredXml, path, "The package has no metadata (§1)."));
             return null;
         }
 
@@ -323,18 +331,23 @@ public static class PackageOpener
     }
 
     /// <summary>
-    /// Reads the single <c>RootFile</c> §6 requires.
+    /// Checks the single <c>RootFile</c> §6 requires.
     /// </summary>
-    private static string? ReadRootFile(XElement container, string entryName, List<ContainerViolation> violations)
+    /// <remarks>
+    /// Checked, not followed. §1 fixes where the manifest lives, so the
+    /// attribute has one legal value; a package naming another is at fault
+    /// and says so, rather than being read from somewhere else.
+    /// </remarks>
+    private static bool CheckRootFile(XElement container, List<ContainerViolation> violations)
     {
         XElement[] roots = [.. container.Elements(XName.Get("RootFiles", ContainerNamespace))
                                         .Elements(XName.Get("RootFile", ContainerNamespace))];
 
         if (roots.Length != 1)
         {
-            violations.Add(new ContainerViolation(ContainerViolationCode.SchemaInvalidContainer, entryName, $"KOMA 0.9 requires exactly one RootFile; found {roots.Length} (§6)."));
+            violations.Add(new ContainerViolation(ContainerViolationCode.SchemaInvalidContainer, CorePaths.Container, $"KOMA 0.9 requires exactly one RootFile; found {roots.Length} (§6)."));
 
-            return null;
+            return false;
         }
 
         XElement rootFile = roots[0];
@@ -343,21 +356,19 @@ public static class PackageOpener
 
         if (mediaType != ManifestMediaType)
         {
-            violations.Add(new ContainerViolation(ContainerViolationCode.SchemaInvalidContainer, entryName, $"RootFile/@media-type is '{mediaType}', not the literal of §2."));
+            violations.Add(new ContainerViolation(ContainerViolationCode.SchemaInvalidContainer, CorePaths.Container, $"RootFile/@media-type is '{mediaType}', not the literal of §2."));
 
-            return null;
+            return false;
         }
 
-        // A Path is a package-relative entry name, so the rules of §3 apply to
-        // it before it is used to reach into the archive.
-        if (!KomaEntryName.TryValidate(path, out EntryNameProblem problem))
+        if (path != CorePaths.Manifest)
         {
-            violations.Add(new ContainerViolation(ContainerViolationCode.SchemaInvalidContainer, entryName, $"RootFile/@full-path is not a Path: {problem} (§4.3)."));
+            violations.Add(new ContainerViolation(ContainerViolationCode.SchemaInvalidContainer, CorePaths.Container, $"RootFile/@full-path is '{path}'; §6 requires {CorePaths.Manifest}."));
 
-            return null;
+            return false;
         }
 
-        return path;
+        return true;
     }
 
     private static readonly ReadOnlyCollection<ContainerViolation> Empty = new List<ContainerViolation>().AsReadOnly();

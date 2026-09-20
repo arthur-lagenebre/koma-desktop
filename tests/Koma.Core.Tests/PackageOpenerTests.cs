@@ -38,6 +38,14 @@ public sealed class PackageOpenerTests
         </Metadata>
         """;
 
+    private const string Navigation = """
+        <Navigation xmlns="urn:koma:navigation" version="0.9">
+          <Landmarks>
+            <Landmark type="front-cover" item="p001"/>
+          </Landmarks>
+        </Navigation>
+        """;
+
     /// <summary>
     /// A package that opens, unless an argument replaces part of it.
     /// </summary>
@@ -72,6 +80,8 @@ public sealed class PackageOpenerTests
 
     private static PackageOpenResult Open(MemoryStream buffer, ResourceLimits? limits = null) => PackageOpener.Open(buffer, limits, leaveOpen: true);
 
+    private static string DeclaringNavigation() => Manifest.Replace("metadata=\"koma/metadata.xml\"", "metadata=\"koma/metadata.xml\" navigation=\"koma/nav.xml\"", StringComparison.Ordinal);
+
     [Fact]
     public void OpensAWellFormedPackage()
     {
@@ -86,7 +96,7 @@ public sealed class PackageOpenerTests
         Assert.NotNull(package);
         Assert.Equal(new KomaVersion(0, 9), package.Version);
         Assert.Equal(ProcessingMode.Strict, package.Mode);
-        Assert.Equal("koma/manifest.xml", package.RootManifestPath);
+        Assert.False(package.Manifest.DeclaresNavigation);
     }
 
     [Fact]
@@ -287,7 +297,7 @@ public sealed class PackageOpenerTests
     }
 
     [Fact]
-    public void RejectsAContainerPointingAtAManifestThatIsNotThere()
+    public void RejectsAPackageWithNoManifest()
     {
         using MemoryStream buffer = Build(Container, manifest: null);
 
@@ -296,6 +306,69 @@ public sealed class PackageOpenerTests
         ContainerViolation violation = Assert.Single(result.Violations);
         Assert.Equal(ContainerViolationCode.MissingRequiredXml, violation.Code);
         Assert.Equal("koma/manifest.xml", violation.EntryName);
+    }
+
+    [Fact]
+    public void RejectsARootFileNamingAnotherManifest()
+    {
+        // §1 fixes the path, so a RootFile naming another one is not followed
+        // even though koma/manifest.xml is there to be read.
+        using MemoryStream buffer = Build(Container.Replace("koma/manifest.xml", "koma/root.xml", StringComparison.Ordinal));
+
+        PackageOpenResult result = Open(buffer);
+
+        Assert.Equal(ContainerViolationCode.SchemaInvalidContainer, Assert.Single(result.Violations).Code);
+    }
+
+    [Theory]
+    [InlineData("metadata=\"koma/meta.xml\"")]
+    [InlineData("metadata=\"koma/metadata.xml\" navigation=\"koma/toc.xml\"")]
+    public void RejectsAManifestNamingAnotherCoreDocument(string attributes)
+    {
+        using MemoryStream buffer = Build(Container, Manifest.Replace("metadata=\"koma/metadata.xml\"", attributes, StringComparison.Ordinal));
+
+        PackageOpenResult result = Open(buffer);
+
+        Assert.Equal(ContainerViolationCode.SchemaInvalidManifest, Assert.Single(result.Violations).Code);
+    }
+
+    [Fact]
+    public void OpensADeclaredNavigationDocumentWithoutWarning()
+    {
+        using MemoryStream buffer = Build(Container, DeclaringNavigation(), (CorePaths.Navigation, Navigation));
+
+        PackageOpenResult result = Open(buffer);
+
+        Assert.Equal(PackageOpenOutcome.Opened, result.Outcome);
+        Assert.DoesNotContain(result.Violations, v => v.Code == ContainerViolationCode.NoNavigationDocument);
+
+        using KomaPackage? package = result.Package;
+        Assert.NotNull(package);
+        Assert.True(package.Manifest.DeclaresNavigation);
+    }
+
+    [Fact]
+    public void RejectsADeclaredNavigationDocumentThatIsAbsent()
+    {
+        using MemoryStream buffer = Build(Container, DeclaringNavigation());
+
+        PackageOpenResult result = Open(buffer);
+
+        Assert.Equal(PackageOpenOutcome.Rejected, result.Outcome);
+        Assert.Equal(ContainerViolationCode.NavigationDeclarationMismatch, Assert.Single(result.Violations).Code);
+    }
+
+    [Fact]
+    public void RejectsAnUndeclaredNavigationDocument()
+    {
+        // Reading the file anyway would be believing the package over the
+        // manifest, which is a choice §8 does not leave to the reader.
+        using MemoryStream buffer = Build(Container, Manifest, (CorePaths.Navigation, Navigation));
+
+        PackageOpenResult result = Open(buffer);
+
+        Assert.Equal(PackageOpenOutcome.Rejected, result.Outcome);
+        Assert.Equal(ContainerViolationCode.NavigationDeclarationMismatch, Assert.Single(result.Violations).Code);
     }
 
     [Fact]
@@ -350,7 +423,7 @@ public sealed class PackageOpenerTests
         using KomaPackage? package = Open(buffer).Package;
         Assert.NotNull(package);
 
-        XDocument? manifest = package.TryLoadXml(package.RootManifestPath, out ContainerViolation? violation);
+        XDocument? manifest = package.TryLoadXml(CorePaths.Manifest, out ContainerViolation? violation);
 
         Assert.Null(violation);
         Assert.NotNull(manifest);

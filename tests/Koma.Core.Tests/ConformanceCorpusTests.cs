@@ -45,6 +45,7 @@ public sealed class ConformanceCorpusTests
         ContainerViolationCode.MimetypeCompression,
         ContainerViolationCode.MimetypeContent,
         ContainerViolationCode.MimetypePosition,
+        ContainerViolationCode.NavigationDeclarationMismatch,
         ContainerViolationCode.NavigationTargetOutsideSpine,
         ContainerViolationCode.PathTraversal,
         ContainerViolationCode.Span2SpreadPosition,
@@ -138,13 +139,13 @@ public sealed class ConformanceCorpusTests
         // otherwise be filed as out of scope and pass.
         CorpusCase[] cases = LoadExpected();
 
-        Assert.Equal(31, cases.Length);
+        Assert.Equal(33, cases.Length);
 
         int covered = cases.Count(c => c.Code is not null && Implemented.Contains(c.Code));
         int misnamed = cases.Count(c => c.Code is not null && Misnamed.ContainsKey(c.Code));
         int outOfScope = cases.Length - covered - misnamed;
 
-        Assert.Equal(25, covered);
+        Assert.Equal(27, covered);
         Assert.Equal(0, misnamed);
         Assert.Equal(6, outOfScope);
     }
