@@ -29,6 +29,12 @@ public sealed record PublicationMetadata
 
     /// <summary>§7.14 content warnings, which §7.13 makes hazards agree with.</summary>
     public required ReadOnlyCollection<string> ContentWarnings { get; init; }
+
+    /// <summary>
+    /// The first <c>Language role="content"</c> (§7.4), which §4.4 makes the
+    /// language of any core document that declares none of its own.
+    /// </summary>
+    public string? ContentLanguage { get; init; }
 }
 
 /// <summary>
@@ -107,7 +113,8 @@ public static class MetadataReader
             Direction = direction == "rtl" ? ReadingDirection.RightToLeft : ReadingDirection.LeftToRight,
             Spread = spread switch { "none" => SpreadPolicy.None, "force" => SpreadPolicy.Force, _ => SpreadPolicy.Auto },
             AccessibilityHazards = hazards.AsReadOnly(),
-            ContentWarnings = warnings.AsReadOnly()
+            ContentWarnings = warnings.AsReadOnly(),
+            ContentLanguage = root.Elements(XName.Get("Languages", Namespace)).Elements(XName.Get("Language", Namespace)).FirstOrDefault(l => l.Attribute("role")?.Value == "content")?.Value.Trim()
         };
     }
 

@@ -377,7 +377,7 @@ public static class ManifestReader
 
         foreach (string token in tokens)
         {
-            if (!IsToken(token))
+            if (!KomaTokens.IsToken(token))
             {
                 violations.Add(Invalid(entryName, $"Item '{id}' has '{token}' in {attribute}, which is not a Token (§4.3)."));
                 return null;
@@ -392,28 +392,6 @@ public static class ManifestReader
 
         return tokens;
     }
-
-    /// <summary>
-    /// <c>[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?</c>, per §4.3.
-    /// </summary>
-    private static bool IsToken(string token)
-    {
-        if (token.Length is 0 or > 63)
-            return false;
-
-        if (!IsTokenEdge(token[0]) || !IsTokenEdge(token[^1]))
-            return false;
-
-        foreach (char c in token)
-        {
-            if (!IsTokenEdge(c) && c != '-')
-                return false;
-        }
-
-        return true;
-    }
-
-    private static bool IsTokenEdge(char c) => c is >= 'a' and <= 'z' or >= '0' and <= '9';
 
     /// <summary>
     /// An attribute naming a core document, which §1 allows one value only.

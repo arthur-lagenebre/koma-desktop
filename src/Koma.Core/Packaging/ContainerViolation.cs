@@ -75,6 +75,8 @@ public static class ContainerViolationCode
     public const string SchemaInvalidContainer = "schema-invalid:container";
     public const string SchemaInvalidMetadata = "schema-invalid:metadata";
     public const string SchemaInvalidManifest = "schema-invalid:manifest";
+    public const string SchemaInvalidNavigation = "schema-invalid:navigation";
+    public const string LandmarkDuplicateType = "landmark-duplicate-type";
     public const string MissingPageResource = "missing-page-resource";
     public const string UnreadablePageResource = "unreadable-page-resource";
 }

@@ -10,10 +10,13 @@ Written in C# with Avalonia. Windows is the primary target; Linux is supported.
 `Koma.Core` goes from a file to a pagination. It refuses the entry count before
 building the archive (§13.1), checks the mimetype entry field by field (§2.1),
 resolves the version against the portal of §5.0 before judging anything, reads
-the container, manifest and metadata, and enforces the ZIP profile of §3. The
-pairing algorithm of §10.4 agrees with the reference implementation on all
-fifteen upstream fixtures, which are written by hand from the prose and never
-regenerated from an implementation.
+the container, manifest, metadata and navigation, and enforces the ZIP profile
+of §3. Navigation labels carry the language §4.4 gives them, and
+`NavigationLabel.Choose` picks the one to show from the reader's languages;
+regions (§9.4) are not read, which §16 allows. The pairing algorithm of §10.4
+agrees with the reference implementation on all fifteen upstream fixtures,
+which are written by hand from the prose and never regenerated from an
+implementation.
 
 Page resources are checked in a pass of their own rather than at open time:
 each check reads a whole image, so running them on open would decompress the
@@ -137,6 +140,12 @@ None of these block anything.
 - **`background-color` is not validated.** Nothing checks it against the
   `#RRGGBB` form of §10.5; the reader falls back to white on a value it cannot
   parse, and accepts colour names it should not.
+- **Two §9.2 rules are not checked**: two `PageTarget` elements sharing an
+  item and a `spread-position`, and a `spread-position` on an item whose
+  `page-span` is 1. §15 lists both as errors, and §15.1 gives neither a code.
+- **Unknown tokens are not refused in strict mode.** A landmark type or item
+  role that is a valid token but neither a core nor a private-use one falls
+  back per §4.5.1 without an error, where §4.5 and §5.3 make it one.
 - **Two §2.1 faults have no code of their own**: a data descriptor and extra
   fields on the mimetype entry. Both are reported as `mimetype-content` with
   the reason in the message.

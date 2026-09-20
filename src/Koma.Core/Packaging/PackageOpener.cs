@@ -52,13 +52,14 @@ public sealed class KomaPackage : IDisposable
 {
     private readonly ZipArchive archive;
 
-    internal KomaPackage(ZipArchive archive, KomaVersion version, ProcessingMode mode, Manifest manifest, PublicationMetadata metadata, ResourceLimits limits)
+    internal KomaPackage(ZipArchive archive, KomaVersion version, ProcessingMode mode, Manifest manifest, PublicationMetadata metadata, PublicationNavigation? navigation, ResourceLimits limits)
     {
         this.archive = archive;
         Version = version;
         Mode = mode;
         Manifest = manifest;
         Metadata = metadata;
+        Navigation = navigation;
         Limits = limits;
     }
 
@@ -76,6 +77,9 @@ public sealed class KomaPackage : IDisposable
 
     /// <summary>What the metadata says about how the publication is read (§7).</summary>
     public PublicationMetadata Metadata { get; }
+
+    /// <summary>What <c>nav.xml</c> offers the reader (§9), or <see langword="null"/> without one.</summary>
+    public PublicationNavigation? Navigation { get; }
 
     /// <summary>The profile the package was opened under.</summary>
     public ResourceLimits Limits { get; }
@@ -200,7 +204,7 @@ public static class PackageOpener
 
             Manifest? manifest = rootFileValid ? ReadManifest(archive, version, profile, violations) : null;
 
-            PublicationMetadata? metadata = manifest is null ? null : ReadCompanionDocuments(archive, manifest, version, profile, violations);
+            (PublicationMetadata? metadata, PublicationNavigation? navigation) = manifest is null ? (null, null) : ReadCompanionDocuments(archive, manifest, version, profile, violations);
 
             if (manifest is null || metadata is null || violations.Any(v => v.Severity == ViolationSeverity.Error))
             {
@@ -217,7 +221,7 @@ public static class PackageOpener
             return new PackageOpenResult
             {
                 Outcome = PackageOpenOutcome.Opened,
-                Package = new KomaPackage(archive, version, mode, manifest, metadata, profile),
+                Package = new KomaPackage(archive, version, mode, manifest, metadata, navigation, profile),
                 DeclaredVersion = version,
                 Violations = violations.AsReadOnly()
             };
@@ -259,11 +263,11 @@ public static class PackageOpener
     /// and navigation, which the manifest declares exactly when it is present.
     /// </summary>
     /// <remarks>
-    /// Neither is modelled here. They are loaded so that the checks of §4.6 and
-    /// §9 can run over them, which is all this build needs from them so far;
-    /// reading them into a model is the next piece, not this one.
+    /// Metadata comes first because navigation needs it: §4.4 makes the
+    /// content language of the metadata the language of any label that
+    /// declares none of its own.
     /// </remarks>
-    private static PublicationMetadata? ReadCompanionDocuments(ZipArchive archive, Manifest manifest, KomaVersion version, ResourceLimits profile, List<ContainerViolation> violations)
+    private static (PublicationMetadata? Metadata, PublicationNavigation? Navigation) ReadCompanionDocuments(ZipArchive archive, Manifest manifest, KomaVersion version, ResourceLimits profile, List<ContainerViolation> violations)
     {
         PublicationMetadata? metadata = ReadMetadata(archive, version, profile, violations);
         bool present = archive.GetEntry(CorePaths.Navigation) is not null;
@@ -276,7 +280,7 @@ public static class PackageOpener
             string message = present ? "The package contains nav.xml and the manifest does not declare it (§8)." : "The manifest declares nav.xml and the package does not contain it (§8).";
             violations.Add(new ContainerViolation(ContainerViolationCode.NavigationDeclarationMismatch, CorePaths.Manifest, message));
 
-            return metadata;
+            return (metadata, null);
         }
 
         if (!present)
@@ -286,26 +290,28 @@ public static class PackageOpener
             // contents, no page list and no landmarks.
             violations.Add(new ContainerViolation(ContainerViolationCode.NoNavigationDocument, CorePaths.Manifest, "The publication has no navigation document (§1).") { Severity = ViolationSeverity.Warning });
 
-            return metadata;
+            return (metadata, null);
         }
 
-        XDocument? navigation = KomaXml.TryLoad(archive, CorePaths.Navigation, out ContainerViolation? navigationXml, profile);
+        XDocument? document = KomaXml.TryLoad(archive, CorePaths.Navigation, out ContainerViolation? navigationXml, profile);
 
         if (navigationXml is not null)
         {
             violations.Add(navigationXml);
-            return metadata;
+            return (metadata, null);
         }
 
         // TryLoad answers null for an absent entry, which the check above has
         // ruled out; the compiler cannot know that.
-        if (navigation is null)
-            return metadata;
+        if (document is null)
+            return (metadata, null);
 
-        CoreDocumentChecks.CheckExtensions(navigation, CorePaths.Navigation, violations);
-        CoreDocumentChecks.CheckNavigationTargets(navigation, manifest, CorePaths.Navigation, violations);
+        CoreDocumentChecks.CheckExtensions(document, CorePaths.Navigation, violations);
+        CoreDocumentChecks.CheckNavigationTargets(document, manifest, CorePaths.Navigation, violations);
 
-        return metadata;
+        PublicationNavigation? navigation = NavigationReader.Read(document, CorePaths.Navigation, version, metadata?.ContentLanguage, violations);
+
+        return (metadata, navigation);
     }
 
     private static PublicationMetadata? ReadMetadata(ZipArchive archive, KomaVersion version, ResourceLimits profile, List<ContainerViolation> violations)

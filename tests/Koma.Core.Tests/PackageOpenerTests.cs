@@ -97,6 +97,7 @@ public sealed class PackageOpenerTests
         Assert.Equal(new KomaVersion(0, 9), package.Version);
         Assert.Equal(ProcessingMode.Strict, package.Mode);
         Assert.False(package.Manifest.DeclaresNavigation);
+        Assert.Null(package.Navigation);
     }
 
     [Fact]
@@ -345,6 +346,8 @@ public sealed class PackageOpenerTests
         using KomaPackage? package = result.Package;
         Assert.NotNull(package);
         Assert.True(package.Manifest.DeclaresNavigation);
+        Assert.NotNull(package.Navigation);
+        Assert.Equal("front-cover", Assert.Single(package.Navigation.Landmarks).Type);
     }
 
     [Fact]
