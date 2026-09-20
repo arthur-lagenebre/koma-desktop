@@ -29,23 +29,8 @@ public sealed record NavigationLabel(string Text, string? Language)
         ArgumentNullException.ThrowIfNull(labels);
         ArgumentNullException.ThrowIfNull(languages);
 
-        foreach (string language in languages)
-        {
-            NavigationLabel? exact = labels.FirstOrDefault(l => string.Equals(l.Language, language, StringComparison.OrdinalIgnoreCase));
-
-            if (exact is not null)
-                return exact;
-
-            NavigationLabel? related = labels.FirstOrDefault(l => l.Language is not null && string.Equals(Primary(l.Language), Primary(language), StringComparison.OrdinalIgnoreCase));
-
-            if (related is not null)
-                return related;
-        }
-
-        return labels.Count > 0 ? labels[0] : null;
+        return KomaLanguage.Choose(labels, label => label.Language, languages);
     }
-
-    private static string Primary(string tag) => tag.Split('-')[0];
 }
 
 /// <summary>One entry of the table of contents (§9.1).</summary>
@@ -85,8 +70,6 @@ public sealed record PublicationNavigation(ReadOnlyCollection<TocEntry> TableOfC
 public static class NavigationReader
 {
     private const string Namespace = "urn:koma:navigation";
-
-    private static readonly XName XmlLang = XNamespace.Xml + "lang";
 
     /// <summary>The sections of §9, in the order it requires.</summary>
     private static readonly string[] Sections = ["TableOfContents", "PageList", "Landmarks", "Regions", "Extensions"];
@@ -306,28 +289,10 @@ public static class NavigationReader
                 return null;
             }
 
-            labels.Add(new NavigationLabel(text, LanguageOf(label, contentLanguage)));
+            labels.Add(new NavigationLabel(text, KomaLanguage.Of(label, contentLanguage)));
         }
 
         return labels.AsReadOnly();
-    }
-
-    /// <summary>
-    /// §4.4: the nearest <c>xml:lang</c>, the root's included, else the
-    /// content language. An empty one means undetermined, and stops the
-    /// search there rather than falling through to an outer declaration.
-    /// </summary>
-    private static string? LanguageOf(XElement element, string? contentLanguage)
-    {
-        for (XElement? current = element; current is not null; current = current.Parent)
-        {
-            XAttribute? lang = current.Attribute(XmlLang);
-
-            if (lang is not null)
-                return lang.Value.Length == 0 ? null : lang.Value;
-        }
-
-        return contentLanguage;
     }
 
     private static IEnumerable<XElement> Section(XElement root, string name) => root.Elements(Core(name));

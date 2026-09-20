@@ -34,6 +34,12 @@ public sealed class PackageOpenerTests
 
     private const string Metadata = """
         <Metadata xmlns="urn:koma:metadata" version="0.9">
+          <Titles>
+            <Title type="main">Test publication</Title>
+          </Titles>
+          <Languages>
+            <Language role="content">en</Language>
+          </Languages>
           <Reading direction="ltr" spread="auto"/>
         </Metadata>
         """;

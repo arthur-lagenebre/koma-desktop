@@ -6,13 +6,23 @@ using System.Xml.Linq;
 namespace Koma.Core.Model;
 
 /// <summary>
+/// One title of §7.3, in the language §4.4 gives it.
+/// </summary>
+/// <param name="Type">An open vocabulary; <c>main</c> is the one §7.3 requires.</param>
+public sealed record PublicationTitle(string Text, string Type, string? Language)
+{
+    /// <summary>The type §7.3 requires exactly one title to carry.</summary>
+    public const string Main = "main";
+}
+
+/// <summary>
 /// What <c>metadata.xml</c> says that changes how a publication is read.
 /// </summary>
 /// <remarks>
 /// A fraction of §7. The sections this reader does not touch — identifiers,
-/// titles, contributors, rights, provenance — describe the work rather than its
-/// presentation, and nothing in the reader needs them yet. They will be added
-/// when something asks for them, not before.
+/// contributors, rights, provenance — describe the work rather than its
+/// presentation, and nothing needs them yet. Titles are here because a
+/// library lists publications by name.
 /// </remarks>
 public sealed record PublicationMetadata
 {
@@ -29,6 +39,19 @@ public sealed record PublicationMetadata
 
     /// <summary>§7.14 content warnings, which §7.13 makes hazards agree with.</summary>
     public required ReadOnlyCollection<string> ContentWarnings { get; init; }
+
+    /// <summary>§7.3 titles, of which exactly one is of type <c>main</c>.</summary>
+    public required ReadOnlyCollection<PublicationTitle> Titles { get; init; }
+
+    /// <summary>
+    /// The title a publication is listed under.
+    /// </summary>
+    /// <remarks>
+    /// §7.3 allows exactly one of type <c>main</c>, in one language, and the
+    /// reader refuses metadata without it, so there is always one to find and
+    /// never a choice to make between several.
+    /// </remarks>
+    public PublicationTitle MainTitle => Titles.First(t => t.Type == PublicationTitle.Main);
 
     /// <summary>
     /// The first <c>Language role="content"</c> (§7.4), which §4.4 makes the
@@ -102,6 +125,12 @@ public static class MetadataReader
             return null;
         }
 
+        string? contentLanguage = ContentLanguageOf(root);
+        ReadOnlyCollection<PublicationTitle>? titles = ReadTitles(root, contentLanguage, entryName, violations);
+
+        if (titles is null)
+            return null;
+
         string[] hazards = [.. Values(root, "Accessibility", "AccessibilityHazard")];
         string[] warnings = [.. Attributes(root, "Ratings", "ContentWarning", "type")];
 
@@ -114,7 +143,8 @@ public static class MetadataReader
             Spread = spread switch { "none" => SpreadPolicy.None, "force" => SpreadPolicy.Force, _ => SpreadPolicy.Auto },
             AccessibilityHazards = hazards.AsReadOnly(),
             ContentWarnings = warnings.AsReadOnly(),
-            ContentLanguage = root.Elements(XName.Get("Languages", Namespace)).Elements(XName.Get("Language", Namespace)).FirstOrDefault(l => l.Attribute("role")?.Value == "content")?.Value.Trim()
+            Titles = titles,
+            ContentLanguage = contentLanguage
         };
     }
 
@@ -145,6 +175,45 @@ public static class MetadataReader
     private static IEnumerable<string> Values(XElement root, string section, string child) => root.Elements(XName.Get(section, Namespace)).Elements(XName.Get(child, Namespace)).Select(e => e.Value.Trim());
 
     private static IEnumerable<string> Attributes(XElement root, string section, string child, string attribute) => root.Elements(XName.Get(section, Namespace)).Elements(XName.Get(child, Namespace)).Select(e => e.Attribute(attribute)?.Value).Where(v => v is not null)!;
+
+    /// <summary>
+    /// §7.3: every title has a type, and exactly one of them is the main one.
+    /// </summary>
+    /// <remarks>
+    /// The count is the part no schema expresses, and the part a library
+    /// leans on: a publication has one name to be listed under, whatever
+    /// else it is also called.
+    /// </remarks>
+    private static ReadOnlyCollection<PublicationTitle>? ReadTitles(XElement root, string? contentLanguage, string entryName, List<ContainerViolation> violations)
+    {
+        var titles = new List<PublicationTitle>();
+
+        foreach (XElement element in root.Elements(XName.Get("Titles", Namespace)).Elements(XName.Get("Title", Namespace)))
+        {
+            string? type = element.Attribute("type")?.Value;
+            string text = element.Value.Trim();
+
+            if (type is null || text.Length == 0)
+            {
+                violations.Add(Invalid(entryName, "Every Title needs a type and text (§7.3)."));
+                return null;
+            }
+
+            titles.Add(new PublicationTitle(text, type, KomaLanguage.Of(element, contentLanguage)));
+        }
+
+        int main = titles.Count(t => t.Type == PublicationTitle.Main);
+
+        if (main != 1)
+        {
+            violations.Add(Invalid(entryName, $"{main} titles are of type main; §7.3 requires exactly one."));
+            return null;
+        }
+
+        return titles.AsReadOnly();
+    }
+
+    private static string? ContentLanguageOf(XElement root) => root.Elements(XName.Get("Languages", Namespace)).Elements(XName.Get("Language", Namespace)).FirstOrDefault(l => l.Attribute("role")?.Value == "content")?.Value.Trim();
 
     private static ContainerViolation Invalid(string entryName, string message) => new(ContainerViolationCode.SchemaInvalidMetadata, entryName, message);
 }

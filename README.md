@@ -10,8 +10,9 @@ Written in C# with Avalonia. Windows is the primary target; Linux is supported.
 `Koma.Core` goes from a file to a pagination. It refuses the entry count before
 building the archive (§13.1), checks the mimetype entry field by field (§2.1),
 resolves the version against the portal of §5.0 before judging anything, reads
-the container, manifest, metadata and navigation, and enforces the ZIP profile
-of §3. Navigation labels carry the language §4.4 gives them, and
+the container, manifest, metadata — its titles included, since a library lists
+publications by name — and navigation, and enforces the ZIP profile of §3.
+Navigation labels carry the language §4.4 gives them, and
 `NavigationLabel.Choose` picks the one to show from the reader's languages;
 regions (§9.4) are not read, which §16 allows. `OpenVocabularies` judges the
 tokens of all twenty-five open vocabularies of §4.5 in whichever document holds
