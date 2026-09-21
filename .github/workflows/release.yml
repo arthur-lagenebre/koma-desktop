@@ -24,6 +24,12 @@ jobs:
           - os: ubuntu-latest
             rid: linux-x64
 
+    # Outside the checkout, so that nothing the repository holds can end up
+    # beside the executable: a stray build committed once was enough to make
+    # two files of one.
+    env:
+      OUTPUT: ${{ runner.temp }}/publish
+
     steps:
       - name: Check out with corpus submodule
         uses: actions/checkout@v7
@@ -43,9 +49,9 @@ jobs:
       # Self-contained, so that nothing has to be installed first, and one
       # file with its native libraries inside: Skia and HarfBuzz ship native
       # code, which a single-file publish leaves beside the executable unless
-      # told to carry it. No symbol files, which are the only other files a
-      # publish leaves. Not trimmed: Avalonia's XAML loading reflects over
-      # types a trimmer cannot see.
+      # told to carry it. No symbol files, which the project also drops for
+      # the native libraries. Not trimmed: Avalonia's XAML loading reflects
+      # over types a trimmer cannot see.
       - name: Publish
         shell: bash
         run: |
@@ -57,7 +63,7 @@ jobs:
             --configuration Release \
             --runtime ${{ matrix.rid }} \
             --self-contained true \
-            --output publish \
+            --output "$OUTPUT" \
             -p:PublishSingleFile=true \
             -p:IncludeNativeLibrariesForSelfExtract=true \
             -p:DebugType=none \
@@ -65,15 +71,17 @@ jobs:
 
       # The release is one file a reader downloads and runs. Anything else
       # left in the output would have to travel with it, so a second file
-      # fails the build rather than a reader's first launch.
+      # fails the build rather than a reader's first launch, and says what
+      # each file is.
       - name: Check the output is one file
         shell: bash
         run: |
-          count=$(find publish -type f | wc -l)
+          count=$(find "$OUTPUT" -type f | wc -l)
 
           if [ "$count" -ne 1 ]; then
             echo "The publish left $count files where one was expected:"
-            find publish -type f
+            ls -la "$OUTPUT"
+            file "$OUTPUT"/* || true
             exit 1
           fi
 
@@ -83,9 +91,9 @@ jobs:
           name="koma-desktop-${GITHUB_REF_NAME}-${{ matrix.rid }}"
 
           if [ "${{ matrix.rid }}" = "win-x64" ]; then
-            cp publish/Koma.Desktop.exe "${name}.exe"
+            cp "$OUTPUT/Koma.Desktop.exe" "${name}.exe"
           else
-            cp publish/Koma.Desktop "${name}"
+            cp "$OUTPUT/Koma.Desktop" "${name}"
             chmod +x "${name}"
           fi
 
