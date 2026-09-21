@@ -24,17 +24,20 @@ jobs:
           - os: ubuntu-latest
             rid: linux-x64
 
-    # Outside the checkout, so that nothing the repository holds can end up
-    # beside the executable: a stray build committed once was enough to make
-    # two files of one.
-    env:
-      OUTPUT: ${{ runner.temp }}/publish
-
     steps:
       - name: Check out with corpus submodule
         uses: actions/checkout@v7
         with:
           submodules: recursive
+
+      # Outside the checkout, so that nothing the repository holds can end up
+      # beside the executable: a stray build committed once was enough to make
+      # two files of one. Set from a step because the runner context is not
+      # available at the level of a job. Forward slashes, which both Git Bash
+      # and dotnet read on Windows.
+      - name: Choose the output folder
+        shell: bash
+        run: echo "OUTPUT=${RUNNER_TEMP//\\//}/publish" >> "$GITHUB_ENV"
 
       - name: Set up .NET
         uses: actions/setup-dotnet@v6
