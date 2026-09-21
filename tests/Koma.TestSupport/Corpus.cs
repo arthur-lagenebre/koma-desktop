@@ -30,4 +30,10 @@ public static class Corpus
 
     /// <summary>One package of the corpus, by file name.</summary>
     public static string Package(string name) => Path.Combine(Root(), "packages", name);
+
+    /// <summary>
+    /// One of the CBZ archives the specification repository converts with
+    /// its reference converter, by file name.
+    /// </summary>
+    public static string Example(string name) => Path.Combine(Root(), "..", "examples", name);
 }
