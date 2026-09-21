@@ -22,6 +22,12 @@ public sealed record PageImageFacts
     /// <c>1</c> or absent, the producer having applied the rotation already.
     /// </summary>
     public int? ExifOrientation { get; init; }
+
+    /// <summary>
+    /// Whether a JPEG carries four components, CMYK or YCCK, which §8.1 puts
+    /// outside the base profile: a producer converts such a page to RGB.
+    /// </summary>
+    public bool IsCmyk { get; init; }
 }
 
 /// <summary>
@@ -137,7 +143,8 @@ public static class PageImageReader
             // not frame headers: DHT, JPG, DAC and the restart markers.
             if (marker is >= 0xC0 and <= 0xCF && marker is not (0xC4 or 0xC8 or 0xCC))
             {
-                if (payload.Length < 5)
+                // Precision, height, width, then the component count.
+                if (payload.Length < 6)
                     return null;
 
                 return new PageImageFacts
@@ -145,7 +152,8 @@ public static class PageImageReader
                     MediaType = Jpeg,
                     Height = BinaryPrimitives.ReadUInt16BigEndian(payload[1..]),
                     Width = BinaryPrimitives.ReadUInt16BigEndian(payload[3..]),
-                    ExifOrientation = orientation
+                    ExifOrientation = orientation,
+                    IsCmyk = payload[5] == 4
                 };
             }
 
