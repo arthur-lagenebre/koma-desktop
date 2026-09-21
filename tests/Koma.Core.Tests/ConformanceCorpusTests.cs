@@ -162,7 +162,7 @@ public sealed class ConformanceCorpusTests
         // otherwise be filed as out of scope and pass.
         CorpusCase[] cases = LoadExpected();
 
-        Assert.Equal(42, cases.Length);
+        Assert.Equal(43, cases.Length);
 
         int covered = cases.Count(c => c.Code is not null && Implemented.Contains(c.Code));
         int misnamed = cases.Count(c => c.Code is not null && Misnamed.ContainsKey(c.Code));
@@ -170,7 +170,7 @@ public sealed class ConformanceCorpusTests
 
         Assert.Equal(33, covered);
         Assert.Equal(0, misnamed);
-        Assert.Equal(9, outOfScope);
+        Assert.Equal(10, outOfScope);
     }
 
     [Fact]

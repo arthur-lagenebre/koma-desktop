@@ -22,13 +22,15 @@ public sealed class CanonicalXmlTests
     [InlineData("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Reading xmlns=\"urn:koma:metadata\" direction=\"rtl\"/>\n")]
     [InlineData("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Titles xmlns=\"urn:koma:metadata\">\n  <Title type=\"main\">Le rivage</Title>\n</Titles>\n")]
     [InlineData("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Titles xmlns=\"urn:koma:metadata\">\n  <Title type=\"a&quot;b\">&amp;&lt;&gt;</Title>\n</Titles>\n")]
+    [InlineData("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Descriptions xmlns=\"urn:koma:metadata\">\n  <Description type=\"summary\">Un.\n\nDeux.</Description>\n</Descriptions>\n")]
     [InlineData("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Extensions xmlns=\"urn:koma:metadata\">\n  <shelf xmlns=\"urn:example:shelf\" row=\"3\"/>\n</Extensions>\n")]
     [InlineData("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Extensions xmlns=\"urn:koma:metadata\">\n  <x xmlns=\"\"/>\n</Extensions>\n")]
     [InlineData("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Metadata xmlns=\"urn:koma:metadata\" xmlns:dc=\"http://purl.org/dc/elements/1.1/\" version=\"0.9\">\n  <Extensions>\n    <dc:rights>Libre</dc:rights>\n  </Extensions>\n</Metadata>\n")]
     public void WritesBackWhatItIsGiven(string document)
     {
-        // An empty element, text on its element's line, escaping, foreign
-        // content, an element in no namespace, and a prefixed declaration.
+        // An empty element, text on its element's line, escaping, text on
+        // several lines, foreign content, an element in no namespace, and a
+        // prefixed declaration.
         Assert.Equal(document, Rewrite(Encoding.UTF8.GetBytes(document)));
     }
 
@@ -37,7 +39,7 @@ public sealed class CanonicalXmlTests
     {
         string[] packages = [.. Directory.EnumerateFiles(Path.Combine(Corpus.Root(), "packages"), "*.koma").Order(StringComparer.Ordinal)];
 
-        Assert.Equal(42, packages.Length);
+        Assert.Equal(43, packages.Length);
 
         foreach (string package in packages)
         {

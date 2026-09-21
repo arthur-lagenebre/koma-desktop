@@ -39,9 +39,9 @@ decode, or a size beyond the pixel limits is withheld and keeps its place in
 the spine; a page with any other fault of the resource layer is decoded and
 shown, and its fault travels with it for the interface to report.
 
-Of the 42 packages in the upstream corpus, 33 are refused with the code the
-corpus gives. The remaining nine are a defect no opener can see — an entry that
-under-declares its size is only caught when something reads it — and the eight
+Of the 43 packages in the upstream corpus, 33 are refused with the code the
+corpus gives. The remaining ten are a defect no opener can see — an entry that
+under-declares its size is only caught when something reads it — and the nine
 packages that have nothing to refuse. `ConformanceCorpusTests` asserts those
 counts, so a case that moves is reported rather than quietly reclassified.
 
@@ -140,7 +140,7 @@ git submodule update --init --recursive
 
 ## Testing against the corpus
 
-`external/koma/corpus/expected.json` states, for each of the 42 packages,
+`external/koma/corpus/expected.json` states, for each of the 43 packages,
 whether a conforming implementation must report it valid, warning or error.
 It is normative by example. The test suite walks it directly rather than
 defining its own fixtures.
