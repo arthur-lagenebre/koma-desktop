@@ -86,16 +86,19 @@ public static class MimetypeEntryCheck
             return Content("The mimetype entry is encrypted (§2.1).");
 
         // A data descriptor defers the CRC and sizes past the entry, so the
-        // local header no longer carries them. §2.1 forbids it. No code of §15.1
-        // names this or the extra-field case below; both are reported as content
-        // faults, with the reason in the message.
+        // local header no longer carries them. Named before the content is
+        // compared, as the reference validator names it: the content check
+        // would pass, the bytes at 38 being where they belong.
         if ((flags & 0x0008) != 0)
-            return Content("The mimetype entry carries a data descriptor (§2.1).");
+            return new ContainerViolation(ContainerViolationCode.MimetypeDataDescriptor, KomaMediaType.EntryName, "The mimetype entry defers its CRC and sizes to a data descriptor (§2.1).");
 
         ushort extraLength = BinaryPrimitives.ReadUInt16LittleEndian(head.AsSpan(28, 2));
 
+        // Named for what it is rather than for its effect: an extra field
+        // pushes the media type off byte 38, which the content check would
+        // report as the wrong bytes.
         if (extraLength != 0)
-            return Content($"The mimetype entry carries {extraLength} bytes of extra fields (§2.1).");
+            return new ContainerViolation(ContainerViolationCode.MimetypeExtraField, KomaMediaType.EntryName, $"The mimetype entry carries {extraLength} bytes of extra fields (§2.1).");
 
         uint uncompressed = BinaryPrimitives.ReadUInt32LittleEndian(head.AsSpan(22, 4));
 

@@ -42,7 +42,7 @@ decode, or a size beyond the pixel limits is withheld and keeps its place in
 the spine; a page with any other fault of the resource layer is decoded and
 shown, and its fault travels with it for the interface to report.
 
-Of the 43 packages in the upstream corpus, 33 are refused with the code the
+Of the 45 packages in the upstream corpus, 35 are refused with the code the
 corpus gives. The remaining ten are a defect no opener can see — an entry that
 under-declares its size is only caught when something reads it — and the nine
 packages that have nothing to refuse. `ConformanceCorpusTests` asserts those
@@ -171,7 +171,7 @@ the folders and positions of a development session.
 
 ## Testing against the corpus
 
-`external/koma/corpus/expected.json` states, for each of the 43 packages,
+`external/koma/corpus/expected.json` states, for each of the 45 packages,
 whether a conforming implementation must report it valid, warning or error.
 It is normative by example. The test suite walks it directly rather than
 defining its own fixtures.
@@ -195,19 +195,11 @@ written by Pillow, so SkiaSharp is never judged on its own output.
 
 None of these block anything.
 
-- **§3 names no Unicode version.** `CaseFoldingTable` is generated from
-  Unicode 16.0; the reference validator uses whatever the Python running it
-  carries. They agree on the machine that generated the table and may not
-  agree elsewhere. Either the specification names a version, or the table
-  moves to the `koma` repository.
 - **The corpus does not exercise every code of §15.1**, which criterion 3 of
   §5.0.1 will eventually require.
 - **A TIFF page stops a conversion.** Skia reads no TIFF where Pillow does,
   so a CBZ the reference converter handles can be one this one refuses,
   naming the page, rather than a publication with a page missing.
-- **Two §2.1 faults have no code of their own**: a data descriptor and extra
-  fields on the mimetype entry. Both are reported as `mimetype-content` with
-  the reason in the message.
 - **Check order is load-bearing in two places.** `CheckResourcesInSpine` and
   `CheckNavigationTargets` stay silent when the spine is already at fault, so
   that the reader does not name a cause and a symptom with equal weight. Both
@@ -259,6 +251,13 @@ opener checks the attributes against it and reads from it, and never follows
 an attribute. A manifest whose `@navigation` disagrees with the presence of
 `koma/nav.xml`, in either direction, is refused with
 `navigation-declaration-mismatch`.
+
+**Unicode version.** §3 folds and normalizes entry names with the data of
+Unicode 16.0.0. `CaseFoldingTable` is generated from exactly that release.
+Normalization comes from the runtime, which takes it from ICU or from Windows
+and so from whatever version the host carries; Unicode's stability policies
+keep both fixed for every character once assigned, so every host agrees with
+16.0.0 on every name made of characters it assigns, which is all §3 asks.
 
 ## Licence
 

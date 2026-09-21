@@ -39,3 +39,17 @@ jobs:
 
       - name: Test
         run: dotnet test --no-build --configuration Release --verbosity normal
+
+  # A workflow that does not parse fails before it starts, and says so only
+  # in the Actions tab. actionlint reads the workflows the way GitHub will,
+  # contexts included, and fails the push instead: it would have caught the
+  # runner context used where a job cannot see it.
+  workflows:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Lint the workflows
+        run: |
+          bash <(curl -sSfL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.9/scripts/download-actionlint.bash) 1.7.9
+          ./actionlint -color

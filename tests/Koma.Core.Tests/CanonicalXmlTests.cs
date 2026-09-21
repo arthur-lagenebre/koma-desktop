@@ -39,7 +39,7 @@ public sealed class CanonicalXmlTests
     {
         string[] packages = [.. Directory.EnumerateFiles(Path.Combine(Corpus.Root(), "packages"), "*.koma").Order(StringComparer.Ordinal)];
 
-        Assert.Equal(43, packages.Length);
+        Assert.Equal(45, packages.Length);
 
         foreach (string package in packages)
         {

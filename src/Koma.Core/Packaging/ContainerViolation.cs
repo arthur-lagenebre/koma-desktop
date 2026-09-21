@@ -31,6 +31,8 @@ public static class ContainerViolationCode
     public const string MimetypeContent = "mimetype-content";
     public const string MimetypePosition = "mimetype-position";
     public const string MimetypeCompression = "mimetype-compression";
+    public const string MimetypeDataDescriptor = "mimetype-data-descriptor";
+    public const string MimetypeExtraField = "mimetype-extra-field";
     public const string PathTraversal = "path-traversal";
     public const string AbsolutePath = "absolute-path";
     public const string DuplicateLogicalEntry = "duplicate-logical-entry";
