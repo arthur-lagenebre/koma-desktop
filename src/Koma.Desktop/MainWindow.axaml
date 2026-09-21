@@ -9,6 +9,7 @@
         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="12" Margin="8">
             <Button x:Name="LibraryButton" Content="Library" />
             <Button x:Name="AddFolderButton" Content="Add folder…" />
+            <Button x:Name="ImportButton" Content="Import CBZ…" />
             <Button x:Name="OpenButton" Content="Open…" />
             <ToggleButton x:Name="ContentsButton" Content="Contents" IsVisible="False" />
             <TextBlock x:Name="SpreadCounter" VerticalAlignment="Center" />

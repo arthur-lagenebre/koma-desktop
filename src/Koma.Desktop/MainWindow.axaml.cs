@@ -8,9 +8,11 @@ using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using Avalonia.VisualTree;
 using Koma.Core;
+using Koma.Core.Importing;
 using Koma.Core.Model;
 using Koma.Core.Packaging;
 using Koma.Core.Rendering;
+using Koma.Imaging;
 using Koma.Library;
 
 namespace Koma.Desktop;
@@ -23,6 +25,13 @@ internal sealed partial class MainWindow : Window, IDisposable
 {
     private static readonly FilePickerFileType KomaFiles = new("KOMA publication") { Patterns = ["*.koma"] };
 
+    private static readonly FilePickerFileType CbzFiles = new("Comic book archive") { Patterns = ["*.cbz"] };
+
+    // What an import from the shelf asks of the converter: checksums, so that
+    // a page damaged later is caught (§8.6), and the rest as the reference
+    // converter defaults it.
+    private static readonly ConversionOptions ImportOptions = new(Checksums: true);
+
     // The reader's language first; NavigationLabel.Choose falls back on the
     // same primary language, then on the first label, from there.
     private static readonly string[] Languages = [CultureInfo.CurrentUICulture.Name];
@@ -34,6 +43,7 @@ internal sealed partial class MainWindow : Window, IDisposable
     private string? openPath;
     private int current;
     private bool scanning;
+    private bool importing;
 
     public MainWindow()
     {
@@ -44,6 +54,7 @@ internal sealed partial class MainWindow : Window, IDisposable
         OpenButton.Click += OnOpenClicked;
         LibraryButton.Click += (_, _) => ShowLibrary();
         AddFolderButton.Click += OnAddFolderClicked;
+        ImportButton.Click += OnImportClicked;
         Shelf.Chosen += (_, path) => OpenPath(path);
         ContentsButton.IsCheckedChanged += (_, _) => NavigationPanel.IsVisible = ContentsButton.IsChecked == true;
         Contents.SelectionChanged += (_, _) => GoToTarget(Contents.SelectedItem);
@@ -239,6 +250,128 @@ internal sealed partial class MainWindow : Window, IDisposable
         library = library with { Folders = [.. library.Folders, .. added] };
 
         await ScanAsync();
+    }
+
+    private async void OnImportClicked(object? sender, RoutedEventArgs e)
+    {
+        IReadOnlyList<IStorageFile> files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Import comic book archives",
+            AllowMultiple = true,
+            FileTypeFilter = [CbzFiles]
+        });
+
+        string[] archives = [.. files.Select(f => f.TryGetLocalPath()).OfType<string>()];
+
+        if (archives.Length > 0)
+            await ImportAsync(archives);
+    }
+
+    /// <summary>
+    /// Converts archives beside themselves, one at a time off the interface
+    /// thread, then shows what the conversions said and rescans.
+    /// </summary>
+    /// <remarks>
+    /// Beside the archive, under the same name: a collection kept in a
+    /// watched folder gains its KOMA files where it already is, and nothing
+    /// is scattered elsewhere. An existing file is never overwritten; it may
+    /// be one the reader has been annotating, or one made by another tool.
+    /// </remarks>
+    private async Task ImportAsync(string[] archives)
+    {
+        if (importing)
+            return;
+
+        importing = true;
+        ImportButton.IsEnabled = false;
+
+        var progress = new Progress<int>(done => Status.Text = string.Create(CultureInfo.InvariantCulture, $"Importing… {done} / {archives.Length}"));
+        IReadOnlyList<string> folders = library.Folders;
+        string report;
+
+        try
+        {
+            report = await Task.Run(() => Import(archives, folders, progress));
+        }
+        finally
+        {
+            importing = false;
+            ImportButton.IsEnabled = true;
+        }
+
+        new ReportWindow("Import report — KOMA", report).Show(this);
+
+        await ScanAsync();
+    }
+
+    private static string Import(string[] archives, IReadOnlyList<string> folders, IProgress<int> progress)
+    {
+        var report = new StringBuilder();
+        int converted = 0;
+        int refused = 0;
+
+        for (int i = 0; i < archives.Length; i++)
+        {
+            string cbz = archives[i];
+            string koma = Path.ChangeExtension(cbz, ".koma");
+
+            report.AppendLine(string.Create(CultureInfo.InvariantCulture, $"{cbz}{Environment.NewLine}  → {koma}"));
+
+            if (File.Exists(koma))
+            {
+                report.AppendLine("  left as it was: a file of that name exists already");
+                refused++;
+            }
+            else
+            {
+                try
+                {
+                    CbzConversion conversion = CbzConverter.Convert(cbz, koma, ImportOptions);
+
+                    foreach (string note in conversion.Notes)
+                        report.AppendLine("  " + note);
+
+                    if (!folders.Any(folder => IsWithin(koma, folder)))
+                        report.AppendLine("  not in a watched folder: it will not appear on the shelf until its folder is added");
+
+                    converted++;
+                }
+                catch (Exception e) when (e is InvalidDataException or IOException or UnauthorizedAccessException)
+                {
+                    // A half-written file would be worse than none: it would
+                    // look like a publication to the next scan.
+                    TryDelete(koma);
+                    report.AppendLine("  refused: " + e.Message);
+                    refused++;
+                }
+            }
+
+            report.AppendLine();
+            progress.Report(i + 1);
+        }
+
+        report.Insert(0, string.Create(CultureInfo.InvariantCulture, $"{converted} converted, {refused} not converted.{Environment.NewLine}{Environment.NewLine}"));
+
+        return report.ToString();
+    }
+
+    private static bool IsWithin(string path, string folder)
+    {
+        string relative = Path.GetRelativePath(folder, path);
+
+        return !relative.StartsWith("..", StringComparison.Ordinal) && !Path.IsPathRooted(relative);
+    }
+
+    private static void TryDelete(string path)
+    {
+        try
+        {
+            File.Delete(path);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            // Nothing more to do: the report already says the conversion failed.
+        }
     }
 
     /// <summary>
