@@ -45,6 +45,25 @@ public static partial class MetadataEditor
     ];
 
     /// <summary>
+    /// What the document says now, in the fields an edit can change: the
+    /// values an editing form starts from.
+    /// </summary>
+    public static MetadataEdit Read(XDocument metadata)
+    {
+        ArgumentNullException.ThrowIfNull(metadata);
+
+        XElement root = metadata.Root ?? throw new ArgumentException("The document has no root element.", nameof(metadata));
+        XElement? series = root.Element(X("Collections"))?.Elements(X("Collection")).FirstOrDefault(c => (string?)c.Attribute("type") == "series");
+        string? seriesName = series?.Element(X("Name"))?.Value.Trim();
+
+        return new MetadataEdit(
+            root.Element(X("Titles"))?.Elements(X("Title")).FirstOrDefault(t => (string?)t.Attribute("type") == "main")?.Value.Trim(),
+            root.Element(X("Languages"))?.Elements(X("Language")).FirstOrDefault(l => (string?)l.Attribute("role") == "content")?.Value.Trim(),
+            (string?)root.Element(X("Reading"))?.Attribute("direction") == "rtl" ? ReadingDirection.RightToLeft : ReadingDirection.LeftToRight,
+            seriesName is null ? null : new SeriesEdit(seriesName, (string?)series!.Attribute("position"), (string?)series.Attribute("total")));
+    }
+
+    /// <summary>
     /// The edited document. The one given is not changed.
     /// </summary>
     /// <exception cref="ArgumentException">A value §4.3 does not allow.</exception>

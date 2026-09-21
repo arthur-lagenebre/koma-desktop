@@ -12,6 +12,7 @@ using Koma.Core.Importing;
 using Koma.Core.Model;
 using Koma.Core.Packaging;
 using Koma.Core.Rendering;
+using Koma.Core.Writing;
 using Koma.Imaging;
 using Koma.Library;
 
@@ -55,6 +56,8 @@ internal sealed partial class MainWindow : Window, IDisposable
         LibraryButton.Click += (_, _) => ShowLibrary();
         AddFolderButton.Click += OnAddFolderClicked;
         ImportButton.Click += OnImportClicked;
+        EditButton.Click += async (_, _) => await EditAsync(openPath);
+        Shelf.EditRequested += async (_, path) => await EditAsync(path);
         Shelf.Chosen += (_, path) => OpenPath(path);
         ContentsButton.IsCheckedChanged += (_, _) => NavigationPanel.IsVisible = ContentsButton.IsChecked == true;
         Contents.SelectionChanged += (_, _) => GoToTarget(Contents.SelectedItem);
@@ -217,6 +220,7 @@ internal sealed partial class MainWindow : Window, IDisposable
 
         Shelf.Show(library.Entries, store);
         Shelf.IsVisible = true;
+        EditButton.IsVisible = false;
         View.IsVisible = false;
         NavigationPanel.IsVisible = false;
         ContentsButton.IsVisible = false;
@@ -230,6 +234,10 @@ internal sealed partial class MainWindow : Window, IDisposable
     {
         Shelf.IsVisible = false;
         View.IsVisible = true;
+
+        // Only a file on disk can be rewritten; one opened through a picker
+        // that gave no path cannot.
+        EditButton.IsVisible = openPath is not null;
     }
 
     private async void OnAddFolderClicked(object? sender, RoutedEventArgs e)
@@ -250,6 +258,53 @@ internal sealed partial class MainWindow : Window, IDisposable
         library = library with { Folders = [.. library.Folders, .. added] };
 
         await ScanAsync();
+    }
+
+    /// <summary>
+    /// Edits a publication's metadata, then brings the shelf up to date.
+    /// </summary>
+    /// <remarks>
+    /// The publication being edited is closed first if it is open, its place
+    /// recorded: its package holds the file open, and Windows will not
+    /// replace a file in use. If the reader was reading it, it is opened
+    /// again afterwards where it was, whether or not the edit was saved; from
+    /// the shelf, the shelf stays.
+    /// </remarks>
+    private async Task EditAsync(string? path)
+    {
+        if (path is null)
+            return;
+
+        MetadataEdit current;
+
+        try
+        {
+            current = await Task.Run(() => PublicationEditor.Current(path));
+        }
+        catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException or System.Xml.XmlException)
+        {
+            Status.Text = $"{Path.GetFileName(path)}: {e.Message}";
+            return;
+        }
+
+        bool open = publication is not null && openPath == path;
+        bool reopen = open && !Shelf.IsVisible;
+
+        if (open)
+        {
+            RecordPosition();
+            View.Show(null, null);
+            publication?.Dispose();
+            publication = null;
+        }
+
+        bool saved = await new EditWindow(path, current).ShowDialog<bool>(this);
+
+        if (reopen)
+            OpenPath(path);
+
+        if (saved)
+            await ScanAsync();
     }
 
     private async void OnImportClicked(object? sender, RoutedEventArgs e)

@@ -37,6 +37,15 @@ public sealed class MetadataEditorTests : IDisposable
     }
 
     [Fact]
+    public void ReadsBackTheFieldsAFormStartsFrom()
+    {
+        XDocument edited = MetadataEditor.Apply(Minimal(), new MetadataEdit(Series: new SeriesEdit("Rivage", "HS2")), Now);
+
+        Assert.Equal(new MetadataEdit("Corpus de conformite", "fr", ReadingDirection.RightToLeft, null), MetadataEditor.Read(Minimal()));
+        Assert.Equal(new SeriesEdit("Rivage", "HS2", null), MetadataEditor.Read(edited).Series);
+    }
+
+    [Fact]
     public void PutsANewSectionWhereTheSpecificationPlacesIt()
     {
         // valid-minimal has no Collections and no Publication: they go after

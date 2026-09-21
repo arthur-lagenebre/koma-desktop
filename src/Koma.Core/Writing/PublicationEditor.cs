@@ -17,6 +17,9 @@ namespace Koma.Core.Writing;
 /// </remarks>
 public static class PublicationEditor
 {
+    /// <summary>The fields an edit can change, as the publication has them now.</summary>
+    public static MetadataEdit Current(string path) => MetadataEditor.Read(Load(path));
+
     /// <exception cref="ArgumentException">A value §4.3 does not allow.</exception>
     /// <exception cref="InvalidDataException">The edited metadata would not be read back.</exception>
     public static void EditMetadata(string path, MetadataEdit edit, DateTimeOffset now)
@@ -24,15 +27,7 @@ public static class PublicationEditor
         ArgumentNullException.ThrowIfNull(path);
         ArgumentNullException.ThrowIfNull(edit);
 
-        XDocument original;
-
-        using (ZipArchive archive = ZipFile.OpenRead(path))
-        {
-            ZipArchiveEntry entry = archive.GetEntry(CorePaths.Metadata) ?? throw new InvalidDataException("The package has no metadata (§1).");
-            using Stream stream = entry.Open();
-            original = XDocument.Load(stream);
-        }
-
+        XDocument original = Load(path);
         XDocument edited = MetadataEditor.Apply(original, edit, now);
         var violations = new List<ContainerViolation>();
 
@@ -45,5 +40,16 @@ public static class PublicationEditor
             throw new InvalidDataException(string.Join(Environment.NewLine, errors.Select(e => $"{e.Code} — {e.Message}")));
 
         PackageRewriter.Rewrite(path, new Dictionary<string, byte[]>(StringComparer.Ordinal) { [CorePaths.Metadata] = CanonicalXml.Write(edited) });
+    }
+
+    private static XDocument Load(string path)
+    {
+        ArgumentNullException.ThrowIfNull(path);
+
+        using ZipArchive archive = ZipFile.OpenRead(path);
+        ZipArchiveEntry entry = archive.GetEntry(CorePaths.Metadata) ?? throw new InvalidDataException("The package has no metadata (§1).");
+        using Stream stream = entry.Open();
+
+        return XDocument.Load(stream);
     }
 }

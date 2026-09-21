@@ -40,6 +40,9 @@ internal sealed class LibraryView : ScrollViewer
     /// <summary>Raised with the path of the publication the reader chose.</summary>
     public event EventHandler<string>? Chosen;
 
+    /// <summary>Raised with the path of a publication whose metadata the reader wants to edit.</summary>
+    public event EventHandler<string>? EditRequested;
+
     public void Show(IReadOnlyList<LibraryEntry> entries, LibraryStore store)
     {
         ArgumentNullException.ThrowIfNull(entries);
@@ -93,6 +96,10 @@ internal sealed class LibraryView : ScrollViewer
         // shows what it can and the tip holds the rest.
         ToolTip.SetTip(card, entry.Unreadable is null ? entry.Path : $"{entry.Path}{Environment.NewLine}{entry.Unreadable}");
         card.Click += (_, _) => Chosen?.Invoke(this, entry.Path);
+
+        var editItem = new MenuItem { Header = "Edit metadata…" };
+        editItem.Click += (_, _) => EditRequested?.Invoke(this, entry.Path);
+        card.ContextMenu = new ContextMenu { ItemsSource = new[] { editItem } };
 
         return card;
     }

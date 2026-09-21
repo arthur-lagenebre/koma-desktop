@@ -72,7 +72,9 @@ with their covers, scanned in the background at startup and after a folder is
 added. Choosing one opens it where it was last left, and Escape goes back to
 the shelf. Import CBZ converts archives beside themselves, never over an
 existing file, checksums included, and shows what each conversion assumed or
-refused before the shelf is rescanned. It also opens a publication from a file
+refused before the shelf is rescanned. Edit metadata, from a card's menu or
+from the publication on screen, changes the title, language, reading direction
+and series, writing only what changed. It also opens a publication from a file
 picker or the command line, paginates it for the window (§10.1), and turns
 spreads with the arrow keys along the reading direction, Page Up and Page Down,
 Home and End. A Contents panel lists the table of contents and the landmarks of
