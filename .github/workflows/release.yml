@@ -1,0 +1,103 @@
+name: Release
+
+# A tag v0.1.0 builds, tests and publishes the reader for Windows and Linux,
+# then makes a GitHub release of it. Run by hand, it stops before the release
+# and leaves the builds as artifacts, to try one before tagging it.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: ${{ matrix.rid }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - os: windows-latest
+            rid: win-x64
+          - os: ubuntu-latest
+            rid: linux-x64
+
+    steps:
+      - name: Check out with corpus submodule
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      # A release is the tagged commit as CI would judge it: nothing is
+      # published from a tree whose tests fail on the platform it targets.
+      - name: Test
+        run: dotnet test --configuration Release
+
+      # Self-contained, so that nothing has to be installed first, and one
+      # file with its native libraries inside: Skia and HarfBuzz ship native
+      # code, which a single-file publish leaves beside the executable unless
+      # told to carry it. Not trimmed: Avalonia's XAML loading reflects over
+      # types a trimmer cannot see.
+      - name: Publish
+        shell: bash
+        run: |
+          # v0.1.0 is the tag; 0.1.0 is the version .NET accepts. A run by hand
+          # is no release and says so.
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then version="${GITHUB_REF_NAME#v}"; else version="0.0.0"; fi
+
+          dotnet publish src/Koma.Desktop/Koma.Desktop.csproj \
+            --configuration Release \
+            --runtime ${{ matrix.rid }} \
+            --self-contained true \
+            --output publish \
+            -p:PublishSingleFile=true \
+            -p:IncludeNativeLibrariesForSelfExtract=true \
+            -p:Version="$version"
+
+      - name: Package
+        shell: bash
+        run: |
+          name="koma-desktop-${GITHUB_REF_NAME}-${{ matrix.rid }}"
+          cd publish
+          if [ "${{ matrix.rid }}" = "win-x64" ]; then
+            7z a "../${name}.zip" . > /dev/null
+          else
+            tar czf "../${name}.tar.gz" .
+          fi
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.rid }}
+          path: koma-desktop-*
+          if-no-files-found: error
+
+  release:
+    needs: publish
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
+
+      # The same hygiene as the specification repository: what is downloaded
+      # can be checked against what CI built.
+      - name: Checksums
+        working-directory: dist
+        run: sha256sum koma-desktop-* > SHA256SUMS
+
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" --generate-notes

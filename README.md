@@ -143,6 +143,25 @@ If you cloned without `--recurse-submodules`:
 git submodule update --init --recursive
 ```
 
+## Releases
+
+A tag starting with `v` publishes the reader:
+
+```
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+`release.yml` tests the tagged commit on Windows and Linux, publishes each as
+one self-contained executable with its native libraries inside, and makes a
+GitHub release of the two archives with a `SHA256SUMS` beside them. Nothing
+has to be installed to run it. Run by hand from the Actions tab, the workflow
+stops before the release and leaves the builds as artifacts, to try one
+before tagging it.
+
+The executables are not signed. Windows SmartScreen warns about them the
+first time they run, and says so until a certificate signs them.
+
 ## Testing against the corpus
 
 `external/koma/corpus/expected.json` states, for each of the 43 packages,
