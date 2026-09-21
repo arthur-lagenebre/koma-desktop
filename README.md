@@ -154,13 +154,20 @@ git push origin v0.1.0
 
 `release.yml` tests the tagged commit on Windows and Linux, publishes each as
 one self-contained executable with its native libraries inside, and makes a
-GitHub release of the two archives with a `SHA256SUMS` beside them. Nothing
-has to be installed to run it. Run by hand from the Actions tab, the workflow
+GitHub release of the two files with a `SHA256SUMS` beside them. The file is
+the application: nothing to install, nothing to unpack. A publish that leaves
+a second file fails the build. On Linux, a browser download loses the
+executable bit, which `chmod +x` gives back. Run by hand from the Actions tab, the workflow
 stops before the release and leaves the builds as artifacts, to try one
 before tagging it.
 
 The executables are not signed. Windows SmartScreen warns about them the
 first time they run, and says so until a certificate signs them.
+
+The library lives in the user's application data, `%APPDATA%\KOMA` on Windows
+and `~/.config/KOMA` on Linux. A debug build keeps its own, in
+`KOMA (development)`, so that a released copy starts empty rather than with
+the folders and positions of a development session.
 
 ## Testing against the corpus
 

@@ -37,7 +37,14 @@ internal sealed partial class MainWindow : Window, IDisposable
     // same primary language, then on the first label, from there.
     private static readonly string[] Languages = [CultureInfo.CurrentUICulture.Name];
 
-    private readonly LibraryStore store = LibraryStore.ForCurrentUser();
+    // A debug build is one run from the repository; a release is the copy a
+    // reader downloads. The two keep separate libraries, so that neither
+    // inherits the folders and positions of the other.
+#if DEBUG
+    private readonly LibraryStore store = LibraryStore.ForCurrentUser(development: true);
+#else
+    private readonly LibraryStore store = LibraryStore.ForCurrentUser(development: false);
+#endif
 
     private LibraryIndex library;
     private Publication? publication;

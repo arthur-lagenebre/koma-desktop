@@ -37,8 +37,16 @@ public sealed class LibraryStore
         this.root = root;
     }
 
-    /// <summary>The store of the current user, under their application data.</summary>
-    public static LibraryStore ForCurrentUser() => new(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "koma-desktop"));
+    /// <summary>
+    /// The store of the current user, under their application data:
+    /// <c>%APPDATA%\KOMA</c> on Windows, <c>~/.config/KOMA</c> on Linux.
+    /// </summary>
+    /// <param name="development">
+    /// Whether this is a build run from the repository, which keeps a library
+    /// of its own: the folders watched and the positions read while working on
+    /// the application are not those of the copy the same person reads with.
+    /// </param>
+    public static LibraryStore ForCurrentUser(bool development) => new(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), development ? "KOMA (development)" : "KOMA"));
 
     public string IndexPath => Path.Combine(root, "library.json");
 

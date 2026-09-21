@@ -43,7 +43,8 @@ jobs:
       # Self-contained, so that nothing has to be installed first, and one
       # file with its native libraries inside: Skia and HarfBuzz ship native
       # code, which a single-file publish leaves beside the executable unless
-      # told to carry it. Not trimmed: Avalonia's XAML loading reflects over
+      # told to carry it. No symbol files, which are the only other files a
+      # publish leaves. Not trimmed: Avalonia's XAML loading reflects over
       # types a trimmer cannot see.
       - name: Publish
         shell: bash
@@ -59,17 +60,33 @@ jobs:
             --output publish \
             -p:PublishSingleFile=true \
             -p:IncludeNativeLibrariesForSelfExtract=true \
+            -p:DebugType=none \
             -p:Version="$version"
 
-      - name: Package
+      # The release is one file a reader downloads and runs. Anything else
+      # left in the output would have to travel with it, so a second file
+      # fails the build rather than a reader's first launch.
+      - name: Check the output is one file
+        shell: bash
+        run: |
+          count=$(find publish -type f | wc -l)
+
+          if [ "$count" -ne 1 ]; then
+            echo "The publish left $count files where one was expected:"
+            find publish -type f
+            exit 1
+          fi
+
+      - name: Name the executable
         shell: bash
         run: |
           name="koma-desktop-${GITHUB_REF_NAME}-${{ matrix.rid }}"
-          cd publish
+
           if [ "${{ matrix.rid }}" = "win-x64" ]; then
-            7z a "../${name}.zip" . > /dev/null
+            cp publish/Koma.Desktop.exe "${name}.exe"
           else
-            tar czf "../${name}.tar.gz" .
+            cp publish/Koma.Desktop "${name}"
+            chmod +x "${name}"
           fi
 
       - uses: actions/upload-artifact@v7
