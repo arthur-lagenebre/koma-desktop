@@ -45,6 +45,17 @@ under-declares its size is only caught when something reads it — and the eight
 packages that have nothing to refuse. `ConformanceCorpusTests` asserts those
 counts, so a case that moves is reported rather than quietly reclassified.
 
+`CbzConverter` turns a CBZ into a KOMA package with the decisions of
+`tools/cbz_to_koma.py`: which entries are pages and in which order, how each
+page is made fit for a package, how ComicInfo projects onto the metadata, which
+page is the cover, which landmarks the roles give. What it cannot find out it
+assumes out loud, in the reference converter's words. Where every page passes
+through untouched the package is the converter's entry for entry, identifier
+included; where a page is re-encoded the two agree on every decision and on no
+byte of that page, since Skia and Pillow write different files.
+`CbzConverterTests` holds it to the converter's output on the three example
+archives.
+
 `Koma.Library` keeps what the reader needs to list publications without
 opening them again: one JSON file and a folder of cover thumbnails, under the
 user's application data. It is a cache, rebuilt by a scan from the folders it
@@ -158,6 +169,9 @@ None of these block anything.
   moves to the `koma` repository.
 - **The corpus does not exercise every code of §15.1**, which criterion 3 of
   §5.0.1 will eventually require.
+- **A TIFF page stops a conversion.** Skia reads no TIFF where Pillow does,
+  so a CBZ the reference converter handles can be one this one refuses,
+  naming the page, rather than a publication with a page missing.
 - **Two §2.1 faults have no code of their own**: a data descriptor and extra
   fields on the mimetype entry. Both are reported as `mimetype-content` with
   the reason in the message.

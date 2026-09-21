@@ -16,7 +16,24 @@ namespace Koma.Core.Importing;
 /// <param name="Language">Overrides <c>LanguageISO</c>.</param>
 /// <param name="FallbackTitle">The title when ComicInfo has neither a title nor a series.</param>
 /// <param name="Modified">The <c>modified</c> date, when it is not to be taken from the archive.</param>
-public sealed record ConversionOptions(ReadingDirection? Direction = null, string? Language = null, string FallbackTitle = "Untitled", string? Modified = null);
+/// <param name="Checksums">Whether every page carries its SHA-256 (§8.6).</param>
+/// <param name="InferSpreads">Whether a landscape page ComicInfo does not mark is taken for a double page.</param>
+/// <param name="KeepComicInfo">Whether the original <c>ComicInfo.xml</c> travels with the package, unchanged.</param>
+/// <param name="Navigation">Whether to write <c>nav.xml</c>, with the landmarks the page roles give.</param>
+/// <param name="PageList">
+/// Whether <c>nav.xml</c> numbers the pages. Off unless asked: §9.2 means the
+/// printed number, and a CBZ only knows the order of its scans.
+/// </param>
+public sealed record ConversionOptions(
+    ReadingDirection? Direction = null,
+    string? Language = null,
+    string FallbackTitle = "Untitled",
+    string? Modified = null,
+    bool Checksums = false,
+    bool InferSpreads = false,
+    bool KeepComicInfo = true,
+    bool Navigation = true,
+    bool PageList = false);
 
 /// <summary>
 /// Projects a ComicInfo onto the metadata of §7, as <c>tools/cbz_to_koma.py</c>
