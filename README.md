@@ -17,7 +17,10 @@ writes core documents back in the canonical form of §14.1, which
 `PackageWriter` puts them in a file the way §2.1 and §14.2 ask: the mimetype
 entry first and stored, the rest in one byte-wise order under one fixed
 timestamp, so that the same publication written twice gives the same bytes.
-Navigation labels carry the language §4.4 gives them, and
+`PublicationEditor` edits the metadata of a publication in place: it changes
+what it is asked to and nothing else, stamps the modified date of §7.2.1, reads
+the result back before writing, and replaces the file only once the new one is
+complete. Navigation labels carry the language §4.4 gives them, and
 `NavigationLabel.Choose` picks the one to show from the reader's languages;
 regions (§9.4) are not read, which §16 allows. `OpenVocabularies` judges the
 tokens of all twenty-five open vocabularies of §4.5 in whichever document holds
