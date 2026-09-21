@@ -17,4 +17,10 @@
     <ProjectReference Include="..\Koma.Library\Koma.Library.csproj" />
   </ItemGroup>
 
+  <Target Name="LeaveSymbolsOutOfThePublish" AfterTargets="ComputeResolvedFilesToPublishList">
+    <ItemGroup>
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(Extension)' == '.pdb'" />
+    </ItemGroup>
+  </Target>
+
 </Project>
