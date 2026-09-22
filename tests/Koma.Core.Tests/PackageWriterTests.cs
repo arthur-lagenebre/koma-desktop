@@ -107,6 +107,21 @@ public sealed class PackageWriterTests
     }
 
     [Fact]
+    public void WritesTheSameFileWhetherEntriesAreHeldOrRead()
+    {
+        // The streaming form is what a rewrite uses to copy a 200-page album
+        // through a buffer; it must produce the file the held form does.
+        Dictionary<string, byte[]> publication = Publication();
+
+        using MemoryStream held = Write(publication);
+        using var read = new MemoryStream();
+
+        PackageWriter.Write(read, publication.ToDictionary(e => e.Key, e => (Func<Stream>)(() => new MemoryStream(e.Value)), StringComparer.Ordinal), leaveOpen: true);
+
+        Assert.Equal(held.ToArray(), read.ToArray());
+    }
+
+    [Fact]
     public void WritesTheSamePublicationToTheSameBytes()
     {
         // §14.2: one order, one fixed timestamp, nothing added. Two writes a

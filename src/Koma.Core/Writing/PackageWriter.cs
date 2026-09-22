@@ -42,6 +42,22 @@ public static class PackageWriter
     /// <param name="leaveOpen">Whether to leave <paramref name="destination"/> open.</param>
     public static void Write(Stream destination, IReadOnlyDictionary<string, byte[]> entries, bool leaveOpen = false)
     {
+        ArgumentNullException.ThrowIfNull(entries);
+
+        Write(destination, entries.ToDictionary(e => e.Key, e => Source(e.Value), StringComparer.Ordinal), leaveOpen);
+    }
+
+    /// <summary>
+    /// Writes a package whose entries are read as they are written.
+    /// </summary>
+    /// <param name="entries">
+    /// Every entry but <c>mimetype</c>, by logical name, each opening a
+    /// stream to read it from. One is opened at a time and closed before the
+    /// next, so that a package of pages is copied through a buffer rather
+    /// than held whole in memory.
+    /// </param>
+    public static void Write(Stream destination, IReadOnlyDictionary<string, Func<Stream>> entries, bool leaveOpen = false)
+    {
         ArgumentNullException.ThrowIfNull(destination);
         ArgumentNullException.ThrowIfNull(entries);
 
@@ -54,22 +70,31 @@ public static class PackageWriter
             ZipArchiveEntry entry = archive.CreateEntry(name, CompressionLevel.Optimal);
             entry.LastWriteTime = KomaArchive.FixedTimestamp;
 
-            using Stream stream = entry.Open();
-            stream.Write(entries[name]);
+            using Stream written = entry.Open();
+            using Stream source = entries[name]() ?? throw new ArgumentException($"'{name}' opened no stream.", nameof(entries));
+
+            source.CopyTo(written);
         }
+    }
+
+    private static Func<Stream> Source(byte[] data)
+    {
+        ArgumentNullException.ThrowIfNull(data);
+
+        return () => new MemoryStream(data, writable: false);
     }
 
     private static int Compare(string? left, string? right) => Utf8(left).AsSpan().SequenceCompareTo(Utf8(right));
 
     private static byte[] Utf8(string? name) => Encoding.UTF8.GetBytes((name ?? string.Empty).Normalize(NormalizationForm.FormC));
 
-    private static void Check(IReadOnlyDictionary<string, byte[]> entries)
+    private static void Check(IReadOnlyDictionary<string, Func<Stream>> entries)
     {
         var folded = new Dictionary<string, string>(StringComparer.Ordinal);
 
-        foreach ((string name, byte[] data) in entries)
+        foreach ((string name, Func<Stream> open) in entries)
         {
-            ArgumentNullException.ThrowIfNull(data);
+            ArgumentNullException.ThrowIfNull(open);
 
             if (!KomaEntryName.TryValidate(name, out EntryNameProblem problem))
                 throw new ArgumentException($"'{name}' is not an entry name §3 allows: {problem}.", nameof(entries));
