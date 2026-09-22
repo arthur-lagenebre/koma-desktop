@@ -62,6 +62,20 @@ public sealed record LibraryEntry
     public int LastPage { get; init; }
 
     public DateTimeOffset? LastOpened { get; init; }
+
+    /// <summary>
+    /// How the reader last had this publication fitted to the window, and at
+    /// what zoom; zero for a publication never read, which starts fitted to
+    /// the page.
+    /// </summary>
+    /// <remarks>
+    /// Per publication rather than once for the application: a dense manga is
+    /// read at the width of the screen and a large-format album whole, and a
+    /// reader who alternates between them should not have to say so twice.
+    /// </remarks>
+    public FitMode Fit { get; init; }
+
+    public double Zoom { get; init; }
 }
 
 /// <summary>

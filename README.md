@@ -71,7 +71,9 @@ only when its path, size or modification time has changed.
 with their covers, scanned in the background at startup and after a folder is
 added. The shelf searches titles, series and file names, case and accents
 aside, and orders by title, by series, each in the order of its volume numbers,
-or by what was read last. Choosing one opens it where it was last left, and
+or by what was read last. Choosing one opens it where it was last left, fitted
+and zoomed as it was left too, since a dense manga and a large-format album are
+not read the same way; a Resume button takes up the publication read last.
 Escape goes back to the shelf. Import CBZ converts archives beside themselves,
 never over an existing file, checksums included, and shows what each conversion
 assumed or refused before the shelf is rescanned. Edit metadata, from a card's

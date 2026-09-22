@@ -1,5 +1,6 @@
 using Koma.Core.Model;
 using Koma.Core.Packaging;
+using Koma.Core.Rendering;
 using Koma.Imaging;
 using SkiaSharp;
 
@@ -86,7 +87,9 @@ public static class LibraryScanner
             Modified = new DateTimeOffset(file.LastWriteTimeUtc),
             LastItem = previous?.LastItem,
             LastPage = previous?.LastPage ?? 0,
-            LastOpened = previous?.LastOpened
+            LastOpened = previous?.LastOpened,
+            Fit = previous?.Fit ?? FitMode.Page,
+            Zoom = previous?.Zoom ?? 0
         };
 
         PackageOpenResult result;

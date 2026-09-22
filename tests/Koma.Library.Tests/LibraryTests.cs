@@ -92,7 +92,7 @@ public sealed class LibraryTests : IDisposable
         // entry is described again, and keeps where the reader was.
         Add("valid-minimal.koma");
         LibraryIndex first = Scan();
-        LibraryIndex old = first with { Format = 1, Entries = [first.Entries[0] with { LastItem = "p003", LastPage = 3 }] };
+        LibraryIndex old = first with { Format = 1, Entries = [first.Entries[0] with { LastItem = "p003", LastPage = 3, Fit = FitMode.Width, Zoom = 1.5 }] };
 
         LibraryIndex scanned = Scan(old);
         LibraryEntry entry = Assert.Single(scanned.Entries);
@@ -100,6 +100,7 @@ public sealed class LibraryTests : IDisposable
         Assert.Equal(LibraryIndex.CurrentFormat, scanned.Format);
         Assert.NotEqual(first.Entries[0].Thumbnail, entry.Thumbnail);
         Assert.Equal(("p003", 3), (entry.LastItem, entry.LastPage));
+        Assert.Equal((FitMode.Width, 1.5), (entry.Fit, entry.Zoom));
     }
 
     [Fact]

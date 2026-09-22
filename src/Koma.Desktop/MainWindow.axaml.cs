@@ -55,6 +55,7 @@ internal sealed partial class MainWindow : Window, IDisposable
     private FitMode fit = FitMode.Page;
     private double zoom = 1;
     private WindowState windowed = WindowState.Normal;
+    private bool restoring;
     private Point? pressed;
     private bool importing;
 
@@ -79,6 +80,7 @@ internal sealed partial class MainWindow : Window, IDisposable
         // shelf is up, and pagination follows the space a page would have.
         ViewHost.SizeChanged += OnViewSizeChanged;
         FitChoice.SelectionChanged += (_, _) => ChangeFit(FitChoice.SelectedIndex == 1 ? FitMode.Width : FitMode.Page);
+        ResumeButton.Click += (_, _) => OpenLastRead();
 
         // Tunnelling, so that Ctrl and the wheel zoom before the scroller
         // scrolls, and a wheel with nothing to scroll turns the page.
@@ -192,6 +194,16 @@ internal sealed partial class MainWindow : Window, IDisposable
 
         if (publication is not null && entry?.LastItem is { } item && SpreadOf(publication.Spreads, item) is int index)
             current = index;
+
+        // A publication is read the way it was left: a manga at the width of
+        // the screen, an album whole. A zoom of zero is a publication never
+        // read, or one the library does not know, which starts at its fit.
+        fit = entry?.Fit ?? FitMode.Page;
+        zoom = entry is { Zoom: > 0 } ? entry.Zoom : 1;
+
+        restoring = true;
+        FitChoice.SelectedIndex = fit == FitMode.Width ? 1 : 0;
+        restoring = false;
     }
 
     /// <summary>
@@ -213,7 +225,7 @@ internal sealed partial class MainWindow : Window, IDisposable
         if (item is null)
             return;
 
-        LibraryEntry recorded = entry with { LastItem = item, LastPage = publication.PageNumber(item), LastOpened = DateTimeOffset.UtcNow };
+        LibraryEntry recorded = entry with { LastItem = item, LastPage = publication.PageNumber(item), LastOpened = DateTimeOffset.UtcNow, Fit = fit, Zoom = zoom };
         library = library with { Entries = [.. library.Entries.Select(e => e.Path == entry.Path ? recorded : e)] };
 
         try
@@ -230,6 +242,30 @@ internal sealed partial class MainWindow : Window, IDisposable
 
     private LibraryEntry? Entry(string? path) => path is null ? null : library.Entries.FirstOrDefault(e => e.Path == path);
 
+    /// <summary>The publication read last, which the shelf offers to take up again.</summary>
+    private LibraryEntry? LastRead => library.Entries.Where(e => e.Unreadable is null && e.LastOpened is not null).MaxBy(e => e.LastOpened);
+
+    private void ShowResume()
+    {
+        LibraryEntry? entry = LastRead;
+
+        ResumeButton.IsVisible = entry is not null;
+
+        if (entry is null)
+            return;
+
+        // The title on the button, so that the reader knows what they are
+        // taking up without hunting for it on the shelf.
+        ResumeButton.Content = $"Resume {entry.Title ?? Path.GetFileName(entry.Path)}";
+        ToolTip.SetTip(ResumeButton, entry.LastPage == 0 ? entry.Path : string.Create(CultureInfo.InvariantCulture, $"{entry.Path}{Environment.NewLine}page {entry.LastPage} of {entry.PageCount}"));
+    }
+
+    private void OpenLastRead()
+    {
+        if (LastRead is { } entry)
+            OpenPath(entry.Path);
+    }
+
     private void ShowLibrary()
     {
         // The reader is leaving the publication on screen, so where they are
@@ -241,6 +277,7 @@ internal sealed partial class MainWindow : Window, IDisposable
 
         Shelf.Show(library.Entries, store);
         Shelf.IsVisible = true;
+        ShowResume();
         EditButton.IsVisible = false;
         FitChoice.IsVisible = false;
         Scroller.IsVisible = false;
@@ -255,6 +292,7 @@ internal sealed partial class MainWindow : Window, IDisposable
     private void ShowReader()
     {
         Shelf.IsVisible = false;
+        ResumeButton.IsVisible = false;
         Scroller.IsVisible = true;
         FitChoice.IsVisible = true;
 
@@ -625,6 +663,11 @@ internal sealed partial class MainWindow : Window, IDisposable
 
     private void ChangeFit(FitMode mode)
     {
+        // Restoring a publication's own fit is not the reader choosing one,
+        // and must not throw away the zoom that came with it.
+        if (restoring)
+            return;
+
         fit = mode;
         zoom = 1;
         ShowCurrent();
