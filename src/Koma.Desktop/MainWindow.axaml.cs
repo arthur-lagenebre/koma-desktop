@@ -55,6 +55,7 @@ internal sealed partial class MainWindow : Window, IDisposable
     private FitMode fit = FitMode.Page;
     private double zoom = 1;
     private WindowState windowed = WindowState.Normal;
+    private Point? pressed;
     private bool importing;
 
     public MainWindow()
@@ -82,6 +83,10 @@ internal sealed partial class MainWindow : Window, IDisposable
         // Tunnelling, so that Ctrl and the wheel zoom before the scroller
         // scrolls, and a wheel with nothing to scroll turns the page.
         Scroller.AddHandler(PointerWheelChangedEvent, OnWheel, RoutingStrategies.Tunnel);
+
+        // Bubbling, so that a click on a scrollbar stays the scrollbar's.
+        Scroller.PointerPressed += OnPointerPressed;
+        Scroller.PointerReleased += OnPointerReleased;
 
         // Tunnelling, so that the arrows turn pages before focus navigation
         // can use them to move between controls.
@@ -624,6 +629,48 @@ internal sealed partial class MainWindow : Window, IDisposable
         zoom = 1;
         ShowCurrent();
         ScrollToStart();
+    }
+
+    private void OnPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        PointerPointProperties button = e.GetCurrentPoint(Scroller).Properties;
+
+        // The side buttons of a mouse browse as they do everywhere: back is
+        // back, whatever the direction of reading.
+        if (button.IsXButton1Pressed || button.IsXButton2Pressed)
+        {
+            e.Handled = true;
+            GoTo(button.IsXButton2Pressed ? current + 1 : current - 1);
+            return;
+        }
+
+        pressed = button.IsLeftButtonPressed ? e.GetPosition(Scroller) : null;
+    }
+
+    /// <summary>
+    /// A click turns the page; a drag does not.
+    /// </summary>
+    /// <remarks>
+    /// The half the pages are read towards moves forward (§10.2), as the
+    /// arrows do. A pointer that travelled was dragging something — a
+    /// scrollbar, a selection — and turning the page under it would be a
+    /// surprise.
+    /// </remarks>
+    private void OnPointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        Point? start = pressed;
+        pressed = null;
+
+        if (publication is null || Shelf.IsVisible || start is null || e.InitialPressMouseButton != MouseButton.Left)
+            return;
+
+        Point at = e.GetPosition(Scroller);
+
+        if (Math.Abs(at.X - start.Value.X) > 6 || Math.Abs(at.Y - start.Value.Y) > 6)
+            return;
+
+        e.Handled = true;
+        GoTo(ReadingGesture.TurnsForward(at.X, Scroller.Bounds.Width, publication.Direction) ? current + 1 : current - 1);
     }
 
     private void OnWheel(object? sender, PointerWheelEventArgs e)

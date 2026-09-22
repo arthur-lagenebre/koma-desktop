@@ -82,15 +82,17 @@ and turns spreads with the arrow keys along the reading direction, Page Up and
 Page Down, Home and End. A spread fits the window or its width, in its own
 proportions; Ctrl with the wheel or with plus, minus and zero zooms it, Space
 reads down a spread taller than the window before turning it, the wheel turns
-the page when there is nothing to scroll, and F11 reads full screen, which
-Escape leaves. A Contents panel lists the table of contents and the landmarks
-of `nav.xml` in the reader's language, and a choice takes the reader to the
-spread that holds it; the counter shows the page-list labels on screen. Pages
-are laid out from their declared sizes (§16) and decoded on a worker, one at a
-time, as the reader reaches them. The spreads either side follow, so that a
-turn usually finds its pages ready, and a page queued for a spread the reader
-has left is dropped before it is decoded. Warnings from opening, the faults of
-the pages on screen and a withheld page are reported in a status line.
+the page when there is nothing to scroll, a click turns towards the half it
+lands in and the side buttons of a mouse browse back and forth, and F11 reads
+full screen, which Escape leaves. A Contents panel lists the table of contents
+and the landmarks of `nav.xml` in the reader's language, and a choice takes the
+reader to the spread that holds it; the counter shows the page-list labels on
+screen. Pages are laid out from their declared sizes (§16) and decoded on a
+worker, one at a time, as the reader reaches them. The spreads either side
+follow, so that a turn usually finds its pages ready, and a page queued for a
+spread the reader has left is dropped before it is decoded. Warnings from
+opening, the faults of the pages on screen and a withheld page are reported in
+a status line.
 
 The format itself is at pre-release draft `0.9`. Per §5.0 of the specification,
 a reader supporting one `0.x` version **must reject every other `0.x`**, and
