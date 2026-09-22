@@ -6,6 +6,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Koma.Core;
 using Koma.Core.Importing;
@@ -51,6 +52,9 @@ internal sealed partial class MainWindow : Window, IDisposable
     private string? openPath;
     private int current;
     private bool scanning;
+    private FitMode fit = FitMode.Page;
+    private double zoom = 1;
+    private WindowState windowed = WindowState.Normal;
     private bool importing;
 
     public MainWindow()
@@ -73,6 +77,11 @@ internal sealed partial class MainWindow : Window, IDisposable
         // The host and not the page view: the view has no size while the
         // shelf is up, and pagination follows the space a page would have.
         ViewHost.SizeChanged += OnViewSizeChanged;
+        FitChoice.SelectionChanged += (_, _) => ChangeFit(FitChoice.SelectedIndex == 1 ? FitMode.Width : FitMode.Page);
+
+        // Tunnelling, so that Ctrl and the wheel zoom before the scroller
+        // scrolls, and a wheel with nothing to scroll turns the page.
+        Scroller.AddHandler(PointerWheelChangedEvent, OnWheel, RoutingStrategies.Tunnel);
 
         // Tunnelling, so that the arrows turn pages before focus navigation
         // can use them to move between controls.
@@ -228,7 +237,8 @@ internal sealed partial class MainWindow : Window, IDisposable
         Shelf.Show(library.Entries, store);
         Shelf.IsVisible = true;
         EditButton.IsVisible = false;
-        View.IsVisible = false;
+        FitChoice.IsVisible = false;
+        Scroller.IsVisible = false;
         NavigationPanel.IsVisible = false;
         ContentsButton.IsVisible = false;
         SpreadCounter.Text = library.Entries.Count == 1 ? "1 publication" : string.Create(CultureInfo.InvariantCulture, $"{library.Entries.Count} publications");
@@ -240,7 +250,8 @@ internal sealed partial class MainWindow : Window, IDisposable
     private void ShowReader()
     {
         Shelf.IsVisible = false;
-        View.IsVisible = true;
+        Scroller.IsVisible = true;
+        FitChoice.IsVisible = true;
 
         // Only a file on disk can be rewritten; one opened through a picker
         // that gave no path cannot.
@@ -478,8 +489,12 @@ internal sealed partial class MainWindow : Window, IDisposable
 
     private void OnViewSizeChanged(object? sender, SizeChangedEventArgs e)
     {
+        // A new pagination shows its spread; the same pagination only needs
+        // the canvas resized to the new window.
         if (Repaginate())
             ShowCurrent();
+        else if (publication is { Spreads.Count: > 0 })
+            SizeCanvas(publication.Spreads[current]);
     }
 
     private bool Repaginate()
@@ -501,6 +516,22 @@ internal sealed partial class MainWindow : Window, IDisposable
 
     private void OnNavigationKey(object? sender, KeyEventArgs e)
     {
+        if (e.Key == Key.F11)
+        {
+            e.Handled = true;
+            ToggleFullScreen();
+            return;
+        }
+
+        // Escape leaves full screen first, as every application does, and
+        // only then goes back to the shelf.
+        if (e.Key == Key.Escape && WindowState == WindowState.FullScreen)
+        {
+            e.Handled = true;
+            ToggleFullScreen();
+            return;
+        }
+
         // Escape goes back to the shelf, from where the publication reopens
         // where it was left.
         if (e.Key == Key.Escape)
@@ -521,6 +552,21 @@ internal sealed partial class MainWindow : Window, IDisposable
         // new selection takes the reader there; the page keys still turn pages.
         if (e.Source is Visual source && NavigationPanel.IsVisualAncestorOf(source) && e.Key is Key.Up or Key.Down or Key.Left or Key.Right or Key.Home or Key.End)
             return;
+
+        if (e.KeyModifiers.HasFlag(KeyModifiers.Control) && ZoomSteps(e.Key) is { } steps)
+        {
+            e.Handled = true;
+            Zoom(steps);
+            return;
+        }
+
+        // Space reads down a page taller than the window before it turns it,
+        // as a reader does with a dense page at the width of the screen.
+        if (e.Key == Key.Space && ScrollDown())
+        {
+            e.Handled = true;
+            return;
+        }
 
         bool leftToRight = publication.Direction == ReadingDirection.LeftToRight;
 
@@ -551,6 +597,115 @@ internal sealed partial class MainWindow : Window, IDisposable
 
         current = Math.Clamp(index, 0, publication.Spreads.Count - 1);
         ShowCurrent();
+        ScrollToStart();
+    }
+
+    /// <summary>
+    /// Ctrl with plus, minus or zero, whether from the main keys or the keypad,
+    /// as zoom steps; zero steps back to the fit.
+    /// </summary>
+    private static int? ZoomSteps(Key key) => key switch
+    {
+        Key.OemPlus or Key.Add => 1,
+        Key.OemMinus or Key.Subtract => -1,
+        Key.D0 or Key.NumPad0 => 0,
+        _ => null
+    };
+
+    private void Zoom(int steps)
+    {
+        zoom = steps == 0 ? 1 : ReadingFit.Zoom(zoom, steps);
+        ShowCurrent();
+    }
+
+    private void ChangeFit(FitMode mode)
+    {
+        fit = mode;
+        zoom = 1;
+        ShowCurrent();
+        ScrollToStart();
+    }
+
+    private void OnWheel(object? sender, PointerWheelEventArgs e)
+    {
+        if (publication is null || Shelf.IsVisible)
+            return;
+
+        if (e.KeyModifiers.HasFlag(KeyModifiers.Control))
+        {
+            e.Handled = true;
+            Zoom(e.Delta.Y > 0 ? 1 : -1);
+            return;
+        }
+
+        // Nothing to scroll: the wheel turns the page instead, down for the
+        // next one, whatever the direction of reading.
+        if (View.Height <= Scroller.Bounds.Height + 0.5 && e.Delta.Y != 0)
+        {
+            e.Handled = true;
+            GoTo(e.Delta.Y < 0 ? current + 1 : current - 1);
+        }
+    }
+
+    /// <summary>
+    /// Scrolls down most of a window's height when the spread runs below it,
+    /// and says whether there was anything left to scroll.
+    /// </summary>
+    private bool ScrollDown()
+    {
+        double bottom = View.Height - Scroller.Bounds.Height;
+
+        if (bottom <= 0.5 || Scroller.Offset.Y >= bottom - 0.5)
+            return false;
+
+        Scroller.Offset = Scroller.Offset.WithY(Math.Min(bottom, Scroller.Offset.Y + Scroller.Bounds.Height * 0.9));
+
+        return true;
+    }
+
+    /// <summary>
+    /// A new spread starts at its top, and at the side reading starts from:
+    /// the right of a right-to-left page too wide for the window.
+    /// </summary>
+    private void ScrollToStart()
+    {
+        // After the next layout, once the scroller knows the new extent.
+        Dispatcher.UIThread.Post(() =>
+        {
+            double right = Math.Max(0, View.Bounds.Width - Scroller.Bounds.Width);
+            Scroller.Offset = new Vector(publication?.Direction == ReadingDirection.RightToLeft ? right : 0, 0);
+        }, DispatcherPriority.Background);
+    }
+
+    private void ToggleFullScreen()
+    {
+        bool entering = WindowState != WindowState.FullScreen;
+
+        if (entering)
+            windowed = WindowState;
+
+        WindowState = entering ? WindowState.FullScreen : windowed;
+
+        // Full screen is for the pages: the bar and the status line go, and
+        // come back with the window.
+        TopBar.IsVisible = !entering;
+        Status.IsVisible = !entering;
+    }
+
+    /// <summary>
+    /// Sizes the page view for the spread on screen: fitted as the reader
+    /// chose, then zoomed, in the spread's own proportions.
+    /// </summary>
+    private void SizeCanvas(Spread spread)
+    {
+        if (publication is null)
+            return;
+
+        double aspect = ReadingFit.Aspect(SpreadLayout.Arrange(spread, publication.DeclaredSize, 1000, 1000));
+        (double width, double height) = ReadingFit.Canvas(aspect, Scroller.Bounds.Width, Scroller.Bounds.Height, fit, zoom);
+
+        View.Width = width;
+        View.Height = height;
     }
 
     private void ShowCurrent()
@@ -567,8 +722,9 @@ internal sealed partial class MainWindow : Window, IDisposable
         // left do not hold up the ones now wanted.
         publication.Retain(near);
 
+        SizeCanvas(spread);
         View.Show(publication, spread);
-        SpreadCounter.Text = CounterOf(publication, spread, current, spreads.Count);
+        SpreadCounter.Text = CounterOf(publication, spread, current, spreads.Count) + (zoom == 1 ? string.Empty : string.Create(CultureInfo.InvariantCulture, $"  ·  {zoom * 100:0} %"));
         Status.Text = StatusOf(publication, onScreen);
 
         _ = LoadAsync(publication, spread, onScreen, near);

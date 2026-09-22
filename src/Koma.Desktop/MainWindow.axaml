@@ -6,13 +6,17 @@
         Width="1200"
         Height="800">
     <DockPanel>
-        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="12" Margin="8">
+        <StackPanel x:Name="TopBar" DockPanel.Dock="Top" Orientation="Horizontal" Spacing="12" Margin="8">
             <Button x:Name="LibraryButton" Content="Library" />
             <Button x:Name="AddFolderButton" Content="Add folder…" />
             <Button x:Name="ImportButton" Content="Import CBZ…" />
             <Button x:Name="EditButton" Content="Edit…" IsVisible="False" />
             <Button x:Name="OpenButton" Content="Open…" />
             <ToggleButton x:Name="ContentsButton" Content="Contents" IsVisible="False" />
+            <ComboBox x:Name="FitChoice" IsVisible="False" SelectedIndex="0">
+                <ComboBoxItem Content="Fit page" />
+                <ComboBoxItem Content="Fit width" />
+            </ComboBox>
             <TextBlock x:Name="SpreadCounter" VerticalAlignment="Center" />
         </StackPanel>
         <TextBlock x:Name="Status" DockPanel.Dock="Bottom" Margin="8" TextWrapping="Wrap" />
@@ -21,7 +25,9 @@
             <TreeView x:Name="Contents" />
         </DockPanel>
         <Panel x:Name="ViewHost">
-            <local:SpreadView x:Name="View" />
+            <ScrollViewer x:Name="Scroller" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Background="#2B2B2B">
+                <local:SpreadView x:Name="View" HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </ScrollViewer>
             <local:LibraryView x:Name="Shelf" IsVisible="False" />
         </Panel>
     </DockPanel>
