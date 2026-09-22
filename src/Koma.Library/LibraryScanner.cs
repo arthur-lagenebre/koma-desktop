@@ -30,6 +30,10 @@ public static class LibraryScanner
         ArgumentNullException.ThrowIfNull(store);
 
         string[] files = [.. index.Folders.SelectMany(Publications).Distinct(StringComparer.Ordinal)];
+
+        // An index described under an older format is missing what this one
+        // records, so nothing in it counts as up to date.
+        bool current = index.Format == LibraryIndex.CurrentFormat;
         Dictionary<string, LibraryEntry> known = index.Entries.GroupBy(e => e.Path, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
         var entries = new List<LibraryEntry>(files.Length);
 
@@ -42,7 +46,7 @@ public static class LibraryScanner
 
             // Same size and time: the file has not changed, and neither has
             // anything the index says about it, the reading position included.
-            entries.Add(existing is not null && existing.Size == found.Length && existing.Modified == new DateTimeOffset(found.LastWriteTimeUtc) ? existing : Describe(found, existing, store));
+            entries.Add(current && existing is not null && existing.Size == found.Length && existing.Modified == new DateTimeOffset(found.LastWriteTimeUtc) ? existing : Describe(found, existing, store));
             progress?.Report(new LibraryScanProgress(entries.Count, files.Length, file));
         }
 
@@ -52,7 +56,7 @@ public static class LibraryScanner
         foreach (LibraryEntry gone in index.Entries.Where(e => !kept.Contains(e.Path)))
             store.DeleteThumbnail(gone.Thumbnail);
 
-        return index with { Entries = entries };
+        return index with { Entries = entries, Format = LibraryIndex.CurrentFormat };
     }
 
     private static IEnumerable<string> Publications(string folder)
@@ -81,6 +85,7 @@ public static class LibraryScanner
             Size = file.Length,
             Modified = new DateTimeOffset(file.LastWriteTimeUtc),
             LastItem = previous?.LastItem,
+            LastPage = previous?.LastPage ?? 0,
             LastOpened = previous?.LastOpened
         };
 
@@ -104,6 +109,8 @@ public static class LibraryScanner
         {
             Title = package.Metadata.MainTitle.Text,
             Direction = package.Metadata.Direction,
+            Series = package.Metadata.Series?.Name,
+            SeriesPosition = package.Metadata.Series?.Position,
             PageCount = package.Manifest.Spine.Count,
             Thumbnail = Cover(package, store)
         };

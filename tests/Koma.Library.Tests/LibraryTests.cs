@@ -86,6 +86,23 @@ public sealed class LibraryTests : IDisposable
     }
 
     [Fact]
+    public void Scan_DescribesAgainAnIndexFromAnEarlierFormat()
+    {
+        // An index written before the series was recorded has none: every
+        // entry is described again, and keeps where the reader was.
+        Add("valid-minimal.koma");
+        LibraryIndex first = Scan();
+        LibraryIndex old = first with { Format = 1, Entries = [first.Entries[0] with { LastItem = "p003", LastPage = 3 }] };
+
+        LibraryIndex scanned = Scan(old);
+        LibraryEntry entry = Assert.Single(scanned.Entries);
+
+        Assert.Equal(LibraryIndex.CurrentFormat, scanned.Format);
+        Assert.NotEqual(first.Entries[0].Thumbnail, entry.Thumbnail);
+        Assert.Equal(("p003", 3), (entry.LastItem, entry.LastPage));
+    }
+
+    [Fact]
     public void Scan_ForgetsWhatHasLeftTheFolder()
     {
         string path = Add("valid-minimal.koma");

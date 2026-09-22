@@ -45,6 +45,24 @@ public sealed class MetadataReaderTests
         Assert.Equal("ja", metadata.MainTitle.Language);
     }
 
+    [Fact]
+    public void ReadsTheSeriesAVolumeBelongsTo()
+    {
+        PublicationMetadata metadata = Read("""
+            <Metadata xmlns="urn:koma:metadata" version="0.9">
+              <Titles><Title type="main">La marée</Title></Titles>
+              <Languages><Language role="content">fr</Language></Languages>
+              <Collections>
+                <Collection type="universe"><Name>Océans</Name></Collection>
+                <Collection type="series" position="HS2" total="12"><Name>Rivage</Name></Collection>
+              </Collections>
+              <Reading direction="ltr" spread="auto"/>
+            </Metadata>
+            """);
+
+        Assert.Equal(new PublicationSeries("Rivage", "HS2", "12"), metadata.Series);
+    }
+
     [Theory]
     [InlineData("""<Titles><Title type="subtitle">S</Title></Titles>""")]
     [InlineData("""<Titles><Title type="main">A</Title><Title type="main">B</Title></Titles>""")]

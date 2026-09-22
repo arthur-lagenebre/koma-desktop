@@ -10,15 +10,16 @@ namespace Koma.Desktop;
 
 /// <summary>
 /// The shelf: one card per publication, with its cover, its title and the
-/// file it came from.
+/// file it came from, under a search box and a choice of order.
 /// </summary>
 /// <remarks>
 /// Built from the index alone, so a library of a thousand volumes is shown
-/// without opening one of them. A publication that cannot be opened keeps its
-/// place, disabled, with the reason where the page count would be: a file that
-/// has gone wrong is worth seeing, after those that can be read.
+/// without opening one of them. What is shown, in what order and under which
+/// headings is <see cref="ShelfArrangement"/>'s to decide; this control only
+/// draws it, and draws it again as the search or the order changes, without
+/// asking the index for anything new.
 /// </remarks>
-internal sealed class LibraryView : ScrollViewer
+internal sealed class LibraryView : DockPanel
 {
     private const double CardWidth = 232;
     private const double CoverHeight = 260;
@@ -30,11 +31,30 @@ internal sealed class LibraryView : ScrollViewer
 
     private static readonly IBrush MissingCover = new ImmutableSolidColorBrush(Color.FromRgb(0x3A, 0x3A, 0x3A));
 
-    private readonly WrapPanel shelf = new() { Margin = new Thickness(8), ItemWidth = CardWidth, ItemHeight = CardHeight };
+    private static readonly (string Label, ShelfOrder Order)[] Orders =
+    [
+        ("By title", ShelfOrder.Title),
+        ("By series", ShelfOrder.Series),
+        ("Recently read", ShelfOrder.RecentlyRead)
+    ];
+
+    private readonly StackPanel groups = new() { Margin = new Thickness(8) };
+    private readonly TextBox search = new() { PlaceholderText = "Search titles, series and files", Width = 320 };
+    private readonly ComboBox order = new() { ItemsSource = Orders.Select(o => o.Label).ToArray(), SelectedIndex = 0 };
+
+    private IReadOnlyList<LibraryEntry> entries = [];
+    private LibraryStore? store;
 
     public LibraryView()
     {
-        Content = shelf;
+        var bar = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12, Margin = new Thickness(14, 8, 14, 0), Children = { search, order } };
+
+        SetDock(bar, Dock.Top);
+        Children.Add(bar);
+        Children.Add(new ScrollViewer { Content = groups });
+
+        search.TextChanged += (_, _) => Draw();
+        order.SelectionChanged += (_, _) => Draw();
     }
 
     /// <summary>Raised with the path of the publication the reader chose.</summary>
@@ -48,18 +68,40 @@ internal sealed class LibraryView : ScrollViewer
         ArgumentNullException.ThrowIfNull(entries);
         ArgumentNullException.ThrowIfNull(store);
 
-        shelf.Children.Clear();
+        this.entries = entries;
+        this.store = store;
 
-        // What can be read first, then by title, then by file name: a title
-        // says little when two editions of one volume share it, and nothing
-        // at all when a producer leaves it on its default.
-        IOrderedEnumerable<LibraryEntry> shelved = entries
-            .OrderBy(e => e.Unreadable is null ? 0 : 1)
-            .ThenBy(e => e.Title ?? string.Empty, StringComparer.CurrentCultureIgnoreCase)
-            .ThenBy(e => Path.GetFileName(e.Path), StringComparer.CurrentCultureIgnoreCase);
+        Draw();
+    }
 
-        foreach (LibraryEntry entry in shelved)
-            shelf.Children.Add(Card(entry, store));
+    private void Draw()
+    {
+        groups.Children.Clear();
+
+        if (store is null)
+            return;
+
+        ShelfOrder chosen = Orders[Math.Max(order.SelectedIndex, 0)].Order;
+        IReadOnlyList<ShelfGroup> arranged = ShelfArrangement.Arrange(entries, search.Text, chosen);
+
+        if (arranged.Count == 0 && entries.Count > 0)
+        {
+            groups.Children.Add(new TextBlock { Text = "Nothing on the shelf matches.", Opacity = 0.7, Margin = new Thickness(6) });
+            return;
+        }
+
+        foreach (ShelfGroup group in arranged)
+        {
+            if (group.Heading is not null)
+                groups.Children.Add(new TextBlock { Text = group.Heading, FontSize = 18, FontWeight = FontWeight.SemiBold, Margin = new Thickness(6, 14, 6, 2) });
+
+            var shelf = new WrapPanel { ItemWidth = CardWidth, ItemHeight = CardHeight };
+
+            foreach (LibraryEntry entry in group.Entries)
+                shelf.Children.Add(Card(entry, store));
+
+            groups.Children.Add(shelf);
+        }
     }
 
     private Button Card(LibraryEntry entry, LibraryStore store)
@@ -153,10 +195,13 @@ internal sealed class LibraryView : ScrollViewer
 
         string pages = entry.PageCount == 1 ? "1 page" : $"{entry.PageCount} pages";
 
-        if (entry.LastItem is null)
-            return pages;
-
         // A position from an older index has no page number to show.
-        return entry.LastPage == 0 ? $"{pages} · started" : $"page {entry.LastPage} of {entry.PageCount}";
+        string progress = entry.LastItem is null ? pages : entry.LastPage == 0 ? $"{pages} · started" : $"page {entry.LastPage} of {entry.PageCount}";
+
+        // The series first, so that a volume says where it belongs when the
+        // shelf is not grouped by series.
+        return entry.Series is null ? progress : $"{Volume(entry)} · {progress}";
     }
+
+    private static string Volume(LibraryEntry entry) => entry.SeriesPosition is null ? entry.Series! : $"{entry.Series} {entry.SeriesPosition}";
 }

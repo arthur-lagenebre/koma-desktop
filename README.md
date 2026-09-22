@@ -69,22 +69,24 @@ only when its path, size or modification time has changed.
 
 `Koma.Desktop` opens on the shelf: the publications of the watched folders,
 with their covers, scanned in the background at startup and after a folder is
-added. Choosing one opens it where it was last left, and Escape goes back to
-the shelf. Import CBZ converts archives beside themselves, never over an
-existing file, checksums included, and shows what each conversion assumed or
-refused before the shelf is rescanned. Edit metadata, from a card's menu or
-from the publication on screen, changes the title, language, reading direction
-and series, writing only what changed. It also opens a publication from a file
-picker or the command line, paginates it for the window (§10.1), and turns
-spreads with the arrow keys along the reading direction, Page Up and Page Down,
-Home and End. A Contents panel lists the table of contents and the landmarks of
-`nav.xml` in the reader's language, and a choice takes the reader to the spread
-that holds it; the counter shows the page-list labels on screen. Pages are laid
-out from their declared sizes (§16) and decoded on a worker, one at a time, as
-the reader reaches them. The spreads either side follow, so that a turn usually
-finds its pages ready, and a page queued for a spread the reader has left is
-dropped before it is decoded. Warnings from opening, the faults of the pages on
-screen and a withheld page are reported in a status line.
+added. The shelf searches titles, series and file names, case and accents
+aside, and orders by title, by series, each in the order of its volume numbers,
+or by what was read last. Choosing one opens it where it was last left, and
+Escape goes back to the shelf. Import CBZ converts archives beside themselves,
+never over an existing file, checksums included, and shows what each conversion
+assumed or refused before the shelf is rescanned. Edit metadata, from a card's
+menu or from the publication on screen, changes the title, language, reading
+direction and series, writing only what changed. It also opens a publication
+from a file picker or the command line, paginates it for the window (§10.1),
+and turns spreads with the arrow keys along the reading direction, Page Up and
+Page Down, Home and End. A Contents panel lists the table of contents and the
+landmarks of `nav.xml` in the reader's language, and a choice takes the reader
+to the spread that holds it; the counter shows the page-list labels on screen.
+Pages are laid out from their declared sizes (§16) and decoded on a worker, one
+at a time, as the reader reaches them. The spreads either side follow, so that
+a turn usually finds its pages ready, and a page queued for a spread the reader
+has left is dropped before it is decoded. Warnings from opening, the faults of
+the pages on screen and a withheld page are reported in a status line.
 
 The format itself is at pre-release draft `0.9`. Per §5.0 of the specification,
 a reader supporting one `0.x` version **must reject every other `0.x`**, and

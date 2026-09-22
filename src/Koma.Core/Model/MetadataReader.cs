@@ -16,6 +16,12 @@ public sealed record PublicationTitle(string Text, string Type, string? Language
 }
 
 /// <summary>
+/// The series of §7.5 a publication belongs to.
+/// </summary>
+/// <param name="Position">Text, as §7.5 keeps it: HS2 and 3.5 are volume numbers too.</param>
+public sealed record PublicationSeries(string Name, string? Position, string? Total);
+
+/// <summary>
 /// What <c>metadata.xml</c> says that changes how a publication is read.
 /// </summary>
 /// <remarks>
@@ -52,6 +58,9 @@ public sealed record PublicationMetadata
     /// never a choice to make between several.
     /// </remarks>
     public PublicationTitle MainTitle => Titles.First(t => t.Type == PublicationTitle.Main);
+
+    /// <summary>The first collection of type <c>series</c>, if there is one (§7.5).</summary>
+    public PublicationSeries? Series { get; init; }
 
     /// <summary>
     /// The first <c>Language role="content"</c> (§7.4), which §4.4 makes the
@@ -144,6 +153,7 @@ public static class MetadataReader
             AccessibilityHazards = hazards.AsReadOnly(),
             ContentWarnings = warnings.AsReadOnly(),
             Titles = titles,
+            Series = SeriesOf(root),
             ContentLanguage = contentLanguage
         };
     }
@@ -211,6 +221,19 @@ public static class MetadataReader
         }
 
         return titles.AsReadOnly();
+    }
+
+    /// <remarks>
+    /// The first series only: a publication may sit in several collections,
+    /// but a shelf files a volume in one place, and the first is the one its
+    /// producer put first.
+    /// </remarks>
+    private static PublicationSeries? SeriesOf(XElement root)
+    {
+        XElement? series = root.Elements(XName.Get("Collections", Namespace)).Elements(XName.Get("Collection", Namespace)).FirstOrDefault(c => (string?)c.Attribute("type") == "series");
+        string? name = series?.Element(XName.Get("Name", Namespace))?.Value.Trim();
+
+        return string.IsNullOrEmpty(name) ? null : new PublicationSeries(name, (string?)series!.Attribute("position"), (string?)series.Attribute("total"));
     }
 
     private static string? ContentLanguageOf(XElement root) => root.Elements(XName.Get("Languages", Namespace)).Elements(XName.Get("Language", Namespace)).FirstOrDefault(l => l.Attribute("role")?.Value == "content")?.Value.Trim();

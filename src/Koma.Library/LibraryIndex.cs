@@ -27,6 +27,12 @@ public sealed record LibraryEntry
 
     public ReadingDirection Direction { get; init; }
 
+    /// <summary>The series of §7.5, which the shelf groups volumes by.</summary>
+    public string? Series { get; init; }
+
+    /// <summary>The volume's place in its series, as text: HS2 and 3.5 are numbers too.</summary>
+    public string? SeriesPosition { get; init; }
+
     /// <summary>The cover thumbnail's file name, in the store's own folder.</summary>
     public string? Thumbnail { get; init; }
 
@@ -63,7 +69,20 @@ public sealed record LibraryEntry
 /// </summary>
 public sealed record LibraryIndex
 {
-    public static LibraryIndex Empty { get; } = new();
+    /// <summary>
+    /// The version of what an entry records. An index written by an earlier
+    /// version lacks what later ones added — the series, for one — and its
+    /// entries are described again at the next scan, positions kept.
+    /// </summary>
+    public const int CurrentFormat = 2;
+
+    public static LibraryIndex Empty { get; } = new() { Format = CurrentFormat };
+
+    /// <summary>
+    /// What <see cref="CurrentFormat"/> the entries were described under; 1
+    /// for an index from before the field existed.
+    /// </summary>
+    public int Format { get; init; } = 1;
 
     public IReadOnlyList<string> Folders { get; init; } = [];
 
