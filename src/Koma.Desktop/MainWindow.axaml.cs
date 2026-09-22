@@ -791,8 +791,11 @@ internal sealed partial class MainWindow : Window, IDisposable
         if (publication is null)
             return;
 
+        // The host and not the scroller: a scroller hidden while the shelf was
+        // up has no size until the next layout, and a spread sized against
+        // nothing is drawn as nothing until something else asks for a frame.
         double aspect = ReadingFit.Aspect(SpreadLayout.Arrange(spread, publication.DeclaredSize, 1000, 1000));
-        (double width, double height) = ReadingFit.Canvas(aspect, Scroller.Bounds.Width, Scroller.Bounds.Height, fit, zoom);
+        (double width, double height) = ReadingFit.Canvas(aspect, ViewHost.Bounds.Width, ViewHost.Bounds.Height, fit, zoom);
 
         View.Width = width;
         View.Height = height;
