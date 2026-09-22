@@ -35,6 +35,9 @@ public sealed class PackageWriterTests
     private const string Metadata = """
         <?xml version="1.0" encoding="UTF-8"?>
         <Metadata xmlns="urn:koma:metadata" version="0.9">
+          <Identifiers>
+            <Identifier scheme="uuid" primary="true">urn:uuid:6f9619ff-8b86-d011-b42d-00c04fc964ff</Identifier>
+          </Identifiers>
           <Titles>
             <Title type="main">Une page</Title>
           </Titles>

@@ -3,6 +3,7 @@ using System.IO.Compression;
 using System.Xml.Linq;
 using Koma.Core.Model;
 using Koma.Core.Rendering;
+using Koma.Core.Schemas;
 using Koma.Core.Versioning;
 
 namespace Koma.Core.Packaging;
@@ -201,7 +202,9 @@ public static class PackageOpener
             InspectionResult inspection = ArchiveInspector.Inspect(archive, stream.Length, profile);
             violations.AddRange(inspection.Violations);
 
+            ContainerViolation? containerSchema = CheckSchema(container, CorePaths.Container, mode, violations);
             bool rootFileValid = CheckRootFile(root, violations);
+            KeepOne(containerSchema, violations);
 
             Manifest? manifest = rootFileValid ? ReadManifest(archive, version, mode, profile, violations) : null;
 
@@ -254,12 +257,15 @@ public static class PackageOpener
             return null;
         }
 
+        ContainerViolation? schema = CheckSchema(document, path, mode, violations);
         CoreDocumentChecks.CheckExtensions(document, path, violations);
 
         Manifest? manifest = ManifestReader.Read(document, path, version, violations);
 
         if (manifest is not null)
             OpenVocabularies.Check(document, path, mode, violations);
+
+        KeepOne(schema, violations);
 
         return manifest;
     }
@@ -312,6 +318,7 @@ public static class PackageOpener
         if (document is null)
             return (metadata, null);
 
+        ContainerViolation? schema = CheckSchema(document, CorePaths.Navigation, mode, violations);
         CoreDocumentChecks.CheckExtensions(document, CorePaths.Navigation, violations);
         CoreDocumentChecks.CheckNavigationTargets(document, manifest, CorePaths.Navigation, violations);
 
@@ -322,6 +329,8 @@ public static class PackageOpener
             CoreDocumentChecks.CheckPageTargets(navigation, manifest, CorePaths.Navigation, violations);
             OpenVocabularies.Check(document, CorePaths.Navigation, mode, violations);
         }
+
+        KeepOne(schema, violations);
 
         return (metadata, navigation);
     }
@@ -343,6 +352,7 @@ public static class PackageOpener
             return null;
         }
 
+        ContainerViolation? schema = CheckSchema(document, path, mode, violations);
         CoreDocumentChecks.CheckExtensions(document, path, violations);
 
         PublicationMetadata? metadata = MetadataReader.Read(document, path, version, violations);
@@ -350,7 +360,47 @@ public static class PackageOpener
         if (metadata is not null)
             OpenVocabularies.Check(document, path, mode, violations);
 
+        KeepOne(schema, violations);
+
         return metadata;
+    }
+
+    /// <summary>
+    /// Layer 2: the document against its schema (§15, §17).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Only in strict mode. A package of a later minor version may use what
+    /// the 0.9 schemas do not know, and forward-compatible processing
+    /// (§5.0) reads it for what it can rather than refusing it for that.
+    /// </para>
+    /// <para>
+    /// The readers still run on a document the schema refuses, so that the
+    /// checks of layer 3 report what they find there too, as the reference
+    /// validator reports every layer.
+    /// </para>
+    /// </remarks>
+    private static ContainerViolation? CheckSchema(XDocument document, string path, ProcessingMode mode, List<ContainerViolation> violations)
+    {
+        if (mode != ProcessingMode.Strict)
+            return null;
+
+        ContainerViolation? schema = KomaSchemas.Check(document, path);
+
+        if (schema is not null)
+            violations.Add(schema);
+
+        return schema;
+    }
+
+    /// <summary>
+    /// One schema violation a document, the schema's: a reader that also
+    /// found the document malformed says the same thing less precisely.
+    /// </summary>
+    private static void KeepOne(ContainerViolation? schema, List<ContainerViolation> violations)
+    {
+        if (schema is not null)
+            violations.RemoveAll(v => !ReferenceEquals(v, schema) && v.Code == schema.Code && v.EntryName == schema.EntryName);
     }
 
     /// <summary>

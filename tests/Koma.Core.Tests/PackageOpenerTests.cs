@@ -34,6 +34,9 @@ public sealed class PackageOpenerTests
 
     private const string Metadata = """
         <Metadata xmlns="urn:koma:metadata" version="0.9">
+          <Identifiers>
+            <Identifier scheme="uuid" primary="true">urn:uuid:6f9619ff-8b86-d011-b42d-00c04fc964ff</Identifier>
+          </Identifiers>
           <Titles>
             <Title type="main">Test publication</Title>
           </Titles>
@@ -386,6 +389,23 @@ public sealed class PackageOpenerTests
         Assert.True(package.Manifest.DeclaresNavigation);
         Assert.NotNull(package.Navigation);
         Assert.Equal("front-cover", Assert.Single(package.Navigation.Landmarks).Type);
+    }
+
+    [Fact]
+    public void RejectsWhatOnlyTheSchemaSees()
+    {
+        // An element §8 does not define, in the manifest's own namespace: the
+        // reader has no use for it and passed it by, the schema does not.
+        using MemoryStream buffer = Build(Container, Manifest.Replace("</Manifest>", "  <Bogus/>\n</Manifest>", StringComparison.Ordinal));
+
+        PackageOpenResult result = Open(buffer);
+
+        // The only error; the fixture declares no navigation, which is worth
+        // the warning it always gets.
+        ContainerViolation violation = Assert.Single(result.Violations, v => v.Severity == ViolationSeverity.Error);
+        Assert.Equal(PackageOpenOutcome.Rejected, result.Outcome);
+        Assert.Equal(ContainerViolationCode.SchemaInvalidManifest, violation.Code);
+        Assert.Contains("/Manifest/Bogus", violation.Message, StringComparison.Ordinal);
     }
 
     [Fact]

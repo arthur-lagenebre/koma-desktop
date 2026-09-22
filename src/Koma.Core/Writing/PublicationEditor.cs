@@ -2,6 +2,7 @@ using System.IO.Compression;
 using System.Xml.Linq;
 using Koma.Core.Model;
 using Koma.Core.Packaging;
+using Koma.Core.Schemas;
 using Koma.Core.Versioning;
 
 namespace Koma.Core.Writing;
@@ -10,10 +11,10 @@ namespace Koma.Core.Writing;
 /// Edits the metadata of a publication on disk.
 /// </summary>
 /// <remarks>
-/// The edited document is read back by the same reader and vocabulary checks
-/// the opener uses before anything is written: an edit that would make the
-/// publication one this application refuses to open is refused instead, and
-/// the file keeps what it had.
+/// The edited document is checked against its schema and read back by the
+/// same reader and vocabulary checks the opener uses before anything is
+/// written: an edit that would make the publication one this application
+/// refuses to open is refused instead, and the file keeps what it had.
 /// </remarks>
 public static class PublicationEditor
 {
@@ -30,6 +31,9 @@ public static class PublicationEditor
         XDocument original = Load(path);
         XDocument edited = MetadataEditor.Apply(original, edit, now);
         var violations = new List<ContainerViolation>();
+
+        if (KomaSchemas.Check(edited, CorePaths.Metadata) is { } schema)
+            violations.Add(schema);
 
         if (MetadataReader.Read(edited, CorePaths.Metadata, KomaVersion.Supported, violations) is not null)
             OpenVocabularies.Check(edited, CorePaths.Metadata, ProcessingMode.Strict, violations);

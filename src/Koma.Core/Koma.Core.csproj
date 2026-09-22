@@ -1,7 +1,15 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
     <InternalsVisibleTo Include="Koma.Core.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The schemas the specification repository publishes, carried inside
+         the assembly: a reader validates without looking for files beside
+         itself, and a build without the submodule fails here rather than
+         validating against nothing. -->
+    <EmbeddedResource Include="..\..\external\koma\schemas\0.9\*.rng" LogicalName="Koma.Core.Schemas.%(Filename)%(Extension)" />
   </ItemGroup>
 
 </Project>

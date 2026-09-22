@@ -11,25 +11,25 @@ Written in C# with Avalonia. Windows is the primary target; Linux is supported.
 building the archive (§13.1), checks the mimetype entry field by field (§2.1),
 resolves the version against the portal of §5.0 before judging anything, reads
 the container, manifest, metadata — its titles included, since a library lists
-publications by name — and navigation, and enforces the ZIP profile of §3. It
-writes core documents back in the canonical form of §14.1, which
-`CanonicalXmlTests` checks against every document of the corpus.
-`PackageWriter` puts them in a file the way §2.1 and §14.2 ask: the mimetype
-entry first and stored, the rest in one byte-wise order under one fixed
-timestamp, so that the same publication written twice gives the same bytes.
-`PublicationEditor` edits the metadata of a publication in place: it changes
-what it is asked to and nothing else, stamps the modified date of §7.2.1, reads
-the result back before writing, and replaces the file only once the new one is
-complete. Navigation labels carry the language §4.4 gives them, and
-`NavigationLabel.Choose` picks the one to show from the reader's languages;
-regions (§9.4) are not read, which §16 allows. `OpenVocabularies` judges the
-tokens of all twenty-five open vocabularies of §4.5 in whichever document holds
-them. An unknown token is an error of the publication that §16 lets a reader
-read past, so the opener opens the publication with its fallback and carries
-the error; every other error still refuses it. The pairing algorithm of §10.4
-agrees with the reference implementation on all fifteen upstream fixtures,
-which are written by hand from the prose and never regenerated from an
-implementation.
+publications by name — and navigation, validates each core document against its
+RELAX NG schema, and enforces the ZIP profile of §3. It writes core documents
+back in the canonical form of §14.1, which `CanonicalXmlTests` checks against
+every document of the corpus. `PackageWriter` puts them in a file the way §2.1
+and §14.2 ask: the mimetype entry first and stored, the rest in one byte-wise
+order under one fixed timestamp, so that the same publication written twice
+gives the same bytes. `PublicationEditor` edits the metadata of a publication
+in place: it changes what it is asked to and nothing else, stamps the modified
+date of §7.2.1, reads the result back before writing, and replaces the file
+only once the new one is complete. Navigation labels carry the language §4.4
+gives them, and `NavigationLabel.Choose` picks the one to show from the
+reader's languages; regions (§9.4) are not read, which §16 allows.
+`OpenVocabularies` judges the tokens of all twenty-five open vocabularies of
+§4.5 in whichever document holds them. An unknown token is an error of the
+publication that §16 lets a reader read past, so the opener opens the
+publication with its fallback and carries the error; every other error still
+refuses it. The pairing algorithm of §10.4 agrees with the reference
+implementation on all fifteen upstream fixtures, which are written by hand from
+the prose and never regenerated from an implementation.
 
 Page resources are checked in a pass of their own rather than at open time:
 each check reads a whole image, so running them on open would decompress the
@@ -184,13 +184,6 @@ the two are graded against the same text.
 The page images of the corpus serve as decoding fixtures too. They were
 written by Pillow, so SkiaSharp is never judged on its own output.
 
-## Open technical questions
-
-1. **RELAX NG.** .NET validates XSD and DTD, not RELAX NG. Options are Trang
-   conversion to XSD (lossy), the unmaintained `Commons.Xml.Relaxng`, or
-   hand-written structural checks. §17 notes the schemas are only layer 2 of
-   four in any case.
-
 ## Debts
 
 None of these block anything.
@@ -251,6 +244,22 @@ opener checks the attributes against it and reads from it, and never follows
 an attribute. A manifest whose `@navigation` disagrees with the presence of
 `koma/nav.xml`, in either direction, is refused with
 `navigation-declaration-mismatch`.
+
+**RELAX NG.** .NET validates XSD and DTD, not RELAX NG, and XSD 1.0 cannot
+say what the extension mechanism says: any namespace but the four of KOMA.
+`RelaxNgSchema` validates by derivatives, after James Clark's algorithm, from
+the XML form of the schemas the specification repository publishes, which the
+assembly carries. It implements what those schemas use — patterns, name
+classes with exceptions, eight XML Schema datatypes whose `\s` is XML Schema's
+four characters and not every Unicode space — and refuses anything else when a
+schema loads. The algorithm was checked against libxml2 before it was written,
+on the reference instances, the 36 rejections, the corpus and three thousand
+random mutations, with no disagreement; `RelaxNgSchemaTests` holds the C# to
+the same files. The opener validates every core document in strict mode only:
+a later minor version may use what the 0.9 schemas do not know. The readers
+still run on a document the schema refuses, so that layer 3 reports what it
+finds there as well, and a document gets one schema violation, the schema's,
+which says where it stopped matching.
 
 **Unicode version.** §3 folds and normalizes entry names with the data of
 Unicode 16.0.0. `CaseFoldingTable` is generated from exactly that release.
