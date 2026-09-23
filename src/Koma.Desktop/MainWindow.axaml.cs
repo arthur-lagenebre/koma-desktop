@@ -73,7 +73,7 @@ internal sealed partial class MainWindow : Window, IDisposable
 
         OpenButton.Click += OnOpenClicked;
         LibraryButton.Click += (_, _) => ShowLibrary();
-        AddFolderButton.Click += OnAddFolderClicked;
+        FoldersButton.Click += OnFoldersClicked;
         RefreshButton.Click += async (_, _) => await ScanAsync();
         LanguageChoice.SelectionChanged += (_, _) =>
         {
@@ -303,7 +303,7 @@ internal sealed partial class MainWindow : Window, IDisposable
         localizing = true;
 
         LibraryButton.Content = Text.Of("Library");
-        AddFolderButton.Content = Text.Of("Add folder…");
+        FoldersButton.Content = Text.Of("Folders…");
         RefreshButton.Content = Text.Of("Refresh");
         ImportButton.Content = Text.Of("Import CBZ…");
         OpenButton.Content = Text.Of("Open…");
@@ -408,22 +408,34 @@ internal sealed partial class MainWindow : Window, IDisposable
         PagesButton.IsVisible = openPath is not null;
     }
 
-    private async void OnAddFolderClicked(object? sender, RoutedEventArgs e)
+    /// <summary>
+    /// Opens the folders the library watches, and follows whatever the reader
+    /// did to them.
+    /// </summary>
+    /// <remarks>
+    /// A folder removed takes its publications off the shelf at the next
+    /// scan, which also forgets the covers it had made for them.
+    /// </remarks>
+    private async void OnFoldersClicked(object? sender, RoutedEventArgs e)
     {
-        IReadOnlyList<IStorageFolder> folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
-        {
-            Title = Text.Of("Add a folder of KOMA publications"),
-            AllowMultiple = true
-        });
+        var window = new FoldersWindow(library.Folders);
 
-        // A folder the platform cannot name as a path is one the scanner
-        // cannot walk, so it is not added.
-        string[] added = [.. folders.Select(f => f.TryGetLocalPath()).OfType<string>().Except(library.Folders, StringComparer.Ordinal)];
-
-        if (added.Length == 0)
+        if (!await window.ShowDialog<bool>(this))
             return;
 
-        library = library with { Folders = [.. library.Folders, .. added] };
+        library = library with { Folders = [.. window.Watched] };
+
+        // Written now rather than only by the scan, which a scan already
+        // running would skip: the folders a reader chose are not lost to
+        // timing.
+        try
+        {
+            store.Save(library);
+        }
+        catch (Exception written) when (written is IOException or UnauthorizedAccessException)
+        {
+            Status.Text = written.Message;
+        }
 
         await ScanAsync();
     }
