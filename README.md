@@ -200,9 +200,6 @@ written by Pillow, so SkiaSharp is never judged on its own output.
 
 None of these block anything.
 
-- **A TIFF page stops a conversion.** Skia reads no TIFF where Pillow does,
-  so a CBZ the reference converter handles can be one this one refuses,
-  naming the page, rather than a publication with a page missing.
 - **Check order is load-bearing in two places.** `CheckResourcesInSpine` and
   `CheckNavigationTargets` stay silent when the spine is already at fault, so
   that the reader does not name a cause and a symptom with equal weight. Both
@@ -277,6 +274,15 @@ Normalization comes from the runtime, which takes it from ICU or from Windows
 and so from whatever version the host carries; Unicode's stability policies
 keep both fixed for every character once assigned, so every host agrees with
 16.0.0 on every name made of characters it assigns, which is all §3 asks.
+
+**TIFF pages.** Skia reads no TIFF where Pillow does, so a CBZ the reference
+converter handles can be one this one refuses. It refuses rather than leaving
+the page out: a publication missing a page is worse than a conversion that did
+not happen, and §16 has no way to report a page that never existed. The
+message names the format and says that `tools/cbz_to_koma.py` converts it. A
+decoder would mean a dependency — ImageSharp under a split licence, or
+Magick.NET and its native code — for a format a CBZ rarely holds; it is worth
+reopening the day one turns up often.
 
 **Checks that repeat the schema.** The readers refuse by hand much of what the
 schemas refuse: closed vocabularies, lexical forms, the sections §7 and §8

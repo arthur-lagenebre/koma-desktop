@@ -175,9 +175,11 @@ public static class CbzConverter
         {
             string source = contents.Pages[index].Entry;
 
+            byte[] data = Read(cbz, source);
+
             // Refused rather than lost: a publication missing a page is worse
             // than none, and the reason is one a person can act on.
-            NormalizedPage normalized = PageNormalizer.Normalize(Read(cbz, source), source) ?? throw new InvalidDataException($"{source}: a format this converter cannot decode; convert the page to PNG or JPEG first");
+            NormalizedPage normalized = PageNormalizer.Normalize(data, source) ?? throw new InvalidDataException($"{source}: {Format(data)} is a format this converter cannot decode; convert the page to PNG or JPEG first. The reference converter, tools/cbz_to_koma.py, does convert it.");
 
             notes.AddRange(normalized.Notes);
 
@@ -331,6 +333,24 @@ public static class CbzConverter
     }
 
     private static XElement Landmark(string type, Page page) => new(N("Landmark"), new XAttribute("type", type), new XAttribute("item", page.Id));
+
+    /// <summary>
+    /// What a file that could not be decoded says it is, from its first bytes.
+    /// </summary>
+    /// <remarks>
+    /// TIFF is the one a CBZ turns up in practice: Pillow reads it and Skia
+    /// does not, so this is the one page the reference converter keeps and
+    /// this one refuses. Naming it is the difference between a reader who
+    /// knows what to convert and one who does not.
+    /// </remarks>
+    private static string Format(byte[] data) => data switch
+    {
+        [0x49, 0x49, 0x2A, 0x00, ..] or [0x4D, 0x4D, 0x00, 0x2A, ..] => "TIFF",
+        [0x49, 0x49, 0x2B, 0x00, ..] or [0x4D, 0x4D, 0x00, 0x2B, ..] => "BigTIFF",
+        [0x38, 0x42, 0x50, 0x53, ..] => "Photoshop",
+        [0x00, 0x00, 0x01, 0x00, ..] => "ICO",
+        _ => "what looks like no image"
+    };
 
     private static byte[] Read(ZipArchive archive, string entry)
     {

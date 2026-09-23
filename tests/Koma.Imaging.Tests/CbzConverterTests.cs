@@ -167,7 +167,8 @@ public sealed class CbzConverterTests
 
         InvalidDataException refused = Assert.Throws<InvalidDataException>(() => CbzConverter.Convert(archive, new ConversionOptions()));
 
-        Assert.StartsWith("001.tif:", refused.Message, StringComparison.Ordinal);
+        // Named, so that the person converting knows what to convert.
+        Assert.StartsWith("001.tif: TIFF is a format", refused.Message, StringComparison.Ordinal);
     }
 
     [Fact]
