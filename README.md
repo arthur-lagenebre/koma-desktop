@@ -200,8 +200,6 @@ written by Pillow, so SkiaSharp is never judged on its own output.
 
 None of these block anything.
 
-- **The corpus does not exercise every code of §15.1**, which criterion 3 of
-  §5.0.1 will eventually require.
 - **A TIFF page stops a conversion.** Skia reads no TIFF where Pillow does,
   so a CBZ the reference converter handles can be one this one refuses,
   naming the page, rather than a publication with a page missing.
@@ -279,6 +277,19 @@ Normalization comes from the runtime, which takes it from ICU or from Windows
 and so from whatever version the host carries; Unicode's stability policies
 keep both fixed for every character once assigned, so every host agrees with
 16.0.0 on every name made of characters it assigns, which is all §3 asks.
+
+**Checks that repeat the schema.** The readers refuse by hand much of what the
+schemas refuse: closed vocabularies, lexical forms, the sections §7 and §8
+require. That repetition is deliberate. Forward-compatible processing (§5.0)
+skips the schema, since a document of a later minor version may hold what the
+0.9 schemas do not know, and the readers are all that is left there. Each
+reader is public API, and nothing obliges its caller to validate first. And a
+message that names the attribute and its section is worth more to whoever has
+to fix the file than a path into the document. `SchemaOverlapTests` keeps the
+repetition honest: it holds the schema to what the readers catch, and names
+what only the readers catch — an id declared twice, an href outside `pages/`,
+a version disagreeing with the container, a second main title — which no
+RELAX NG schema can express.
 
 ## Licence
 
