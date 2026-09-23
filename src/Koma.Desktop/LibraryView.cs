@@ -135,7 +135,12 @@ internal sealed class LibraryView : DockPanel
         // read by titles, and a file name is what one looks up when something
         // is wrong.
         contents.Children.Add(Line(entry.Title ?? Path.GetFileName(entry.Path), FontWeight.SemiBold, lines: 2));
-        contents.Children.Add(Line(Subtitle(entry), FontWeight.Normal, lines: entry.Unreadable is null ? 3 : 8, opacity: 0.75));
+        string[] subtitle = Subtitle(entry);
+
+        contents.Children.Add(Line(subtitle[0], FontWeight.Normal, lines: entry.Unreadable is null ? 2 : 8, opacity: 0.75));
+
+        if (subtitle.Length > 1)
+            contents.Children.Add(Line(subtitle[1], FontWeight.Normal, lines: 2, opacity: 0.75));
 
         // The same box for every publication, whatever it has to say: boxes
         // of different heights read as a shelf of different things.
@@ -205,33 +210,42 @@ internal sealed class LibraryView : DockPanel
         };
     }
 
-    private static string Subtitle(LibraryEntry entry)
+    /// <summary>
+    /// What a card says under the title: the series on its own line, then the
+    /// volume and how far the reading got on the next.
+    /// </summary>
+    /// <remarks>
+    /// A series called "20 000 siècles sous les mers" takes a line by itself,
+    /// and a number lost at the end of it would be read as part of the name.
+    /// </remarks>
+    private static string[] Subtitle(LibraryEntry entry)
     {
         if (entry.Unreadable is not null)
-            return entry.Unreadable;
+            return [entry.Unreadable];
 
         string pages = entry.PageCount == 1 ? "1 page" : $"{entry.PageCount} pages";
 
         // A position from an older index has no page number to show.
         string progress = entry.LastItem is null ? pages : entry.LastPage == 0 ? $"{pages} · started" : $"page {entry.LastPage} of {entry.PageCount}";
 
-        // The series first, so that a volume says where it belongs when the
-        // shelf is not grouped by series.
-        return entry.Series is null ? progress : $"{Volume(entry)} · {progress}";
+        if (entry.Series is null)
+            return [progress];
+
+        return Volume(entry) is { } volume ? [entry.Series, $"{volume} · {progress}"] : [entry.Series, progress];
     }
 
     /// <summary>
-    /// The series a publication belongs to, and its place in it.
+    /// A publication's place in its series, or none where the number says
+    /// nothing.
     /// </summary>
     /// <remarks>
-    /// The one volume of a one-volume series is a book, not a volume 1 of 1:
-    /// its number says nothing anyone needs.
+    /// The one volume of a one-volume series is a book, not a volume 1 of 1.
     /// </remarks>
-    private static string Volume(LibraryEntry entry)
+    private static string? Volume(LibraryEntry entry)
     {
         if (entry.SeriesPosition is not { } position || (position == "1" && entry.SeriesTotal == "1"))
-            return entry.Series!;
+            return null;
 
-        return entry.SeriesTotal is { } total ? $"{entry.Series} {position} of {total}" : $"{entry.Series} {position}";
+        return entry.SeriesTotal is { } total ? $"{position} of {total}" : position;
     }
 }
