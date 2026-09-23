@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Koma.Core.Model;
@@ -40,6 +41,8 @@ internal sealed class EditWindow : Window
     private readonly TextBox summary = new() { AcceptsReturn = true, Height = 60, TextWrapping = TextWrapping.Wrap };
     private readonly TextBlock problem = new() { Foreground = Brushes.OrangeRed, TextWrapping = TextWrapping.Wrap };
     private readonly Button save = new() { Content = "Save", IsDefault = true };
+    private readonly StackPanel fields = new() { Spacing = 6, Margin = new Thickness(16) };
+    private readonly WritingNotice writing = new();
 
     public EditWindow(string path, MetadataEdit current)
     {
@@ -70,8 +73,6 @@ internal sealed class EditWindow : Window
         cancel.Click += (_, _) => Close(false);
         save.Click += OnSave;
 
-        var fields = new StackPanel { Spacing = 6, Margin = new Thickness(16) };
-
         fields.Children.Add(Field("Title", title));
         fields.Children.Add(Field("Language (BCP 47, such as fr or en-GB)", language));
         fields.Children.Add(Field("Reading direction", direction));
@@ -81,6 +82,7 @@ internal sealed class EditWindow : Window
         fields.Children.Add(Field("How the publication is read", Boxes(modes)));
         fields.Children.Add(Field("What it may do to a reader", Boxes(hazards)));
         fields.Children.Add(Field("A sentence for a reader deciding whether they can read it", summary));
+        fields.Children.Add(writing);
         fields.Children.Add(problem);
         fields.Children.Add(new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, HorizontalAlignment = HorizontalAlignment.Right, Children = { cancel, save } });
 
@@ -99,8 +101,8 @@ internal sealed class EditWindow : Window
             return;
         }
 
-        save.IsEnabled = false;
         problem.Text = string.Empty;
+        Busy(true);
 
         try
         {
@@ -110,7 +112,7 @@ internal sealed class EditWindow : Window
         catch (Exception refused) when (refused is ArgumentException or InvalidDataException or IOException or UnauthorizedAccessException)
         {
             problem.Text = refused.Message;
-            save.IsEnabled = true;
+            Busy(false);
         }
     }
 
@@ -163,6 +165,23 @@ internal sealed class EditWindow : Window
         }
 
         return panel;
+    }
+
+    /// <summary>
+    /// Shows that the package is being written, and takes the form out of
+    /// reach while it is.
+    /// </summary>
+    /// <remarks>
+    /// Writing a publication copies every page of it into a new file and puts
+    /// that file in place of the old one. On an album of two hundred pages
+    /// that is long enough to wonder whether anything is happening, and long
+    /// enough for a second save to start over the first.
+    /// </remarks>
+    private void Busy(bool writing)
+    {
+        this.writing.Show(writing);
+        fields.IsEnabled = !writing;
+        Cursor = new Cursor(writing ? StandardCursorType.Wait : StandardCursorType.Arrow);
     }
 
     private static string? Blank(string? text) => string.IsNullOrWhiteSpace(text) ? null : text.Trim();

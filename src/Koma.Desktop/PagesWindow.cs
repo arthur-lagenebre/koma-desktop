@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Koma.Core.Model;
@@ -39,6 +40,8 @@ internal sealed class PagesWindow : Window
     private readonly TextBox chapter = new();
     private readonly TextBlock problem = new() { Foreground = Brushes.OrangeRed, TextWrapping = TextWrapping.Wrap };
     private readonly Button save = new() { Content = "Save this page", IsDefault = true };
+    private readonly StackPanel form = new() { Spacing = 8, Margin = new Thickness(16, 0, 0, 0) };
+    private readonly WritingNotice writing = new();
 
     private string[] items = [];
     private bool filling;
@@ -57,14 +60,13 @@ internal sealed class PagesWindow : Window
         var close = new Button { Content = "Close", IsCancel = true };
         close.Click += (_, _) => Close(Saved);
 
-        var form = new StackPanel { Spacing = 8, Margin = new Thickness(16, 0, 0, 0) };
-
         form.Children.Add(Field("Role", roles));
         form.Children.Add(span);
         form.Children.Add(Field("Place in the spread", position));
         form.Children.Add(Field("Chapter opening here, if any", chapter));
         form.Children.Add(Field("Alternative text", alternative));
         form.Children.Add(decorative);
+        form.Children.Add(writing);
         form.Children.Add(problem);
         form.Children.Add(new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, HorizontalAlignment = HorizontalAlignment.Right, Children = { close, save } });
 
@@ -77,6 +79,18 @@ internal sealed class PagesWindow : Window
     public bool Saved { get; private set; }
 
     private static StackPanel Field(string label, Control input) => new() { Spacing = 2, Children = { new TextBlock { Text = label, Opacity = 0.75 }, input } };
+
+    /// <summary>
+    /// Shows that the package is being written, and takes the pages and the
+    /// form out of reach while it is.
+    /// </summary>
+    private void Busy(bool writing)
+    {
+        this.writing.Show(writing);
+        form.IsEnabled = !writing;
+        pages.IsEnabled = !writing;
+        Cursor = new Cursor(writing ? StandardCursorType.Wait : StandardCursorType.Arrow);
+    }
 
     private void Load(string? current)
     {
@@ -149,8 +163,8 @@ internal sealed class PagesWindow : Window
             decorative.IsChecked == true,
             (chapter.Text ?? string.Empty).Trim());
 
-        save.IsEnabled = false;
         problem.Text = string.Empty;
+        Busy(true);
 
         try
         {
@@ -163,6 +177,6 @@ internal sealed class PagesWindow : Window
             problem.Text = refused.Message;
         }
 
-        save.IsEnabled = true;
+        Busy(false);
     }
 }
