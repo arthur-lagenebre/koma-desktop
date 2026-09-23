@@ -44,6 +44,19 @@ internal sealed class LibraryView : DockPanel
     private readonly TextBox search = new() { Width = 320 };
     private readonly ComboBox order = new() { SelectedIndex = 0 };
 
+    /// <summary>How many decoded covers are kept before the shelf starts over.</summary>
+    private const int CoverCache = 400;
+
+    private readonly Dictionary<string, Bitmap> covers = new(StringComparer.Ordinal);
+
+    // One cover at a time: a thousand cards would otherwise put a thousand
+    // decodes on the thread pool at once, and the first would arrive last.
+    // A chain of tasks rather than a lock: nothing here is held between
+    // cards, so there is nothing to release, or to dispose of.
+    private Task reading = Task.CompletedTask;
+
+    private int drawing;
+
     private IReadOnlyList<LibraryEntry> entries = [];
     private LibraryStore? store;
     private bool restoring;
@@ -113,6 +126,9 @@ internal sealed class LibraryView : DockPanel
 
     private void Draw()
     {
+        // Covers still being read belong to the shelf as it was; this one is
+        // drawn again, and theirs is gone.
+        drawing++;
         groups.Children.Clear();
 
         if (store is null)
@@ -187,26 +203,80 @@ internal sealed class LibraryView : DockPanel
         return card;
     }
 
-    private static Border Cover(LibraryEntry entry, LibraryStore store)
+    /// <summary>
+    /// The cover of a card: the one already decoded, or a grey box that fills
+    /// in when the file has been read.
+    /// </summary>
+    /// <remarks>
+    /// Decoding happens on a worker, one cover at a time and in the order the
+    /// cards were built, so that the shelf is drawn at once and fills from
+    /// the top. A library of a thousand volumes would otherwise decode a
+    /// thousand images before showing anything.
+    /// </remarks>
+    private Border Cover(LibraryEntry entry, LibraryStore store)
     {
-        Bitmap? cover = Thumbnail(entry, store);
+        var box = new Border { Height = CoverHeight, Background = MissingCover };
 
-        return new Border
+        if (entry.Thumbnail is null)
+            return box;
+
+        if (covers.TryGetValue(entry.Thumbnail, out Bitmap? decoded))
         {
-            Height = CoverHeight,
-            Background = cover is null ? MissingCover : null,
-            Child = cover is null ? null : new Image { Source = cover, Stretch = Stretch.Uniform }
-        };
+            box.Background = null;
+            box.Child = new Image { Source = decoded, Stretch = Stretch.Uniform };
+
+            return box;
+        }
+
+        reading = Decode(reading, entry.Thumbnail, store.ThumbnailPath(entry.Thumbnail), box, drawing);
+
+        return box;
     }
 
-    private static Bitmap? Thumbnail(LibraryEntry entry, LibraryStore store)
+    /// <summary>
+    /// Reads a cover and puts it in its box, unless the shelf has been drawn
+    /// again since.
+    /// </summary>
+    private async Task Decode(Task previous, string name, string path, Border box, int drawn)
     {
-        if (entry.Thumbnail is null)
-            return null;
+        // The cards are queued in the order they were built, so the shelf
+        // fills from the top, which is the order it is looked at.
+        await previous;
 
+        // At the size it is shown: a thumbnail decoded whole would cost four
+        // times the memory for pixels nobody sees.
+        Bitmap? cover = await Task.Run(() => Read(path));
+
+        if (cover is null)
+            return;
+
+        // Bounded rather than boundless: a decoded cover is a few hundred
+        // kilobytes, and a library can hold thousands. Past the bound the
+        // shelf decodes again rather than grow without end. Dropped and not
+        // disposed: a card on screen may still be drawing one, and the
+        // collector takes them once no card is.
+        if (covers.Count >= CoverCache)
+            covers.Clear();
+
+        covers[name] = cover;
+
+        if (drawn == drawing)
+            Place(box, cover);
+    }
+
+    private static void Place(Border box, Bitmap cover)
+    {
+        box.Background = null;
+        box.Child = new Image { Source = cover, Stretch = Stretch.Uniform };
+    }
+
+    private static Bitmap? Read(string path)
+    {
         try
         {
-            return new Bitmap(store.ThumbnailPath(entry.Thumbnail));
+            using FileStream file = File.OpenRead(path);
+
+            return Bitmap.DecodeToHeight(file, (int)CoverHeight);
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException)
         {
