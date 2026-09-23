@@ -110,6 +110,8 @@ internal static class Text
         ["Right of the spread"] = "À droite de la planche",
         ["Alone, centred"] = "Seule, centrée",
         ["Chapter opening here, if any"] = "Chapitre commençant ici, s'il y en a un",
+        ["Number printed on the page"] = "Numéro imprimé sur la page",
+        ["Number printed on its right half"] = "Numéro imprimé sur sa moitié droite",
         ["Alternative text"] = "Texte alternatif",
         ["Decorative: carries nothing to describe"] = "Décorative : rien à décrire",
 

@@ -38,6 +38,9 @@ internal sealed class PagesWindow : Window
     private readonly TextBox alternative = new() { AcceptsReturn = true, Height = 72, TextWrapping = TextWrapping.Wrap };
     private readonly CheckBox decorative = new() { Content = Text.Of("Decorative: carries nothing to describe") };
     private readonly TextBox chapter = new();
+    private readonly TextBox printed = new();
+    private readonly TextBox printedRight = new();
+    private readonly StackPanel rightHalf;
     private readonly TextBlock problem = new() { Foreground = Brushes.OrangeRed, TextWrapping = TextWrapping.Wrap };
     private readonly Button save = new() { Content = Text.Of("Save this page"), IsDefault = true };
     private readonly StackPanel form = new() { Spacing = 8, Margin = new Thickness(16, 0, 0, 0) };
@@ -54,6 +57,13 @@ internal sealed class PagesWindow : Window
         Width = 760;
         Height = 520;
 
+        rightHalf = Field(Text.Of("Number printed on its right half"), printedRight);
+        rightHalf.IsVisible = false;
+
+        // Only a page drawn across a spread carries two printed numbers, one
+        // for each half of the spread it fills (§9.2).
+        span.IsCheckedChanged += (_, _) => rightHalf.IsVisible = span.IsChecked == true;
+
         pages.SelectionChanged += (_, _) => Fill();
         save.Click += OnSave;
 
@@ -63,6 +73,8 @@ internal sealed class PagesWindow : Window
         form.Children.Add(Field(Text.Of("Role"), roles));
         form.Children.Add(span);
         form.Children.Add(Field(Text.Of("Place in the spread"), position));
+        form.Children.Add(Field(Text.Of("Number printed on the page"), printed));
+        form.Children.Add(rightHalf);
         form.Children.Add(Field(Text.Of("Chapter opening here, if any"), chapter));
         form.Children.Add(Field(Text.Of("Alternative text"), alternative));
         form.Children.Add(decorative);
@@ -90,6 +102,21 @@ internal sealed class PagesWindow : Window
         form.IsEnabled = !writing;
         pages.IsEnabled = !writing;
         Cursor = new Cursor(writing ? StandardCursorType.Wait : StandardCursorType.Arrow);
+    }
+
+    /// <summary>
+    /// The numbers printed on the page: one, or two when it is drawn across a
+    /// spread and both halves are numbered.
+    /// </summary>
+    private string[] PrintedPages()
+    {
+        string first = (printed.Text ?? string.Empty).Trim();
+        string second = span.IsChecked == true ? (printedRight.Text ?? string.Empty).Trim() : string.Empty;
+
+        if (first.Length == 0)
+            return [];
+
+        return second.Length == 0 ? [first] : [first, second];
     }
 
     private void Load(string? current)
@@ -141,6 +168,9 @@ internal sealed class PagesWindow : Window
         roles.ItemsSource = offered;
         roles.SelectedIndex = Math.Max(0, Array.IndexOf(offered, carried));
         chapter.Text = page.Chapter;
+        printed.Text = page.PrintedPages is [string first, ..] ? first : string.Empty;
+        printedRight.Text = page.PrintedPages is [_, string second, ..] ? second : string.Empty;
+        rightHalf.IsVisible = page.PageSpan == 2;
         span.IsChecked = page.PageSpan == 2;
         position.SelectedIndex = Array.FindIndex(Positions, p => p.Position == (page.SpreadPosition ?? SpreadPosition.Auto));
         alternative.Text = page.AlternativeText;
@@ -161,7 +191,8 @@ internal sealed class PagesWindow : Window
             Positions[Math.Max(position.SelectedIndex, 0)].Position,
             (alternative.Text ?? string.Empty).Trim(),
             decorative.IsChecked == true,
-            (chapter.Text ?? string.Empty).Trim());
+            (chapter.Text ?? string.Empty).Trim(),
+            PrintedPages());
 
         problem.Text = string.Empty;
         Busy(true);

@@ -125,6 +125,42 @@ public sealed class PageEditorTests : IDisposable
     }
 
     [Fact]
+    public void WritesTheNumbersPrintedOnAPage()
+    {
+        // valid-page-list numbers p002 as 1; p004 spans a spread and carries
+        // the two numbers printed on it.
+        (_, XDocument? renumbered) = Apply("p002", new PageEdit(PrintedPages: ["iv"]));
+        (_, XDocument? spread) = Apply("p004", new PageEdit(PrintedPages: ["6", "7"]));
+
+        Assert.Contains("p002 iv", Labels(renumbered!));
+        Assert.Contains("p004 6 left", Labels(spread!));
+        Assert.Contains("p004 7 right", Labels(spread!));
+
+        // Only a page drawn across a spread carries two numbers (§9.2).
+        Assert.Throws<ArgumentException>(() => Apply("p002", new PageEdit(PrintedPages: ["6", "7"])));
+        Assert.Throws<ArgumentException>(() => Apply("p002", new PageEdit(PrintedPages: ["1", "2", "3"])));
+    }
+
+    [Fact]
+    public void TakesAPageOutOfTheListAndTheListWithTheLastOne()
+    {
+        (_, XDocument? navigation) = Apply("p002", new PageEdit(PrintedPages: []));
+
+        string[] renumbered = ["iv"];
+
+        Assert.DoesNotContain("p002", Labels(navigation!).Select(l => l.Split(' ')[0]));
+        Assert.Equal(renumbered, PageEditor.Read(Manifest(), Apply("p002", new PageEdit(PrintedPages: renumbered)).Navigation, "p002").PrintedPages);
+
+        // A list with nothing left in it goes, rather than stay empty (§9.2).
+        XDocument? emptied = Navigation();
+
+        foreach (string page in new[] { "p001", "p002", "p003", "p004" })
+            (_, emptied) = PageEditor.Apply(Manifest(), emptied, page, new PageEdit(PrintedPages: []));
+
+        Assert.Null(emptied!.Root!.Element(XName.Get("PageList", "urn:koma:navigation")));
+    }
+
+    [Fact]
     public void RewritesThePackageAndStampsTheRelease()
     {
         string path = Copy("valid-page-list.koma");
@@ -186,6 +222,8 @@ public sealed class PageEditorTests : IDisposable
     private static XElement Reference(XDocument manifest, string item) => manifest.Root!.Descendants(XName.Get("ItemRef", "urn:koma:manifest")).First(r => (string?)r.Attribute("item") == item);
 
     private static string Roles(XDocument manifest, string item) => (string?)Item(manifest, item).Attribute("roles") ?? string.Empty;
+
+    private static string[] Labels(XDocument navigation) => [.. navigation.Root!.Descendants(XName.Get("PageTarget", "urn:koma:navigation")).Select(t => string.Join(' ', new[] { (string?)t.Attribute("item"), (string?)t.Attribute("label"), (string?)t.Attribute("spread-position") }.Where(v => v is not null)))];
 
     private static string[] Entries(XDocument navigation) => [.. navigation.Root!.Descendants(XName.Get("Entry", "urn:koma:navigation")).Select(e => $"{(string?)e.Attribute("item")} {e.Element(XName.Get("Label", "urn:koma:navigation"))?.Value}")];
 

@@ -13,6 +13,11 @@ namespace Koma.Core.Writing;
 /// <param name="SpreadPosition">Where the page sits in its spread (§8.8).</param>
 /// <param name="AlternativeText">The text of §8.7; empty removes it.</param>
 /// <param name="Decorative">Whether the page carries no information of its own (§8.7).</param>
+/// <param name="PrintedPages">
+/// The numbers printed on the page, as the page list of §9.2 gives them:
+/// none, one, or two for a page drawn across a spread. Empty takes the page
+/// out of the list.
+/// </param>
 /// <param name="Chapter">
 /// The title under which the page opens a chapter in the table of contents
 /// (§9.1); empty takes the page out of it.
@@ -23,7 +28,8 @@ public sealed record PageEdit(
     SpreadPosition? SpreadPosition = null,
     string? AlternativeText = null,
     bool? Decorative = null,
-    string? Chapter = null);
+    string? Chapter = null,
+    IReadOnlyList<string>? PrintedPages = null);
 
 /// <summary>
 /// Edits what the manifest says about one page, and keeps the navigation in
@@ -70,7 +76,8 @@ public static class PageEditor
             Position((string?)Reference(manifest, item).Attribute("spread-position")),
             accessibility?.Element(XName.Get("AlternativeText", Manifest))?.Value.Trim() ?? string.Empty,
             (string?)accessibility?.Attribute("decorative") == "true",
-            Entry(navigation, item)?.Element(XName.Get("Label", Navigation))?.Value.Trim() ?? string.Empty);
+            Entry(navigation, item)?.Element(XName.Get("Label", Navigation))?.Value.Trim() ?? string.Empty,
+            [.. Targets(navigation, item).Select(t => (string?)t.Attribute("label") ?? string.Empty)]);
     }
 
     /// <summary>
@@ -110,8 +117,14 @@ public static class PageEditor
 
         XDocument? renavigated = navigation is null ? null : Landmarks(navigation, edited);
 
+        if (edit.PrintedPages is not null && navigation is null)
+            throw new ArgumentException("The package has no navigation document to carry a page list (§1).", nameof(edit));
+
         if (edit.Chapter is not null && renavigated is not null)
             SetChapter(renavigated, edited, item, edit.Chapter.Trim());
+
+        if (edit.PrintedPages is not null && renavigated is not null)
+            SetPrintedPages(renavigated, edited, item, edit.PrintedPages);
 
         return (edited, renavigated);
     }
@@ -247,6 +260,80 @@ public static class PageEditor
         else
             after.AddBeforeSelf(written);
     }
+
+    /// <summary>
+    /// Writes the numbers printed on a page, or takes the page out of the
+    /// page list (§9.2).
+    /// </summary>
+    /// <remarks>
+    /// A page drawn across a spread carries the two numbers printed on it,
+    /// one for each half, which is why §9.2 lets a target say which half it
+    /// labels — and why only such a page may say it. Targets follow the
+    /// spine, as the chapters do: a page list in another order than the pages
+    /// is a page list of another book.
+    /// </remarks>
+    private static void SetPrintedPages(XDocument navigation, XDocument manifest, string item, IReadOnlyList<string> printed)
+    {
+        string[] labels = [.. printed.Select(p => p.Trim()).Where(p => p.Length > 0)];
+        bool spread = (string?)Item(manifest, item).Attribute("page-span") == "2";
+
+        if (labels.Length > 2)
+            throw new ArgumentException("A page carries at most two printed numbers, one for each half of a spread (§9.2).", nameof(printed));
+
+        if (labels.Length == 2 && !spread)
+            throw new ArgumentException("Only a page drawn across a spread carries two printed numbers (§9.2).", nameof(printed));
+
+        XElement? list = navigation.Root?.Element(XName.Get("PageList", Navigation));
+
+        foreach (XElement existing in Targets(navigation, item))
+            existing.Remove();
+
+        if (labels.Length == 0)
+        {
+            // §9.2 wants at least one target in the section: with none, the
+            // section goes rather than stay empty.
+            if (list is not null && !list.Elements(XName.Get("PageTarget", Navigation)).Any())
+                list.Remove();
+
+            return;
+        }
+
+        if (list is null)
+        {
+            list = new XElement(XName.Get("PageList", Navigation));
+
+            // After the table of contents, where §9 places it.
+            if (navigation.Root!.Element(XName.Get("TableOfContents", Navigation)) is { } contents)
+                contents.AddAfterSelf(list);
+            else
+                navigation.Root.AddFirst(list);
+        }
+
+        string[] sides = labels.Length == 2 ? ["left", "right"] : [];
+        XElement[] written =
+        [
+            .. labels.Select((label, side) =>
+            {
+                var target = new XElement(XName.Get("PageTarget", Navigation), new XAttribute("item", item), new XAttribute("label", label));
+
+                if (sides.Length == 2)
+                    target.SetAttributeValue("spread-position", sides[side]);
+
+                return target;
+            })
+        ];
+
+        string[] spine = [.. manifest.Root!.Element(XName.Get("Spine", Manifest))!.Elements(XName.Get("ItemRef", Manifest)).Select(r => (string?)r.Attribute("item") ?? string.Empty)];
+        XElement? after = list.Elements(XName.Get("PageTarget", Navigation)).FirstOrDefault(t => Array.IndexOf(spine, (string?)t.Attribute("item")) > Array.IndexOf(spine, item));
+
+        if (after is null)
+            list.Add(written);
+        else
+            after.AddBeforeSelf(written);
+    }
+
+    private static XElement[] Targets(XDocument? navigation, string item) =>
+        navigation?.Root?.Element(XName.Get("PageList", Navigation))?.Elements(XName.Get("PageTarget", Navigation)).Where(t => (string?)t.Attribute("item") == item).ToArray() ?? [];
 
     /// <summary>A label in the language the navigation document is written in (§4.4).</summary>
     private static XElement Label(XDocument navigation, string text)
