@@ -45,7 +45,9 @@ jobs:
   # contexts included, and fails the push instead: it would have caught the
   # runner context used where a job cannot see it.
   workflows:
-    runs-on: ubuntu-latest
+    # Pinned rather than latest: actionlint runs shellcheck from the image,
+    # and a linter has nothing to gain from an image moving under it.
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
 
