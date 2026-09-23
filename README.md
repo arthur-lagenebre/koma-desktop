@@ -76,27 +76,28 @@ aside, and orders by title, by series, each in the order of its volume numbers,
 or by what was read last. Choosing one opens it where it was last left, fitted
 and zoomed as it was left too, since a dense manga and a large-format album are
 not read the same way; a Resume button takes up the publication read last.
-Escape goes back to the shelf. Import CBZ converts archives beside themselves,
-never over an existing file, checksums included, and shows what each conversion
-assumed or refused before the shelf is rescanned. Edit metadata, from a card's
-menu or from the publication on screen, changes the title, language, reading
-direction and series, writing only what changed. It also opens a publication
-from a file picker or the command line, paginates it for the window (§10.1),
-and turns spreads with the arrow keys along the reading direction, Page Up and
-Page Down, Home and End. A spread fits the window or its width, in its own
-proportions; Ctrl with the wheel or with plus, minus and zero zooms it, Space
-reads down a spread taller than the window before turning it, the wheel turns
-the page when there is nothing to scroll, a click turns towards the half it
-lands in and the side buttons of a mouse browse back and forth, and F11 reads
-full screen, which Escape leaves. A Contents panel lists the table of contents
-and the landmarks of `nav.xml` in the reader's language, and a choice takes the
-reader to the spread that holds it; the counter shows the page-list labels on
-screen. Pages are laid out from their declared sizes (§16) and decoded on a
-worker, one at a time, as the reader reaches them. The spreads either side
-follow, so that a turn usually finds its pages ready, and a page queued for a
-spread the reader has left is dropped before it is decoded. Warnings from
-opening, the faults of the pages on screen and a withheld page are reported in
-a status line.
+Escape goes back to the shelf. Import CBZ takes files or a whole folder,
+subfolders included, and asks once whether the original ComicInfo travels with
+the packages; it converts archives beside themselves, never over an existing
+file, checksums included, and shows what each conversion assumed or refused
+before the shelf is rescanned. Edit metadata, from a card's menu or from the
+publication on screen, changes the title, language, reading direction and
+series, writing only what changed. It also opens a publication from a file
+picker or the command line, paginates it for the window (§10.1), and turns
+spreads with the arrow keys along the reading direction, Page Up and Page Down,
+Home and End. A spread fits the window or its width, in its own proportions;
+Ctrl with the wheel or with plus, minus and zero zooms it, Space reads down a
+spread taller than the window before turning it, the wheel turns the page when
+there is nothing to scroll, a click turns towards the half it lands in and the
+side buttons of a mouse browse back and forth, and F11 reads full screen, which
+Escape leaves. A Contents panel lists the table of contents and the landmarks
+of `nav.xml` in the reader's language, and a choice takes the reader to the
+spread that holds it; the counter shows the page-list labels on screen. Pages
+are laid out from their declared sizes (§16) and decoded on a worker, one at a
+time, as the reader reaches them. The spreads either side follow, so that a
+turn usually finds its pages ready, and a page queued for a spread the reader
+has left is dropped before it is decoded. Warnings from opening, the faults of
+the pages on screen and a withheld page are reported in a status line.
 
 The format itself is at pre-release draft `0.9`. Per §5.0 of the specification,
 a reader supporting one `0.x` version **must reject every other `0.x`**, and

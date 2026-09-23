@@ -31,7 +31,8 @@ internal sealed partial class MainWindow : Window, IDisposable
 
     // What an import from the shelf asks of the converter: checksums, so that
     // a page damaged later is caught (§8.6), and the rest as the reference
-    // converter defaults it.
+    // converter defaults it. Whether the original ComicInfo travels with the
+    // package is the reader's to say, once for the whole import.
     private static readonly ConversionOptions ImportOptions = new(Checksums: true);
 
     // The reader's language first; NavigationLabel.Choose falls back on the
@@ -370,6 +371,17 @@ internal sealed partial class MainWindow : Window, IDisposable
 
     private async void OnImportClicked(object? sender, RoutedEventArgs e)
     {
+        if (await new ImportWindow().ShowDialog<ImportChoice?>(this) is not { } choice)
+            return;
+
+        string[] archives = choice.Folder ? await FolderOfArchives() : await ChosenArchives();
+
+        if (archives.Length > 0)
+            await ImportAsync(archives, ImportOptions with { KeepComicInfo = choice.KeepComicInfo });
+    }
+
+    private async Task<string[]> ChosenArchives()
+    {
         IReadOnlyList<IStorageFile> files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
             Title = "Import comic book archives",
@@ -377,10 +389,40 @@ internal sealed partial class MainWindow : Window, IDisposable
             FileTypeFilter = [CbzFiles]
         });
 
-        string[] archives = [.. files.Select(f => f.TryGetLocalPath()).OfType<string>()];
+        return [.. files.Select(f => f.TryGetLocalPath()).OfType<string>()];
+    }
 
-        if (archives.Length > 0)
-            await ImportAsync(archives);
+    /// <summary>
+    /// Every archive of a chosen folder, subfolders included, in the order a
+    /// reader numbers volumes.
+    /// </summary>
+    private async Task<string[]> FolderOfArchives()
+    {
+        IReadOnlyList<IStorageFolder> folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        {
+            Title = "Import every archive of a folder",
+            AllowMultiple = false
+        });
+
+        if (folders.Count == 0 || folders[0].TryGetLocalPath() is not { } folder)
+            return [];
+
+        string[] archives;
+
+        try
+        {
+            archives = [.. Directory.EnumerateFiles(folder, "*.cbz", new EnumerationOptions { RecurseSubdirectories = true, IgnoreInaccessible = true }).Order(NaturalOrder.Instance)];
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            Status.Text = e.Message;
+            return [];
+        }
+
+        if (archives.Length == 0)
+            Status.Text = $"No .cbz archive under {folder}.";
+
+        return archives;
     }
 
     /// <summary>
@@ -393,7 +435,7 @@ internal sealed partial class MainWindow : Window, IDisposable
     /// is scattered elsewhere. An existing file is never overwritten; it may
     /// be one the reader has been annotating, or one made by another tool.
     /// </remarks>
-    private async Task ImportAsync(string[] archives)
+    private async Task ImportAsync(string[] archives, ConversionOptions options)
     {
         if (importing)
             return;
@@ -407,7 +449,7 @@ internal sealed partial class MainWindow : Window, IDisposable
 
         try
         {
-            report = await Task.Run(() => Import(archives, folders, progress));
+            report = await Task.Run(() => Import(archives, folders, options, progress));
         }
         finally
         {
@@ -420,7 +462,7 @@ internal sealed partial class MainWindow : Window, IDisposable
         await ScanAsync();
     }
 
-    private static string Import(string[] archives, IReadOnlyList<string> folders, IProgress<int> progress)
+    private static string Import(string[] archives, IReadOnlyList<string> folders, ConversionOptions options, IProgress<int> progress)
     {
         var report = new StringBuilder();
         int converted = 0;
@@ -442,7 +484,7 @@ internal sealed partial class MainWindow : Window, IDisposable
             {
                 try
                 {
-                    CbzConversion conversion = CbzConverter.Convert(cbz, koma, ImportOptions);
+                    CbzConversion conversion = CbzConverter.Convert(cbz, koma, options);
 
                     foreach (string note in conversion.Notes)
                         report.AppendLine("  " + note);
