@@ -20,6 +20,11 @@ namespace Koma.Core.Importing;
 /// <param name="InferSpreads">Whether a landscape page ComicInfo does not mark is taken for a double page.</param>
 /// <param name="KeepComicInfo">Whether the original <c>ComicInfo.xml</c> travels with the package, unchanged.</param>
 /// <param name="Navigation">Whether to write <c>nav.xml</c>, with the landmarks the page roles give.</param>
+/// <param name="NumberFromFileName">
+/// Whether a volume number is taken from the digits an archive's name starts
+/// with, for a collection that numbers its files and not its metadata.
+/// </param>
+/// <param name="Number">The volume number to use where ComicInfo gives none.</param>
 /// <param name="PageList">
 /// Whether <c>nav.xml</c> numbers the pages. Off unless asked: §9.2 means the
 /// printed number, and a CBZ only knows the order of its scans.
@@ -33,7 +38,9 @@ public sealed record ConversionOptions(
     bool InferSpreads = false,
     bool KeepComicInfo = true,
     bool Navigation = true,
-    bool PageList = false);
+    bool PageList = false,
+    bool NumberFromFileName = false,
+    string? Number = null);
 
 /// <summary>
 /// Projects a ComicInfo onto the metadata of §7, as <c>tools/cbz_to_koma.py</c>
@@ -117,7 +124,7 @@ public static partial class ComicInfoProjection
         root.Add(new XElement(X("Languages"), new XElement(X("Language"), new XAttribute("role", "content"), language)));
 
         if (series is not null)
-            root.Add(new XElement(X("Collections"), Collection(comicInfo, series)));
+            root.Add(new XElement(X("Collections"), Collection(comicInfo, series, Number(comicInfo, options, notes))));
 
         Add(root, "Contributors", Contributors(comicInfo, notes));
         Add(root, "Descriptions", Descriptions(comicInfo));
@@ -193,6 +200,30 @@ public static partial class ComicInfoProjection
         return new Guid(hash.AsSpan(0, 16), bigEndian: true);
     }
 
+    /// <summary>
+    /// The volume number, from ComicInfo or from the name of the archive.
+    /// </summary>
+    /// <remarks>
+    /// A collection that numbers its files and not its metadata is common
+    /// enough — 1 - Ante demonium.cbz — and taking the number from the name
+    /// is a guess, so it is said out loud and asked for rather than assumed.
+    /// </remarks>
+    private static string? Number(ComicInfo comicInfo, ConversionOptions options, List<string> notes)
+    {
+        if (comicInfo["Number"] is { } stated)
+            return stated;
+
+        if (options.Number is not { } given)
+            return null;
+
+        string note = $"ComicInfo gives no volume number; {Repr(given)} taken from the name of the archive";
+
+        if (!notes.Contains(note, StringComparer.Ordinal))
+            notes.Add(note);
+
+        return given;
+    }
+
     private static string Title(ComicInfo comicInfo, ConversionOptions options, List<string> notes)
     {
         if (comicInfo["Title"] is { } title)
@@ -200,7 +231,7 @@ public static partial class ComicInfoProjection
 
         string? series = comicInfo["Series"];
 
-        if (series is not null && comicInfo["Number"] is { } number)
+        if (series is not null && Number(comicInfo, options, notes) is { } number)
         {
             string built = $"{series} {number}";
             notes.Add($"no Title in ComicInfo; built {Repr(built)} from Series and Number");
@@ -237,11 +268,11 @@ public static partial class ComicInfoProjection
         return ReadingDirection.LeftToRight;
     }
 
-    private static XElement Collection(ComicInfo comicInfo, string series)
+    private static XElement Collection(ComicInfo comicInfo, string series, string? position)
     {
         var collection = new XElement(X("Collection"), new XAttribute("type", "series"));
 
-        if (comicInfo["Number"] is { } position)
+        if (position is not null)
             collection.Add(new XAttribute("position", position));
 
         if (comicInfo["Count"] is { } total)

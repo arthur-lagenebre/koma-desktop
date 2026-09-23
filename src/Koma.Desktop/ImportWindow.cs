@@ -7,7 +7,7 @@ namespace Koma.Desktop;
 
 /// <summary>What the reader chose to import, and how.</summary>
 /// <param name="Folder">Whether a folder was chosen, to be searched for archives, rather than files.</param>
-public sealed record ImportChoice(bool Folder, bool KeepComicInfo);
+public sealed record ImportChoice(bool Folder, bool KeepComicInfo, bool NumberFromFileName);
 
 /// <summary>
 /// Asks what to convert and what to carry over, before any picker opens.
@@ -26,6 +26,13 @@ internal sealed class ImportWindow : Window
         IsChecked = true
     };
 
+    private readonly CheckBox numbering = new()
+    {
+        Content = "Number the volumes from the start of their file names"
+    };
+
+    private ImportChoice Choice(bool folder) => new(folder, comicInfo.IsChecked == true, numbering.IsChecked == true);
+
     public ImportWindow()
     {
         Title = "Import comic book archives";
@@ -37,8 +44,8 @@ internal sealed class ImportWindow : Window
         var folder = new Button { Content = "Choose a folder…" };
         var cancel = new Button { Content = "Cancel", IsCancel = true };
 
-        files.Click += (_, _) => Close(new ImportChoice(Folder: false, comicInfo.IsChecked == true));
-        folder.Click += (_, _) => Close(new ImportChoice(Folder: true, comicInfo.IsChecked == true));
+        files.Click += (_, _) => Close(Choice(folder: false));
+        folder.Click += (_, _) => Close(Choice(folder: true));
         cancel.Click += (_, _) => Close(null);
 
         Content = new StackPanel
@@ -54,6 +61,13 @@ internal sealed class ImportWindow : Window
                     Opacity = 0.75
                 },
                 comicInfo,
+                numbering,
+                new TextBlock
+                {
+                    Text = "A collection often numbers its files and not its metadata: 1 - Ante demonium.cbz. The number is then written as the volume's place in its series, and each conversion says it did so.",
+                    TextWrapping = TextWrapping.Wrap,
+                    Opacity = 0.55
+                },
                 new TextBlock
                 {
                     Text = "ComicInfo is never normative for KOMA: it travels unchanged, for readers that still want it.",

@@ -26,8 +26,10 @@ internal sealed class LibraryView : DockPanel
 
     // Every card is the same height, cover or no cover, so that the rows line
     // up instead of stepping around the ones that have none: the cover, then
-    // two lines of title, one of file name and three of whatever is left.
-    private const double CardHeight = 430;
+    // two lines of title and three of whatever is left.
+    private const double CardHeight = 400;
+
+    private const double CardMargin = 6;
 
     private static readonly IBrush MissingCover = new ImmutableSolidColorBrush(Color.FromRgb(0x3A, 0x3A, 0x3A));
 
@@ -44,6 +46,7 @@ internal sealed class LibraryView : DockPanel
 
     private IReadOnlyList<LibraryEntry> entries = [];
     private LibraryStore? store;
+    private bool restoring;
 
     public LibraryView()
     {
@@ -54,7 +57,13 @@ internal sealed class LibraryView : DockPanel
         Children.Add(new ScrollViewer { Content = groups });
 
         search.TextChanged += (_, _) => Draw();
-        order.SelectionChanged += (_, _) => Draw();
+        order.SelectionChanged += (_, _) =>
+        {
+            Draw();
+
+            if (!restoring)
+                Ordered?.Invoke(this, Orders[Math.Max(order.SelectedIndex, 0)].Order);
+        };
     }
 
     /// <summary>Raised with the path of the publication the reader chose.</summary>
@@ -63,13 +72,22 @@ internal sealed class LibraryView : DockPanel
     /// <summary>Raised with the path of a publication whose metadata the reader wants to edit.</summary>
     public event EventHandler<string>? EditRequested;
 
-    public void Show(IReadOnlyList<LibraryEntry> entries, LibraryStore store)
+    /// <summary>Raised when the reader chooses another order, which the library remembers.</summary>
+    public event EventHandler<ShelfOrder>? Ordered;
+
+    public void Show(IReadOnlyList<LibraryEntry> entries, LibraryStore store, ShelfOrder chosen)
     {
         ArgumentNullException.ThrowIfNull(entries);
         ArgumentNullException.ThrowIfNull(store);
 
         this.entries = entries;
         this.store = store;
+
+        // Set before drawing, and without passing for a choice of the
+        // reader's: it is the order they chose last time.
+        restoring = true;
+        order.SelectedIndex = Math.Max(0, Array.FindIndex(Orders, o => o.Order == chosen));
+        restoring = false;
 
         Draw();
     }
@@ -108,26 +126,25 @@ internal sealed class LibraryView : DockPanel
     {
         var contents = new StackPanel { Spacing = 4 };
 
-        string file = Path.GetFileName(entry.Path);
-
         // A publication that will not open has no cover to be missing, so its
         // reason takes the place a cover would have held.
         if (entry.Unreadable is null)
             contents.Children.Add(Cover(entry, store));
 
-        contents.Children.Add(Line(entry.Title ?? file, FontWeight.SemiBold, lines: 2));
-
-        // A publication with no title is already shown under its file name;
-        // naming the file twice says nothing the second time.
-        if (entry.Title is not null)
-            contents.Children.Add(Line(file, FontWeight.Normal, lines: 2, opacity: 0.55));
-
+        // The file name is in the tip rather than on the card: a shelf is
+        // read by titles, and a file name is what one looks up when something
+        // is wrong.
+        contents.Children.Add(Line(entry.Title ?? Path.GetFileName(entry.Path), FontWeight.SemiBold, lines: 2));
         contents.Children.Add(Line(Subtitle(entry), FontWeight.Normal, lines: entry.Unreadable is null ? 3 : 8, opacity: 0.75));
 
+        // The same box for every publication, whatever it has to say: boxes
+        // of different heights read as a shelf of different things.
         var card = new Button
         {
             Content = contents,
-            Margin = new Thickness(6),
+            Width = CardWidth - (2 * CardMargin),
+            Height = CardHeight - (2 * CardMargin),
+            Margin = new Thickness(CardMargin),
             Padding = new Thickness(8),
             HorizontalContentAlignment = HorizontalAlignment.Stretch,
             VerticalContentAlignment = VerticalAlignment.Top,
@@ -203,5 +220,18 @@ internal sealed class LibraryView : DockPanel
         return entry.Series is null ? progress : $"{Volume(entry)} · {progress}";
     }
 
-    private static string Volume(LibraryEntry entry) => entry.SeriesPosition is null ? entry.Series! : $"{entry.Series} {entry.SeriesPosition}";
+    /// <summary>
+    /// The series a publication belongs to, and its place in it.
+    /// </summary>
+    /// <remarks>
+    /// The one volume of a one-volume series is a book, not a volume 1 of 1:
+    /// its number says nothing anyone needs.
+    /// </remarks>
+    private static string Volume(LibraryEntry entry)
+    {
+        if (entry.SeriesPosition is not { } position || (position == "1" && entry.SeriesTotal == "1"))
+            return entry.Series!;
+
+        return entry.SeriesTotal is { } total ? $"{entry.Series} {position} of {total}" : $"{entry.Series} {position}";
+    }
 }

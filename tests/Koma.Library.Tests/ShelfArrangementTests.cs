@@ -13,6 +13,8 @@ public sealed class ShelfArrangementTests
     private static readonly LibraryEntry[] Shelf =
     [
         Entry("rivage-10.koma", "La marée", "Rivage", "10", opened: 3),
+        Entry("666-03.koma", "Demonio fortissimo", "666", null),
+        Entry("666-01.koma", "Ante demonium", "666", null),
         Entry("rivage-2.koma", "Le port", "Rivage", "2", opened: 1),
         Entry("rivage-hs1.koma", "Hors-série", "Rivage", "HS1"),
         Entry("rivage-extra.koma", "Carnet", "Rivage", null),
@@ -26,13 +28,18 @@ public sealed class ShelfArrangementTests
     {
         IReadOnlyList<ShelfGroup> groups = ShelfArrangement.Arrange(Shelf, null, ShelfOrder.Series, French);
 
-        string?[] headings = ["Aube", "Rivage", ShelfArrangement.NoSeries, ShelfArrangement.Unreadable];
+        string?[] headings = ["666", "Aube", "Rivage", ShelfArrangement.NoSeries, ShelfArrangement.Unreadable];
         Assert.Equal(headings, groups.Select(g => g.Heading));
 
         // 2 before 10, as a reader counts; a special after the numbers; an
         // unnumbered volume last.
         string[] rivage = ["Le port", "La marée", "Hors-série", "Carnet"];
-        Assert.Equal(rivage, groups[1].Entries.Select(e => e.Title));
+        Assert.Equal(rivage, groups[2].Entries.Select(e => e.Title));
+
+        // A series whose volumes carry no number is filed by the numbers in
+        // their file names, which is where a converted collection keeps them.
+        string[] numbered = ["Ante demonium", "Demonio fortissimo"];
+        Assert.Equal(numbered, groups[0].Entries.Select(e => e.Title));
     }
 
     [Fact]
@@ -40,7 +47,7 @@ public sealed class ShelfArrangementTests
     {
         IReadOnlyList<ShelfGroup> groups = ShelfArrangement.Arrange(Shelf, null, ShelfOrder.Title, French);
 
-        string[] titles = ["Carnet", "Élève", "Hors-série", "La marée", "Le port", "Première lueur"];
+        string[] titles = ["Ante demonium", "Carnet", "Demonio fortissimo", "Élève", "Hors-série", "La marée", "Le port", "Première lueur"];
         Assert.Equal(titles, groups[0].Entries.Select(e => e.Title));
         Assert.Null(groups[0].Heading);
         Assert.Equal(ShelfArrangement.Unreadable, groups[1].Heading);

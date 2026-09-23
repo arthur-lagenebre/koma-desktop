@@ -81,9 +81,10 @@ and zoomed as it was left too, since a dense manga and a large-format album are
 not read the same way; a Resume button takes up the publication read last.
 Escape goes back to the shelf. Import CBZ takes files or a whole folder,
 subfolders included, and asks once whether the original ComicInfo travels with
-the packages; it converts archives beside themselves, never over an existing
-file, checksums included, and shows what each conversion assumed or refused
-before the shelf is rescanned. Edit metadata, from a card's menu or from the
+the packages and whether volumes take their number from the start of their file
+names; it converts archives beside themselves, never over an existing file,
+checksums included, and shows what each conversion assumed or refused before
+the shelf is rescanned. Edit metadata, from a card's menu or from the
 publication on screen, changes the title, language, reading direction, series,
 and what the publication says about reading it — how it is taken in, what it
 may do to a reader, a sentence for someone deciding whether they can read it —

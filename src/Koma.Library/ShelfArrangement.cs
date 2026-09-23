@@ -60,9 +60,13 @@ public static class ShelfArrangement
                 {
                     // Numbered volumes in the order of their numbers, the
                     // unnumbered after them by title.
+                    // By number, then by file name, which carries the number
+                    // when the publication does not: a volume numbered in its
+                    // name is still numbered.
                     groups.Add(new ShelfGroup(series.Key, [.. series
                         .OrderBy(e => e.SeriesPosition is null)
                         .ThenBy(e => e.SeriesPosition, NaturalOrder.Instance)
+                        .ThenBy(e => Path.GetFileName(e.Path), NaturalOrder.Instance)
                         .ThenBy(e => e.Title ?? string.Empty, titles)]));
                 }
 

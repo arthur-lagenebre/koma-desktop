@@ -10,6 +10,7 @@
             <Button x:Name="LibraryButton" Content="Library" />
             <Button x:Name="ResumeButton" IsVisible="False" />
             <Button x:Name="AddFolderButton" Content="Add folder…" />
+            <Button x:Name="RefreshButton" Content="Refresh" IsVisible="False" />
             <Button x:Name="ImportButton" Content="Import CBZ…" />
             <Button x:Name="EditButton" Content="Edit…" IsVisible="False" />
             <Button x:Name="PagesButton" Content="Pages…" IsVisible="False" />

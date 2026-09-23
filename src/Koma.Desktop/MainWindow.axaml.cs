@@ -70,6 +70,8 @@ internal sealed partial class MainWindow : Window, IDisposable
         OpenButton.Click += OnOpenClicked;
         LibraryButton.Click += (_, _) => ShowLibrary();
         AddFolderButton.Click += OnAddFolderClicked;
+        RefreshButton.Click += async (_, _) => await ScanAsync();
+        Shelf.Ordered += (_, chosen) => RememberOrder(chosen);
         ImportButton.Click += OnImportClicked;
         EditButton.Click += async (_, _) => await EditAsync(openPath);
         PagesButton.Click += async (_, _) => await PagesAsync(openPath, ItemOf(current));
@@ -254,6 +256,27 @@ internal sealed partial class MainWindow : Window, IDisposable
     /// <summary>The publication read last, which the shelf offers to take up again.</summary>
     private LibraryEntry? LastRead => library.Entries.Where(e => e.Unreadable is null && e.LastOpened is not null).MaxBy(e => e.LastOpened);
 
+    /// <summary>
+    /// Keeps the order the reader chose, so that the shelf opens the way they
+    /// left it.
+    /// </summary>
+    private void RememberOrder(ShelfOrder chosen)
+    {
+        if (library.Order == chosen)
+            return;
+
+        library = library with { Order = chosen };
+
+        try
+        {
+            store.Save(library);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            Status.Text = e.Message;
+        }
+    }
+
     private void ShowResume()
     {
         LibraryEntry? entry = LastRead;
@@ -284,8 +307,9 @@ internal sealed partial class MainWindow : Window, IDisposable
         // No publication is on screen to name the window any more.
         Title = "KOMA";
 
-        Shelf.Show(library.Entries, store);
+        Shelf.Show(library.Entries, store, library.Order);
         Shelf.IsVisible = true;
+        RefreshButton.IsVisible = true;
         ShowResume();
         EditButton.IsVisible = false;
         PagesButton.IsVisible = false;
@@ -303,6 +327,7 @@ internal sealed partial class MainWindow : Window, IDisposable
     {
         Shelf.IsVisible = false;
         ResumeButton.IsVisible = false;
+        RefreshButton.IsVisible = false;
         Scroller.IsVisible = true;
         FitChoice.IsVisible = true;
 
@@ -438,7 +463,7 @@ internal sealed partial class MainWindow : Window, IDisposable
         string[] archives = choice.Folder ? await FolderOfArchives() : await ChosenArchives();
 
         if (archives.Length > 0)
-            await ImportAsync(archives, ImportOptions with { KeepComicInfo = choice.KeepComicInfo });
+            await ImportAsync(archives, ImportOptions with { KeepComicInfo = choice.KeepComicInfo, NumberFromFileName = choice.NumberFromFileName });
     }
 
     private async Task<string[]> ChosenArchives()

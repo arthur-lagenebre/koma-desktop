@@ -3,6 +3,7 @@ using System.Globalization;
 using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using Koma.Core.Importing;
 using Koma.Core.Rendering;
@@ -34,7 +35,7 @@ public sealed record CbzConversion(ReadOnlyDictionary<string, byte[]> Entries, R
 /// derived from it.
 /// </para>
 /// </remarks>
-public static class CbzConverter
+public static partial class CbzConverter
 {
     private const string Container = """
         <?xml version="1.0" encoding="UTF-8"?>
@@ -74,7 +75,14 @@ public static class CbzConverter
     /// </exception>
     public static CbzConversion Convert(string cbz, string koma, ConversionOptions options)
     {
+        ArgumentNullException.ThrowIfNull(cbz);
         ArgumentNullException.ThrowIfNull(koma);
+        ArgumentNullException.ThrowIfNull(options);
+
+        // The name is only known here, where the file is: the archive itself
+        // carries nothing of it.
+        if (options.NumberFromFileName && options.Number is null && LeadingNumber().Match(Path.GetFileNameWithoutExtension(cbz)) is { Success: true } numbered)
+            options = options with { Number = numbered.Groups["number"].Value.TrimStart('0') is { Length: > 0 } trimmed ? trimmed : "0" };
 
         CbzConversion conversion;
 
@@ -351,6 +359,12 @@ public static class CbzConverter
         [0x00, 0x00, 0x01, 0x00, ..] => "ICO",
         _ => "what looks like no image"
     };
+
+    // Digits at the start of a name, as a collection numbers its files:
+    // "1 - Ante demonium.cbz". A number in the middle of a name — 666-03 —
+    // is as likely to be part of the title, and is not taken.
+    [GeneratedRegex(@"^\s*(?<number>[0-9]{1,4})(?![0-9])")]
+    private static partial Regex LeadingNumber();
 
     private static byte[] Read(ZipArchive archive, string entry)
     {

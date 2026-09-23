@@ -58,7 +58,10 @@ internal sealed class EditWindow : Window
         language.Text = current.Language;
         direction.SelectedIndex = current.Direction == ReadingDirection.RightToLeft ? 1 : 0;
         series.Text = current.Series?.Name;
-        position.Text = current.Series?.Position;
+
+        // A volume of a series that carries no number is offered the one its
+        // file name starts with, which is where a collection often keeps it.
+        position.Text = current.Series?.Position ?? (current.Series is null ? null : FromFileName(path));
         total.Text = current.Series?.Total;
 
         foreach (CheckBox box in modes)
@@ -182,6 +185,18 @@ internal sealed class EditWindow : Window
         this.writing.Show(writing);
         fields.IsEnabled = !writing;
         Cursor = new Cursor(writing ? StandardCursorType.Wait : StandardCursorType.Arrow);
+    }
+
+    /// <summary>The digits a file name starts with, which a collection numbers its volumes by.</summary>
+    private static string? FromFileName(string path)
+    {
+        string name = Path.GetFileNameWithoutExtension(path).TrimStart();
+        int digits = 0;
+
+        while (digits < name.Length && char.IsAsciiDigit(name[digits]))
+            digits++;
+
+        return digits is > 0 and <= 4 ? name[..digits].TrimStart('0') is { Length: > 0 } number ? number : "0" : null;
     }
 
     private static string? Blank(string? text) => string.IsNullOrWhiteSpace(text) ? null : text.Trim();

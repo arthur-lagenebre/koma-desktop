@@ -1,6 +1,7 @@
 using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
+using System.Xml.Linq;
 using Koma.Core.Importing;
 using Koma.Core.Rendering;
 using Koma.Core.Writing;
@@ -141,6 +142,25 @@ public sealed class ComicInfoProjectionTests
 
         Assert.Contains($"<Title type=\"main\">{title}</Title>", Encoding.UTF8.GetString(CanonicalXml.Write(metadata)), StringComparison.Ordinal);
         Assert.Equal(note, notes[0]);
+    }
+
+    [Theory]
+    [InlineData("3", "7", "3")]
+    [InlineData(null, "7", "7")]
+    [InlineData(null, null, null)]
+    public void TakesAVolumeNumberFromTheArchiveWhenComicInfoGivesNone(string? stated, string? fromName, string? expected)
+    {
+        // A collection often numbers its files and not its metadata, and what
+        // ComicInfo does say is never overruled by a file name.
+        var notes = new List<string>();
+        string number = stated is null ? string.Empty : $"<Number>{stated}</Number>";
+        ComicInfo parsed = ComicInfo.Parse(Encoding.UTF8.GetBytes($"<ComicInfo><Series>Rivage</Series>{number}</ComicInfo>"), notes);
+
+        XDocument metadata = ComicInfoProjection.Metadata(parsed, new ConversionOptions(Language: "fr", Direction: ReadingDirection.LeftToRight, Number: fromName), [], notes).Metadata;
+        XNamespace m = "urn:koma:metadata";
+
+        Assert.Equal(expected, (string?)metadata.Root!.Element(m + "Collections")!.Element(m + "Collection")!.Attribute("position"));
+        Assert.Equal(stated is null && fromName is not null, notes.Any(n => n.Contains("taken from the name of the archive", StringComparison.Ordinal)));
     }
 
     [Fact]

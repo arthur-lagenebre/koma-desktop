@@ -114,6 +114,7 @@ public static class LibraryScanner
             Direction = package.Metadata.Direction,
             Series = package.Metadata.Series?.Name,
             SeriesPosition = package.Metadata.Series?.Position,
+            SeriesTotal = package.Metadata.Series?.Total,
             PageCount = package.Manifest.Spine.Count,
             Thumbnail = Cover(package, store)
         };

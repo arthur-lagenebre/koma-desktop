@@ -33,6 +33,9 @@ public sealed record LibraryEntry
     /// <summary>The volume's place in its series, as text: HS2 and 3.5 are numbers too.</summary>
     public string? SeriesPosition { get; init; }
 
+    /// <summary>How many volumes the series holds, when the publication says.</summary>
+    public string? SeriesTotal { get; init; }
+
     /// <summary>The cover thumbnail's file name, in the store's own folder.</summary>
     public string? Thumbnail { get; init; }
 
@@ -88,7 +91,7 @@ public sealed record LibraryIndex
     /// version lacks what later ones added — the series, for one — and its
     /// entries are described again at the next scan, positions kept.
     /// </summary>
-    public const int CurrentFormat = 2;
+    public const int CurrentFormat = 3;
 
     public static LibraryIndex Empty { get; } = new() { Format = CurrentFormat };
 
@@ -101,4 +104,7 @@ public sealed record LibraryIndex
     public IReadOnlyList<string> Folders { get; init; } = [];
 
     public IReadOnlyList<LibraryEntry> Entries { get; init; } = [];
+
+    /// <summary>How the shelf was last ordered, which it opens on again.</summary>
+    public ShelfOrder Order { get; init; }
 }
