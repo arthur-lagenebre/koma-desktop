@@ -22,8 +22,11 @@ bytes. `PublicationEditor` edits the metadata of a publication in place: it
 changes what it is asked to and nothing else, stamps the modified date of
 §7.2.1, reads the result back before writing, and replaces the file only once
 the new one is complete, copying the pages it is not changing straight from the
-old file to the new one. Navigation labels carry the language §4.4 gives them,
-and `NavigationLabel.Choose` picks the one to show from the reader's languages;
+old file to the new one. It edits a page the same way — its roles, its span,
+its side of the spread, its alternative text — and moves the landmarks of §9.3
+with the roles they come from, so that a manifest and its navigation never say
+two different things. Navigation labels carry the language §4.4 gives them, and
+`NavigationLabel.Choose` picks the one to show from the reader's languages;
 regions (§9.4) are not read, which §16 allows. `OpenVocabularies` judges the
 tokens of all twenty-five open vocabularies of §4.5 in whichever document holds
 them. An unknown token is an error of the publication that §16 lets a reader
