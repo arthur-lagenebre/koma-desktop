@@ -31,6 +31,26 @@ public sealed class ConformanceCorpusTests
     private static readonly HashSet<string> Implemented =
     [
         ContainerViolationCode.AbsolutePath,
+        ContainerViolationCode.EntryCountLimit,
+        ContainerViolationCode.LandmarkDuplicateType,
+        ContainerViolationCode.MissingPageResource,
+        ContainerViolationCode.MissingRequiredXml,
+        ContainerViolationCode.MultipartArchive,
+        ContainerViolationCode.NotAZip,
+        ContainerViolationCode.PathBackslash,
+        ContainerViolationCode.PathEmpty,
+        ContainerViolationCode.PathEmptySegment,
+        ContainerViolationCode.PathNotNormalized,
+        ContainerViolationCode.SchemaInvalidContainer,
+        ContainerViolationCode.SchemaInvalidManifest,
+        ContainerViolationCode.SchemaInvalidMetadata,
+        ContainerViolationCode.SchemaInvalidNavigation,
+        ContainerViolationCode.UncompressedSizeLimit,
+        ContainerViolationCode.UndeclaredPageResource,
+        ContainerViolationCode.UnreadablePageResource,
+        ContainerViolationCode.XmlDocumentSizeLimit,
+        ContainerViolationCode.XmlNestingLimit,
+        ContainerViolationCode.XmlNotWellFormed,
         ContainerViolationCode.AccessibilityHazardConflict,
         ContainerViolationCode.AnimatedPageResource,
         ContainerViolationCode.ChecksumMismatch,
@@ -164,15 +184,15 @@ public sealed class ConformanceCorpusTests
         // otherwise be filed as out of scope and pass.
         CorpusCase[] cases = LoadExpected();
 
-        Assert.Equal(45, cases.Length);
+        Assert.Equal(67, cases.Length);
 
         int covered = cases.Count(c => c.Code is not null && Implemented.Contains(c.Code));
         int misnamed = cases.Count(c => c.Code is not null && Misnamed.ContainsKey(c.Code));
         int outOfScope = cases.Length - covered - misnamed;
 
-        Assert.Equal(35, covered);
+        Assert.Equal(56, covered);
         Assert.Equal(0, misnamed);
-        Assert.Equal(10, outOfScope);
+        Assert.Equal(11, outOfScope);
     }
 
     [Fact]

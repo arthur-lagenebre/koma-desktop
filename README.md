@@ -12,25 +12,26 @@ building the archive (§13.1), checks the mimetype entry field by field (§2.1),
 resolves the version against the portal of §5.0 before judging anything, reads
 the container, manifest, metadata — its titles included, since a library lists
 publications by name — and navigation, validates each core document against its
-RELAX NG schema, and enforces the ZIP profile of §3. It writes core documents
-back in the canonical form of §14.1, which `CanonicalXmlTests` checks against
-every document of the corpus. `PackageWriter` puts them in a file the way §2.1
-and §14.2 ask: the mimetype entry first and stored, the rest in one byte-wise
-order under one fixed timestamp, so that the same publication written twice
-gives the same bytes. `PublicationEditor` edits the metadata of a publication
-in place: it changes what it is asked to and nothing else, stamps the modified
-date of §7.2.1, reads the result back before writing, and replaces the file
-only once the new one is complete, copying the pages it is not changing
-straight from the old file to the new one. Navigation labels carry the language
-§4.4 gives them, and `NavigationLabel.Choose` picks the one to show from the
-reader's languages; regions (§9.4) are not read, which §16 allows.
-`OpenVocabularies` judges the tokens of all twenty-five open vocabularies of
-§4.5 in whichever document holds them. An unknown token is an error of the
-publication that §16 lets a reader read past, so the opener opens the
-publication with its fallback and carries the error; every other error still
-refuses it. The pairing algorithm of §10.4 agrees with the reference
-implementation on all fifteen upstream fixtures, which are written by hand from
-the prose and never regenerated from an implementation.
+RELAX NG schema, enforces the ZIP profile of §3, and reports every code §15.1
+defines that an opener can see. It writes core documents back in the canonical
+form of §14.1, which `CanonicalXmlTests` checks against every document of the
+corpus. `PackageWriter` puts them in a file the way §2.1 and §14.2 ask: the
+mimetype entry first and stored, the rest in one byte-wise order under one
+fixed timestamp, so that the same publication written twice gives the same
+bytes. `PublicationEditor` edits the metadata of a publication in place: it
+changes what it is asked to and nothing else, stamps the modified date of
+§7.2.1, reads the result back before writing, and replaces the file only once
+the new one is complete, copying the pages it is not changing straight from the
+old file to the new one. Navigation labels carry the language §4.4 gives them,
+and `NavigationLabel.Choose` picks the one to show from the reader's languages;
+regions (§9.4) are not read, which §16 allows. `OpenVocabularies` judges the
+tokens of all twenty-five open vocabularies of §4.5 in whichever document holds
+them. An unknown token is an error of the publication that §16 lets a reader
+read past, so the opener opens the publication with its fallback and carries
+the error; every other error still refuses it. The pairing algorithm of §10.4
+agrees with the reference implementation on all fifteen upstream fixtures,
+which are written by hand from the prose and never regenerated from an
+implementation.
 
 Page resources are checked in a pass of their own rather than at open time:
 each check reads a whole image, so running them on open would decompress the
@@ -43,10 +44,10 @@ decode, or a size beyond the pixel limits is withheld and keeps its place in
 the spine; a page with any other fault of the resource layer is decoded and
 shown, and its fault travels with it for the interface to report.
 
-Of the 45 packages in the upstream corpus, 35 are refused with the code the
-corpus gives. The remaining ten are a defect no opener can see — an entry that
-under-declares its size is only caught when something reads it — and the nine
-packages that have nothing to refuse. `ConformanceCorpusTests` asserts those
+Of the 67 packages in the upstream corpus, 56 are refused with the code the
+corpus gives. The remaining eleven are a defect no opener can see — an entry
+that under-declares its size is only caught when something reads it — and the
+ten packages that have nothing to refuse. `ConformanceCorpusTests` asserts those
 counts, so a case that moves is reported rather than quietly reclassified.
 
 `CbzConverter` turns a CBZ into a KOMA package with the decisions of
@@ -182,7 +183,7 @@ the folders and positions of a development session.
 
 ## Testing against the corpus
 
-`external/koma/corpus/expected.json` states, for each of the 45 packages,
+`external/koma/corpus/expected.json` states, for each of the 67 packages,
 whether a conforming implementation must report it valid, warning or error.
 It is normative by example. The test suite walks it directly rather than
 defining its own fixtures.

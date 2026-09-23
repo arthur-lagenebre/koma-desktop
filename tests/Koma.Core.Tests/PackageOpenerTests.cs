@@ -44,6 +44,9 @@ public sealed class PackageOpenerTests
             <Language role="content">en</Language>
           </Languages>
           <Reading direction="ltr" spread="auto"/>
+          <Accessibility>
+            <AccessMode>visual</AccessMode>
+          </Accessibility>
         </Metadata>
         """;
 
@@ -494,12 +497,14 @@ public sealed class PackageOpenerTests
     [Fact]
     public void AnOpenPackageBoundsTheResourcesItHandsOut()
     {
-        using MemoryStream buffer = Build(Container, Manifest, ("pages/001.bin", "abcdef"));
+        // Under extras/, since a file under pages/ that the manifest does not
+        // declare is a fault of its own (§8), and this is about the stream.
+        using MemoryStream buffer = Build(Container, Manifest, ("extras/001.bin", "abcdef"));
 
         using KomaPackage? package = Open(buffer).Package;
         Assert.NotNull(package);
 
-        using Stream? resource = package.TryOpenResource("pages/001.bin");
+        using Stream? resource = package.TryOpenResource("extras/001.bin");
         Assert.NotNull(resource);
         Assert.IsType<BoundedReadStream>(resource);
 

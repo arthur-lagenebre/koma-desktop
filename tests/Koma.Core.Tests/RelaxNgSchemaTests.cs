@@ -53,30 +53,63 @@ public sealed class RelaxNgSchemaTests
     [Fact]
     public void AgreesWithTheSchemasOnEveryCoreDocumentOfTheCorpus()
     {
-        // The corpus exercises layers 1, 3 and 4, so its documents are valid
-        // against the schemas, with one exception: G7 puts the rule against
-        // AlternativeText on a decorative page in the schema as well.
+        // Every document the corpus offers to a schema is valid against it,
+        // but for the five the corpus is about: the four that carry an element
+        // no schema defines, and the one G7 puts in the schema as well, where
+        // a decorative page carries alternative text.
         var rejected = new List<string>();
 
         foreach (string package in Directory.EnumerateFiles(Path.Combine(Corpus.Root(), "packages"), "*.koma").Order(StringComparer.Ordinal))
         {
-            using ZipArchive archive = ZipFile.OpenRead(package);
-
             foreach ((string entry, string schema) in Documents)
             {
-                if (archive.GetEntry(entry) is not { } found)
+                if (Document(package, entry) is not { } document)
                     continue;
 
-                using Stream stream = found.Open();
-
-                if (Loaded[schema].Validate(XDocument.Load(stream)) is not null)
+                if (Loaded[schema].Validate(document) is not null)
                     rejected.Add($"{Path.GetFileName(package)}:{entry}");
             }
         }
 
-        string[] expected = ["L3-decorative-with-alt-text.koma:koma/manifest.xml"];
+        string[] expected =
+        [
+            "L2-schema-invalid-container.koma:META-INF/container.xml",
+            "L2-schema-invalid-manifest.koma:koma/manifest.xml",
+            "L2-schema-invalid-metadata.koma:koma/metadata.xml",
+            "L2-schema-invalid-navigation.koma:koma/nav.xml",
+            "L3-decorative-with-alt-text.koma:koma/manifest.xml"
+        ];
 
         Assert.Equal(expected, rejected);
+    }
+
+    /// <summary>
+    /// One core document of a package, or <see langword="null"/> when there
+    /// is none to validate.
+    /// </summary>
+    /// <remarks>
+    /// A file that is no archive, one that says it is split, a document that
+    /// is absent, not well-formed or carrying a document type declaration:
+    /// each is a case of the corpus about something other than a schema, and
+    /// none reaches layer 2.
+    /// </remarks>
+    private static XDocument? Document(string package, string entry)
+    {
+        try
+        {
+            using ZipArchive archive = ZipFile.OpenRead(package);
+
+            if (archive.GetEntry(entry) is not { } found)
+                return null;
+
+            using Stream stream = found.Open();
+
+            return XDocument.Load(stream);
+        }
+        catch (Exception e) when (e is InvalidDataException or System.Xml.XmlException)
+        {
+            return null;
+        }
     }
 
     [Theory]

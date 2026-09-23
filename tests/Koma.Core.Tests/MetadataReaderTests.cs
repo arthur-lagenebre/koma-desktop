@@ -83,7 +83,9 @@ public sealed class MetadataReaderTests
         var violations = new List<ContainerViolation>();
         PublicationMetadata? metadata = MetadataReader.Read(XDocument.Parse(xml), Entry, Version, violations);
 
-        Assert.Empty(violations);
+        // Warnings are welcome here: a fixture with no accessibility section
+        // earns one, and says nothing about the titles under test.
+        Assert.DoesNotContain(violations, v => v.Severity == ViolationSeverity.Error);
         Assert.NotNull(metadata);
 
         return metadata;

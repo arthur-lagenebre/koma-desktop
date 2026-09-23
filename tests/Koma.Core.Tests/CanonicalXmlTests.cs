@@ -1,5 +1,6 @@
 using System.IO.Compression;
 using System.Text;
+using System.Text.Json;
 using System.Xml.Linq;
 using Koma.Core.Writing;
 using Koma.TestSupport;
@@ -39,22 +40,12 @@ public sealed class CanonicalXmlTests
     {
         string[] packages = [.. Directory.EnumerateFiles(Path.Combine(Corpus.Root(), "packages"), "*.koma").Order(StringComparer.Ordinal)];
 
-        Assert.Equal(45, packages.Length);
+        Assert.Equal(67, packages.Length);
 
-        foreach (string package in packages)
+        foreach (string package in packages.Where(p => !NoProducerWroteThem.Contains(Path.GetFileName(p))))
         {
-            using ZipArchive archive = ZipFile.OpenRead(package);
-
-            foreach (ZipArchiveEntry entry in archive.Entries.Where(IsCoreDocument))
-            {
-                using Stream stream = entry.Open();
-                using var buffer = new MemoryStream();
-                stream.CopyTo(buffer);
-
-                byte[] written = buffer.ToArray();
-
+            foreach (byte[] written in CoreDocuments(package))
                 Assert.Equal(Encoding.UTF8.GetString(written), Rewrite(written));
-            }
         }
     }
 
@@ -67,6 +58,63 @@ public sealed class CanonicalXmlTests
         Assert.Equal((byte)'\n', written[^1]);
         Assert.NotEqual((byte)'\n', written[^2]);
         Assert.DoesNotContain((byte)'\r', written);
+    }
+
+    /// <summary>
+    /// The packages whose documents §14.1 has nothing to say about.
+    /// </summary>
+    /// <remarks>
+    /// A case built to break a rule about documents — one that is not
+    /// well-formed, one carrying a document type declaration, one past a
+    /// limit of §13.1 — holds a document no conforming producer wrote, and
+    /// its layout is not the corpus's claim. The upstream suite exempts the
+    /// same three codes.
+    /// </remarks>
+    private static readonly HashSet<string> NoProducerWroteThem = Exempt();
+
+    private static HashSet<string> Exempt()
+    {
+        string[] codes = ["xml-not-well-formed", "xml-document-size-limit", "xml-nesting-limit"];
+
+        using JsonDocument expectations = JsonDocument.Parse(File.ReadAllBytes(Path.Combine(Corpus.Root(), "expected.json")));
+
+        return [.. expectations.RootElement.GetProperty("cases").EnumerateArray()
+            .Where(c => c.TryGetProperty("code", out JsonElement code) && code.ValueKind == JsonValueKind.String && codes.Contains(code.GetString()))
+            .Select(c => c.GetProperty("package").GetString()!)];
+    }
+
+    /// <summary>
+    /// The bytes of every core document a package hands over.
+    /// </summary>
+    /// <remarks>
+    /// A file that is no archive holds none, and a split archive hands over
+    /// nothing: .NET reads such a central directory and refuses the entries
+    /// behind it, which is the fault the case is about and not a layout to
+    /// judge.
+    /// </remarks>
+    private static List<byte[]> CoreDocuments(string package)
+    {
+        var documents = new List<byte[]>();
+
+        try
+        {
+            using ZipArchive archive = ZipFile.OpenRead(package);
+
+            foreach (ZipArchiveEntry entry in archive.Entries.Where(IsCoreDocument))
+            {
+                using Stream stream = entry.Open();
+                using var buffer = new MemoryStream();
+                stream.CopyTo(buffer);
+
+                documents.Add(buffer.ToArray());
+            }
+        }
+        catch (InvalidDataException)
+        {
+            return [];
+        }
+
+        return documents;
     }
 
     // §14.1 binds the core documents; a ComicInfo.xml carried over from a CBZ

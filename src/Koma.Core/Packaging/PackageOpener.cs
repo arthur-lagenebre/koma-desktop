@@ -210,6 +210,9 @@ public static class PackageOpener
 
             (PublicationMetadata? metadata, PublicationNavigation? navigation) = manifest is null ? (null, null) : ReadCompanionDocuments(archive, manifest, version, mode, profile, violations);
 
+            if (manifest is not null)
+                CheckPagesAreDeclared(archive, manifest, violations);
+
             if (manifest is null || metadata is null || violations.Any(PreventsReading))
             {
                 return new PackageOpenResult
@@ -363,6 +366,22 @@ public static class PackageOpener
         KeepOne(schema, violations);
 
         return metadata;
+    }
+
+    /// <summary>
+    /// §8: every page resource in the package is declared in the manifest.
+    /// </summary>
+    /// <remarks>
+    /// The other way round from <c>spine-target-missing</c>: here the file is
+    /// in the package and the declaration is not in the manifest, so a reader
+    /// carries a page nothing accounts for.
+    /// </remarks>
+    private static void CheckPagesAreDeclared(ZipArchive archive, Manifest manifest, List<ContainerViolation> violations)
+    {
+        var declared = new HashSet<string>(manifest.Items.Select(i => i.Href), StringComparer.Ordinal);
+
+        foreach (ZipArchiveEntry entry in archive.Entries.Where(e => e.FullName.StartsWith("pages/", StringComparison.Ordinal) && !declared.Contains(e.FullName)))
+            violations.Add(new ContainerViolation(ContainerViolationCode.UndeclaredPageResource, entry.FullName, $"'{entry.FullName}' is a page resource the manifest does not declare (§8)."));
     }
 
     /// <summary>

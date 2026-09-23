@@ -145,6 +145,11 @@ public static class MetadataReader
 
         CheckHazards(hazards, warnings, entryName, violations);
 
+        // §7.13: saying nothing about accessibility is not a fault, but it is
+        // worth saying that nothing was said.
+        if (root.Element(XName.Get("Accessibility", Namespace)) is null)
+            violations.Add(new ContainerViolation(ContainerViolationCode.NoPublicationAccessibility, entryName, "The publication declares no accessibility metadata (§7.13).") { Severity = ViolationSeverity.Warning });
+
         return new PublicationMetadata
         {
             Version = version,

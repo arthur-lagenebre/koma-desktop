@@ -85,6 +85,8 @@ public static class ContainerViolationCode
     public const string LandmarkDuplicateType = "landmark-duplicate-type";
     public const string MissingPageResource = "missing-page-resource";
     public const string UnreadablePageResource = "unreadable-page-resource";
+    public const string UndeclaredPageResource = "undeclared-page-resource";
+    public const string NoPublicationAccessibility = "no-publication-accessibility";
 }
 
 /// <summary>
