@@ -107,4 +107,10 @@ public sealed record LibraryIndex
 
     /// <summary>How the shelf was last ordered, which it opens on again.</summary>
     public ShelfOrder Order { get; init; }
+
+    /// <summary>
+    /// The language the reader chose for the application, as its name; empty
+    /// for a library from before there was a choice.
+    /// </summary>
+    public string? Language { get; init; }
 }

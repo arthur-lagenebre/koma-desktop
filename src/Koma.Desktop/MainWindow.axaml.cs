@@ -25,9 +25,11 @@ namespace Koma.Desktop;
 /// </remarks>
 internal sealed partial class MainWindow : Window, IDisposable
 {
-    private static readonly FilePickerFileType KomaFiles = new("KOMA publication") { Patterns = ["*.koma"] };
+    // Built when the picker opens, not when the type loads: the language is
+    // read from the library, which is not there yet at that point.
+    private static FilePickerFileType KomaFiles => new(Text.Of("KOMA publication")) { Patterns = ["*.koma"] };
 
-    private static readonly FilePickerFileType CbzFiles = new("Comic book archive") { Patterns = ["*.cbz"] };
+    private static FilePickerFileType CbzFiles => new(Text.Of("Comic book archive")) { Patterns = ["*.cbz"] };
 
     // What an import from the shelf asks of the converter: checksums, so that
     // a page damaged later is caught (§8.6), and the rest as the reference
@@ -57,6 +59,7 @@ internal sealed partial class MainWindow : Window, IDisposable
     private double zoom = 1;
     private WindowState windowed = WindowState.Normal;
     private bool restoring;
+    private bool localizing;
     private string? rightClicked;
     private Point? pressed;
     private bool importing;
@@ -66,11 +69,17 @@ internal sealed partial class MainWindow : Window, IDisposable
         InitializeComponent();
 
         library = store.Load();
+        Text.Current = library.Language == nameof(UiLanguage.French) ? UiLanguage.French : UiLanguage.English;
 
         OpenButton.Click += OnOpenClicked;
         LibraryButton.Click += (_, _) => ShowLibrary();
         AddFolderButton.Click += OnAddFolderClicked;
         RefreshButton.Click += async (_, _) => await ScanAsync();
+        LanguageChoice.SelectionChanged += (_, _) =>
+        {
+            if (!localizing)
+                ChangeLanguage(LanguageChoice.SelectedIndex == 1 ? UiLanguage.French : UiLanguage.English);
+        };
         Shelf.Ordered += (_, chosen) => RememberOrder(chosen);
         ImportButton.Click += OnImportClicked;
         EditButton.Click += async (_, _) => await EditAsync(openPath);
@@ -78,7 +87,7 @@ internal sealed partial class MainWindow : Window, IDisposable
 
         // The page under the pointer, so that a page is edited where it is
         // seen rather than found again in a list.
-        var editPage = new MenuItem { Header = "Edit this page…" };
+        var editPage = new MenuItem { Header = Text.Of("Edit this page…") };
         editPage.Click += async (_, _) => await PagesAsync(openPath, rightClicked ?? ItemOf(current));
         Scroller.ContextMenu = new ContextMenu { ItemsSource = new[] { editPage } };
         Shelf.EditRequested += async (_, path) => await EditAsync(path);
@@ -90,7 +99,14 @@ internal sealed partial class MainWindow : Window, IDisposable
         // The host and not the page view: the view has no size while the
         // shelf is up, and pagination follows the space a page would have.
         ViewHost.SizeChanged += OnViewSizeChanged;
-        FitChoice.SelectionChanged += (_, _) => ChangeFit(FitChoice.SelectedIndex == 1 ? FitMode.Width : FitMode.Page);
+        // Filling a list empties its selection and fills it again, which the
+        // control reports as a choice: while the words are being changed,
+        // nothing here is one.
+        FitChoice.SelectionChanged += (_, _) =>
+        {
+            if (!localizing)
+                ChangeFit(FitChoice.SelectedIndex == 1 ? FitMode.Width : FitMode.Page);
+        };
         ResumeButton.Click += (_, _) => OpenLastRead();
 
         // Tunnelling, so that Ctrl and the wheel zoom before the scroller
@@ -105,6 +121,7 @@ internal sealed partial class MainWindow : Window, IDisposable
         // can use them to move between controls.
         AddHandler(KeyDownEvent, OnNavigationKey, RoutingStrategies.Tunnel);
 
+        Localize();
         ShowLibrary();
 
         // A file named on the command line opens over the shelf a moment later.
@@ -145,7 +162,7 @@ internal sealed partial class MainWindow : Window, IDisposable
     {
         IReadOnlyList<IStorageFile> files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "Open a KOMA publication",
+            Title = Text.Of("Open a KOMA publication"),
             FileTypeFilter = [KomaFiles]
         });
 
@@ -277,6 +294,60 @@ internal sealed partial class MainWindow : Window, IDisposable
         }
     }
 
+    /// <summary>
+    /// Writes the fixed words of the window in the current language, and the
+    /// changing ones again where they are built.
+    /// </summary>
+    private void Localize()
+    {
+        localizing = true;
+
+        LibraryButton.Content = Text.Of("Library");
+        AddFolderButton.Content = Text.Of("Add folder…");
+        RefreshButton.Content = Text.Of("Refresh");
+        ImportButton.Content = Text.Of("Import CBZ…");
+        OpenButton.Content = Text.Of("Open…");
+        ContentsButton.Content = Text.Of("Contents");
+        EditButton.Content = Text.Of("Edit…");
+        PagesButton.Content = Text.Of("Pages…");
+
+        int fit = Math.Max(FitChoice.SelectedIndex, 0);
+        FitChoice.ItemsSource = new[] { Text.Of("Fit page"), Text.Of("Fit width") };
+        FitChoice.SelectedIndex = fit;
+
+        int language = Text.Current == UiLanguage.French ? 1 : 0;
+        LanguageChoice.ItemsSource = new[] { Text.Of("English"), Text.Of("French") };
+        LanguageChoice.SelectedIndex = language;
+
+        localizing = false;
+
+        Shelf.Localize();
+        ShowResume();
+    }
+
+    /// <summary>
+    /// Changes the language of the interface, and remembers it.
+    /// </summary>
+    private void ChangeLanguage(UiLanguage language)
+    {
+        if (Text.Current == language)
+            return;
+
+        Text.Current = language;
+        library = library with { Language = language.ToString() };
+
+        try
+        {
+            store.Save(library);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            Status.Text = e.Message;
+        }
+
+        Localize();
+    }
+
     private void ShowResume()
     {
         LibraryEntry? entry = LastRead;
@@ -288,7 +359,7 @@ internal sealed partial class MainWindow : Window, IDisposable
 
         // The title on the button, so that the reader knows what they are
         // taking up without hunting for it on the shelf.
-        ResumeButton.Content = $"Resume {entry.Title ?? Path.GetFileName(entry.Path)}";
+        ResumeButton.Content = Text.Of("Resume {0}", entry.Title ?? Path.GetFileName(entry.Path));
         ToolTip.SetTip(ResumeButton, entry.LastPage == 0 ? entry.Path : string.Create(CultureInfo.InvariantCulture, $"{entry.Path}{Environment.NewLine}page {entry.LastPage} of {entry.PageCount}"));
     }
 
@@ -317,10 +388,10 @@ internal sealed partial class MainWindow : Window, IDisposable
         Scroller.IsVisible = false;
         NavigationPanel.IsVisible = false;
         ContentsButton.IsVisible = false;
-        SpreadCounter.Text = library.Entries.Count == 1 ? "1 publication" : string.Create(CultureInfo.InvariantCulture, $"{library.Entries.Count} publications");
+        SpreadCounter.Text = library.Entries.Count == 1 ? Text.Of("{0} publication", 1) : Text.Of("{0} publications", library.Entries.Count);
 
         if (!scanning)
-            Status.Text = library.Folders.Count == 0 ? "No folder is watched yet. Add one to fill the library." : string.Join(Environment.NewLine, library.Folders);
+            Status.Text = library.Folders.Count == 0 ? Text.Of("No folder is watched yet. Add one to fill the library.") : string.Join(Environment.NewLine, library.Folders);
     }
 
     private void ShowReader()
@@ -341,7 +412,7 @@ internal sealed partial class MainWindow : Window, IDisposable
     {
         IReadOnlyList<IStorageFolder> folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
         {
-            Title = "Add a folder of KOMA publications",
+            Title = Text.Of("Add a folder of KOMA publications"),
             AllowMultiple = true
         });
 
@@ -470,7 +541,7 @@ internal sealed partial class MainWindow : Window, IDisposable
     {
         IReadOnlyList<IStorageFile> files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "Import comic book archives",
+            Title = Text.Of("Import comic book archives"),
             AllowMultiple = true,
             FileTypeFilter = [CbzFiles]
         });
@@ -486,7 +557,7 @@ internal sealed partial class MainWindow : Window, IDisposable
     {
         IReadOnlyList<IStorageFolder> folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
         {
-            Title = "Import every archive of a folder",
+            Title = Text.Of("Import every archive of a folder"),
             AllowMultiple = false
         });
 
@@ -529,7 +600,7 @@ internal sealed partial class MainWindow : Window, IDisposable
         importing = true;
         ImportButton.IsEnabled = false;
 
-        var progress = new Progress<int>(done => Status.Text = string.Create(CultureInfo.InvariantCulture, $"Importing… {done} / {archives.Length}"));
+        var progress = new Progress<int>(done => Status.Text = Text.Of("Importing… {0} / {1}", done, archives.Length));
         IReadOnlyList<string> folders = library.Folders;
         string report;
 
@@ -543,7 +614,7 @@ internal sealed partial class MainWindow : Window, IDisposable
             ImportButton.IsEnabled = true;
         }
 
-        new ReportWindow("Import report — KOMA", report).Show(this);
+        new ReportWindow(Text.Of("Import report — KOMA"), report).Show(this);
 
         await ScanAsync();
     }
@@ -627,11 +698,11 @@ internal sealed partial class MainWindow : Window, IDisposable
             return;
 
         scanning = true;
-        Status.Text = "Scanning…";
+        Status.Text = Text.Of("Scanning…");
 
         try
         {
-            var progress = new Progress<LibraryScanProgress>(step => Status.Text = string.Create(CultureInfo.InvariantCulture, $"Scanning… {step.Done} / {step.Total}"));
+            var progress = new Progress<LibraryScanProgress>(step => Status.Text = Text.Of("Scanning… {0} / {1}", step.Done, step.Total));
             LibraryIndex scanned = library;
 
             // Saved on the worker too: writing the index is the scan's last

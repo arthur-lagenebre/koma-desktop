@@ -33,13 +33,13 @@ internal sealed class PagesWindow : Window
     private readonly string path;
     private readonly ListBox pages = new() { Width = 220 };
     private readonly ComboBox roles = new() { HorizontalAlignment = HorizontalAlignment.Stretch };
-    private readonly CheckBox span = new() { Content = "Drawn across the whole spread" };
-    private readonly ComboBox position = new() { ItemsSource = Positions.Select(p => p.Label).ToArray(), HorizontalAlignment = HorizontalAlignment.Stretch };
+    private readonly CheckBox span = new() { Content = Text.Of("Drawn across the whole spread") };
+    private readonly ComboBox position = new() { ItemsSource = Positions.Select(p => Text.Of(p.Label)).ToArray(), HorizontalAlignment = HorizontalAlignment.Stretch };
     private readonly TextBox alternative = new() { AcceptsReturn = true, Height = 72, TextWrapping = TextWrapping.Wrap };
-    private readonly CheckBox decorative = new() { Content = "Decorative: carries nothing to describe" };
+    private readonly CheckBox decorative = new() { Content = Text.Of("Decorative: carries nothing to describe") };
     private readonly TextBox chapter = new();
     private readonly TextBlock problem = new() { Foreground = Brushes.OrangeRed, TextWrapping = TextWrapping.Wrap };
-    private readonly Button save = new() { Content = "Save this page", IsDefault = true };
+    private readonly Button save = new() { Content = Text.Of("Save this page"), IsDefault = true };
     private readonly StackPanel form = new() { Spacing = 8, Margin = new Thickness(16, 0, 0, 0) };
     private readonly WritingNotice writing = new();
 
@@ -50,21 +50,21 @@ internal sealed class PagesWindow : Window
     {
         this.path = path;
 
-        Title = $"{Path.GetFileName(path)} — Pages";
+        Title = Text.Of("{0} — Pages", Path.GetFileName(path));
         Width = 760;
         Height = 520;
 
         pages.SelectionChanged += (_, _) => Fill();
         save.Click += OnSave;
 
-        var close = new Button { Content = "Close", IsCancel = true };
+        var close = new Button { Content = Text.Of("Close"), IsCancel = true };
         close.Click += (_, _) => Close(Saved);
 
-        form.Children.Add(Field("Role", roles));
+        form.Children.Add(Field(Text.Of("Role"), roles));
         form.Children.Add(span);
-        form.Children.Add(Field("Place in the spread", position));
-        form.Children.Add(Field("Chapter opening here, if any", chapter));
-        form.Children.Add(Field("Alternative text", alternative));
+        form.Children.Add(Field(Text.Of("Place in the spread"), position));
+        form.Children.Add(Field(Text.Of("Chapter opening here, if any"), chapter));
+        form.Children.Add(Field(Text.Of("Alternative text"), alternative));
         form.Children.Add(decorative);
         form.Children.Add(writing);
         form.Children.Add(problem);

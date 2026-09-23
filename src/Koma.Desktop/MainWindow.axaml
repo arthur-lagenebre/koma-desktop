@@ -16,10 +16,8 @@
             <Button x:Name="PagesButton" Content="Pages…" IsVisible="False" />
             <Button x:Name="OpenButton" Content="Open…" />
             <ToggleButton x:Name="ContentsButton" Content="Contents" IsVisible="False" />
-            <ComboBox x:Name="FitChoice" IsVisible="False" SelectedIndex="0">
-                <ComboBoxItem Content="Fit page" />
-                <ComboBoxItem Content="Fit width" />
-            </ComboBox>
+            <ComboBox x:Name="FitChoice" IsVisible="False" SelectedIndex="0" />
+            <ComboBox x:Name="LanguageChoice" SelectedIndex="0" />
             <TextBlock x:Name="SpreadCounter" VerticalAlignment="Center" />
         </StackPanel>
         <TextBlock x:Name="Status" DockPanel.Dock="Bottom" Margin="8" TextWrapping="Wrap" />

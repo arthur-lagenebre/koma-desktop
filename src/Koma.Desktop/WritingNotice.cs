@@ -20,7 +20,7 @@ internal sealed class WritingNotice : StackPanel
     {
         Spacing = 4;
         IsVisible = false;
-        Children.Add(new TextBlock { Text = "Writing the publication…", Opacity = 0.75 });
+        Children.Add(new TextBlock { Text = Text.Of("Writing the publication…"), Opacity = 0.75 });
         Children.Add(bar);
     }
 

@@ -22,27 +22,27 @@ internal sealed class ImportWindow : Window
 {
     private readonly CheckBox comicInfo = new()
     {
-        Content = "Keep the original ComicInfo.xml in each package",
+        Content = Text.Of("Keep the original ComicInfo.xml in each package"),
         IsChecked = true
     };
 
     private readonly CheckBox numbering = new()
     {
-        Content = "Number the volumes from the start of their file names"
+        Content = Text.Of("Number the volumes from the start of their file names")
     };
 
     private ImportChoice Choice(bool folder) => new(folder, comicInfo.IsChecked == true, numbering.IsChecked == true);
 
     public ImportWindow()
     {
-        Title = "Import comic book archives";
+        Title = Text.Of("Import comic book archives");
         Width = 480;
         SizeToContent = SizeToContent.Height;
         CanResize = false;
 
-        var files = new Button { Content = "Choose files…", IsDefault = true };
-        var folder = new Button { Content = "Choose a folder…" };
-        var cancel = new Button { Content = "Cancel", IsCancel = true };
+        var files = new Button { Content = Text.Of("Choose files…"), IsDefault = true };
+        var folder = new Button { Content = Text.Of("Choose a folder…") };
+        var cancel = new Button { Content = Text.Of("Cancel"), IsCancel = true };
 
         files.Click += (_, _) => Close(Choice(folder: false));
         folder.Click += (_, _) => Close(Choice(folder: true));
@@ -56,7 +56,7 @@ internal sealed class ImportWindow : Window
             {
                 new TextBlock
                 {
-                    Text = "A folder is searched for .cbz archives, subfolders included. Each package is written beside its archive, and an existing file is never replaced.",
+                    Text = Text.Of("A folder is searched for .cbz archives, subfolders included. Each package is written beside its archive, and an existing file is never replaced."),
                     TextWrapping = TextWrapping.Wrap,
                     Opacity = 0.75
                 },
@@ -64,13 +64,13 @@ internal sealed class ImportWindow : Window
                 numbering,
                 new TextBlock
                 {
-                    Text = "A collection often numbers its files and not its metadata: 1 - Ante demonium.cbz. The number is then written as the volume's place in its series, and each conversion says it did so.",
+                    Text = Text.Of("A collection often numbers its files and not its metadata: 1 - Ante demonium.cbz. The number is then written as the volume's place in its series, and each conversion says it did so."),
                     TextWrapping = TextWrapping.Wrap,
                     Opacity = 0.55
                 },
                 new TextBlock
                 {
-                    Text = "ComicInfo is never normative for KOMA: it travels unchanged, for readers that still want it.",
+                    Text = Text.Of("ComicInfo is never normative for KOMA: it travels unchanged, for readers that still want it."),
                     TextWrapping = TextWrapping.Wrap,
                     Opacity = 0.55
                 },

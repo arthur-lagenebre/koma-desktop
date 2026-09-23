@@ -32,7 +32,7 @@ internal sealed class EditWindow : Window
     private readonly MetadataEdit current;
     private readonly TextBox title = new();
     private readonly TextBox language = new();
-    private readonly ComboBox direction = new() { ItemsSource = new[] { "Left to right", "Right to left" }, HorizontalAlignment = HorizontalAlignment.Stretch };
+    private readonly ComboBox direction = new() { ItemsSource = new[] { Text.Of("Left to right"), Text.Of("Right to left") }, HorizontalAlignment = HorizontalAlignment.Stretch };
     private readonly TextBox series = new();
     private readonly TextBox position = new();
     private readonly TextBox total = new();
@@ -40,7 +40,7 @@ internal sealed class EditWindow : Window
     private readonly CheckBox[] hazards = [.. OpenVocabularies.AccessibilityHazards.Select(h => new CheckBox { Content = h })];
     private readonly TextBox summary = new() { AcceptsReturn = true, Height = 60, TextWrapping = TextWrapping.Wrap };
     private readonly TextBlock problem = new() { Foreground = Brushes.OrangeRed, TextWrapping = TextWrapping.Wrap };
-    private readonly Button save = new() { Content = "Save", IsDefault = true };
+    private readonly Button save = new() { Content = Text.Of("Save"), IsDefault = true };
     private readonly StackPanel fields = new() { Spacing = 6, Margin = new Thickness(16) };
     private readonly WritingNotice writing = new();
 
@@ -49,7 +49,7 @@ internal sealed class EditWindow : Window
         this.path = path;
         this.current = current;
 
-        Title = $"{Path.GetFileName(path)} — Edit metadata";
+        Title = Text.Of("{0} — Edit metadata", Path.GetFileName(path));
         Width = 560;
         SizeToContent = SizeToContent.Height;
         CanResize = false;
@@ -72,19 +72,19 @@ internal sealed class EditWindow : Window
 
         summary.Text = current.Accessibility?.Summary;
 
-        var cancel = new Button { Content = "Cancel", IsCancel = true };
+        var cancel = new Button { Content = Text.Of("Cancel"), IsCancel = true };
         cancel.Click += (_, _) => Close(false);
         save.Click += OnSave;
 
-        fields.Children.Add(Field("Title", title));
-        fields.Children.Add(Field("Language (BCP 47, such as fr or en-GB)", language));
-        fields.Children.Add(Field("Reading direction", direction));
-        fields.Children.Add(Field("Series", series));
-        fields.Children.Add(Field("Number in the series", position));
-        fields.Children.Add(Field("Volumes in the series", total));
-        fields.Children.Add(Field("How the publication is read", Boxes(modes)));
-        fields.Children.Add(Field("What it may do to a reader", Boxes(hazards)));
-        fields.Children.Add(Field("A sentence for a reader deciding whether they can read it", summary));
+        fields.Children.Add(Field(Text.Of("Title"), title));
+        fields.Children.Add(Field(Text.Of("Language (BCP 47, such as fr or en-GB)"), language));
+        fields.Children.Add(Field(Text.Of("Reading direction"), direction));
+        fields.Children.Add(Field(Text.Of("Series"), series));
+        fields.Children.Add(Field(Text.Of("Number in the series"), position));
+        fields.Children.Add(Field(Text.Of("Volumes in the series"), total));
+        fields.Children.Add(Field(Text.Of("How the publication is read"), Boxes(modes)));
+        fields.Children.Add(Field(Text.Of("What it may do to a reader"), Boxes(hazards)));
+        fields.Children.Add(Field(Text.Of("A sentence for a reader deciding whether they can read it"), summary));
         fields.Children.Add(writing);
         fields.Children.Add(problem);
         fields.Children.Add(new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, HorizontalAlignment = HorizontalAlignment.Right, Children = { cancel, save } });

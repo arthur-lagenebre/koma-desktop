@@ -41,8 +41,8 @@ internal sealed class LibraryView : DockPanel
     ];
 
     private readonly StackPanel groups = new() { Margin = new Thickness(8) };
-    private readonly TextBox search = new() { PlaceholderText = "Search titles, series and files", Width = 320 };
-    private readonly ComboBox order = new() { ItemsSource = Orders.Select(o => o.Label).ToArray(), SelectedIndex = 0 };
+    private readonly TextBox search = new() { Width = 320 };
+    private readonly ComboBox order = new() { SelectedIndex = 0 };
 
     private IReadOnlyList<LibraryEntry> entries = [];
     private LibraryStore? store;
@@ -55,6 +55,8 @@ internal sealed class LibraryView : DockPanel
         SetDock(bar, Dock.Top);
         Children.Add(bar);
         Children.Add(new ScrollViewer { Content = groups });
+
+        Localize();
 
         search.TextChanged += (_, _) => Draw();
         order.SelectionChanged += (_, _) =>
@@ -74,6 +76,23 @@ internal sealed class LibraryView : DockPanel
 
     /// <summary>Raised when the reader chooses another order, which the library remembers.</summary>
     public event EventHandler<ShelfOrder>? Ordered;
+
+    /// <summary>Writes the fixed words of the shelf in the current language.</summary>
+    public void Localize()
+    {
+        int chosen = Math.Max(order.SelectedIndex, 0);
+
+        // Filling the list empties its selection and fills it again, which
+        // the control reports as a choice of the reader's; it is not one, and
+        // must not be written to the library as one.
+        restoring = true;
+        search.PlaceholderText = Text.Of("Search titles, series and files");
+        order.ItemsSource = Orders.Select(o => Text.Of(o.Label)).ToArray();
+        order.SelectedIndex = chosen;
+        restoring = false;
+
+        Draw();
+    }
 
     public void Show(IReadOnlyList<LibraryEntry> entries, LibraryStore store, ShelfOrder chosen)
     {
@@ -104,14 +123,14 @@ internal sealed class LibraryView : DockPanel
 
         if (arranged.Count == 0 && entries.Count > 0)
         {
-            groups.Children.Add(new TextBlock { Text = "Nothing on the shelf matches.", Opacity = 0.7, Margin = new Thickness(6) });
+            groups.Children.Add(new TextBlock { Text = Text.Of("Nothing on the shelf matches."), Opacity = 0.7, Margin = new Thickness(6) });
             return;
         }
 
         foreach (ShelfGroup group in arranged)
         {
             if (group.Heading is not null)
-                groups.Children.Add(new TextBlock { Text = group.Heading, FontSize = 18, FontWeight = FontWeight.SemiBold, Margin = new Thickness(6, 14, 6, 2) });
+                groups.Children.Add(new TextBlock { Text = Text.Of(group.Heading), FontSize = 18, FontWeight = FontWeight.SemiBold, Margin = new Thickness(6, 14, 6, 2) });
 
             var shelf = new WrapPanel { ItemWidth = CardWidth, ItemHeight = CardHeight };
 
@@ -161,7 +180,7 @@ internal sealed class LibraryView : DockPanel
         ToolTip.SetTip(card, entry.Unreadable is null ? entry.Path : $"{entry.Path}{Environment.NewLine}{entry.Unreadable}");
         card.Click += (_, _) => Chosen?.Invoke(this, entry.Path);
 
-        var editItem = new MenuItem { Header = "Edit metadata…" };
+        var editItem = new MenuItem { Header = Text.Of("Edit metadata…") };
         editItem.Click += (_, _) => EditRequested?.Invoke(this, entry.Path);
         card.ContextMenu = new ContextMenu { ItemsSource = new[] { editItem } };
 
@@ -223,10 +242,10 @@ internal sealed class LibraryView : DockPanel
         if (entry.Unreadable is not null)
             return [entry.Unreadable];
 
-        string pages = entry.PageCount == 1 ? "1 page" : $"{entry.PageCount} pages";
+        string pages = entry.PageCount == 1 ? Text.Of("1 page") : Text.Of("{0} pages", entry.PageCount);
 
         // A position from an older index has no page number to show.
-        string progress = entry.LastItem is null ? pages : entry.LastPage == 0 ? $"{pages} · started" : $"page {entry.LastPage} of {entry.PageCount}";
+        string progress = entry.LastItem is null ? pages : entry.LastPage == 0 ? Text.Of("{0} · started", pages) : Text.Of("page {0} of {1}", entry.LastPage, entry.PageCount);
 
         if (entry.Series is null)
             return [progress];
@@ -246,6 +265,6 @@ internal sealed class LibraryView : DockPanel
         if (entry.SeriesPosition is not { } position || (position == "1" && entry.SeriesTotal == "1"))
             return null;
 
-        return entry.SeriesTotal is { } total ? $"{position} of {total}" : position;
+        return entry.SeriesTotal is { } total ? Text.Of("{0} of {1}", position, total) : position;
     }
 }
