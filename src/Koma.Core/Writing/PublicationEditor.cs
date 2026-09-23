@@ -26,6 +26,28 @@ public static class PublicationEditor
     public static PageEdit CurrentPage(string path, string item) => PageEditor.Read(Load(path, CorePaths.Manifest)!, item);
 
     /// <summary>
+    /// The pages of a publication, in reading order (§8.8), each with the
+    /// roles it carries.
+    /// </summary>
+    /// <remarks>
+    /// Read from the file rather than from an open package, so that a form
+    /// can list the pages of a publication nothing is holding open.
+    /// </remarks>
+    public static IReadOnlyList<(string Item, string Roles)> Pages(string path)
+    {
+        XDocument manifest = Load(path, CorePaths.Manifest)!;
+        XNamespace ns = "urn:koma:manifest";
+
+        Dictionary<string, string> roles = manifest.Root!.Descendants(ns + "Item")
+            .GroupBy(i => (string?)i.Attribute("id") ?? string.Empty, StringComparer.Ordinal)
+            .ToDictionary(g => g.Key, g => (string?)g.First().Attribute("roles") ?? string.Empty, StringComparer.Ordinal);
+
+        return [.. manifest.Root.Descendants(ns + "ItemRef")
+            .Select(r => (string?)r.Attribute("item") ?? string.Empty)
+            .Select(item => (item, roles.GetValueOrDefault(item, string.Empty)))];
+    }
+
+    /// <summary>
     /// Changes what the manifest says about one page, and the landmarks that
     /// follow from it.
     /// </summary>

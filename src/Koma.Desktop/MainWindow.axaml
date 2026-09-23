@@ -12,6 +12,7 @@
             <Button x:Name="AddFolderButton" Content="Add folder…" />
             <Button x:Name="ImportButton" Content="Import CBZ…" />
             <Button x:Name="EditButton" Content="Edit…" IsVisible="False" />
+            <Button x:Name="PagesButton" Content="Pages…" IsVisible="False" />
             <Button x:Name="OpenButton" Content="Open…" />
             <ToggleButton x:Name="ContentsButton" Content="Contents" IsVisible="False" />
             <ComboBox x:Name="FitChoice" IsVisible="False" SelectedIndex="0">

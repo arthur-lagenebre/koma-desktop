@@ -57,6 +57,7 @@ internal sealed partial class MainWindow : Window, IDisposable
     private double zoom = 1;
     private WindowState windowed = WindowState.Normal;
     private bool restoring;
+    private string? rightClicked;
     private Point? pressed;
     private bool importing;
 
@@ -71,6 +72,13 @@ internal sealed partial class MainWindow : Window, IDisposable
         AddFolderButton.Click += OnAddFolderClicked;
         ImportButton.Click += OnImportClicked;
         EditButton.Click += async (_, _) => await EditAsync(openPath);
+        PagesButton.Click += async (_, _) => await PagesAsync(openPath, ItemOf(current));
+
+        // The page under the pointer, so that a page is edited where it is
+        // seen rather than found again in a list.
+        var editPage = new MenuItem { Header = "Edit this page…" };
+        editPage.Click += async (_, _) => await PagesAsync(openPath, rightClicked ?? ItemOf(current));
+        Scroller.ContextMenu = new ContextMenu { ItemsSource = new[] { editPage } };
         Shelf.EditRequested += async (_, path) => await EditAsync(path);
         Shelf.Chosen += (_, path) => OpenPath(path);
         ContentsButton.IsCheckedChanged += (_, _) => NavigationPanel.IsVisible = ContentsButton.IsChecked == true;
@@ -280,6 +288,7 @@ internal sealed partial class MainWindow : Window, IDisposable
         Shelf.IsVisible = true;
         ShowResume();
         EditButton.IsVisible = false;
+        PagesButton.IsVisible = false;
         FitChoice.IsVisible = false;
         Scroller.IsVisible = false;
         NavigationPanel.IsVisible = false;
@@ -300,6 +309,7 @@ internal sealed partial class MainWindow : Window, IDisposable
         // Only a file on disk can be rewritten; one opened through a picker
         // that gave no path cannot.
         EditButton.IsVisible = openPath is not null;
+        PagesButton.IsVisible = openPath is not null;
     }
 
     private async void OnAddFolderClicked(object? sender, RoutedEventArgs e)
@@ -332,6 +342,57 @@ internal sealed partial class MainWindow : Window, IDisposable
     /// again afterwards where it was, whether or not the edit was saved; from
     /// the shelf, the shelf stays.
     /// </remarks>
+    /// <summary>
+    /// The page drawn under a point of the view, or none where the spread
+    /// leaves a half empty.
+    /// </summary>
+    private string? PageAt(Point point)
+    {
+        if (publication is null || publication.Spreads.Count == 0)
+            return null;
+
+        foreach (PlacedItem placed in SpreadLayout.Arrange(publication.Spreads[current], publication.DeclaredSize, View.Bounds.Width, View.Bounds.Height))
+        {
+            LayoutRect bounds = placed.Bounds;
+
+            if (!placed.IsEmptyHalf && point.X >= bounds.X && point.X <= bounds.X + bounds.Width && point.Y >= bounds.Y && point.Y <= bounds.Y + bounds.Height)
+                return placed.Item;
+        }
+
+        return null;
+    }
+
+    private string? ItemOf(int spread) => publication is { Spreads.Count: > 0 } ? SpreadLayout.Items(publication.Spreads[spread]).FirstOrDefault() : null;
+
+    /// <summary>
+    /// Opens the pages of the publication, on the page given, and reopens the
+    /// publication behind them.
+    /// </summary>
+    /// <remarks>
+    /// The publication is closed first for the same reason an edit closes it:
+    /// its package holds the file, and each save rewrites the file.
+    /// </remarks>
+    private async Task PagesAsync(string? path, string? item)
+    {
+        if (path is null)
+            return;
+
+        bool reading = !Shelf.IsVisible;
+
+        RecordPosition();
+        View.Show(null, null);
+        publication?.Dispose();
+        publication = null;
+
+        bool saved = await new PagesWindow(path, item).ShowDialog<bool>(this);
+
+        if (reading)
+            OpenPath(path);
+
+        if (saved)
+            await ScanAsync();
+    }
+
     private async Task EditAsync(string? path)
     {
         if (path is null)
@@ -728,6 +789,9 @@ internal sealed partial class MainWindow : Window, IDisposable
             GoTo(button.IsXButton2Pressed ? current + 1 : current - 1);
             return;
         }
+
+        if (button.IsRightButtonPressed)
+            rightClicked = PageAt(e.GetPosition(View));
 
         pressed = button.IsLeftButtonPressed ? e.GetPosition(Scroller) : null;
     }
