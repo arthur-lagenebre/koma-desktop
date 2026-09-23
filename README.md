@@ -84,10 +84,12 @@ subfolders included, and asks once whether the original ComicInfo travels with
 the packages; it converts archives beside themselves, never over an existing
 file, checksums included, and shows what each conversion assumed or refused
 before the shelf is rescanned. Edit metadata, from a card's menu or from the
-publication on screen, changes the title, language, reading direction and
-series, writing only what changed. Pages lists the pages of the publication and
-changes what the package says about one — its role, its span, its side of the
-spread, the chapter it opens, what a reader who cannot see it is told — and a
+publication on screen, changes the title, language, reading direction, series,
+and what the publication says about reading it — how it is taken in, what it
+may do to a reader, a sentence for someone deciding whether they can read it —
+writing only what changed. Pages lists the pages of the publication and changes
+what the package says about one — its role, its span, its side of the spread,
+the chapter it opens, what a reader who cannot see it is told — and a
 right-click edits the page under the pointer. It also opens a publication from
 a file picker or the command line, paginates it for the window (§10.1), and
 turns spreads with the arrow keys along the reading direction, Page Up and Page

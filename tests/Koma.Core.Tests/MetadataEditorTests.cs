@@ -41,7 +41,9 @@ public sealed class MetadataEditorTests : IDisposable
     {
         XDocument edited = MetadataEditor.Apply(Minimal(), new MetadataEdit(Series: new SeriesEdit("Rivage", "HS2")), Now);
 
-        Assert.Equal(new MetadataEdit("Corpus de conformite", "fr", ReadingDirection.RightToLeft, null), MetadataEditor.Read(Minimal()));
+        MetadataEdit current = MetadataEditor.Read(Minimal());
+
+        Assert.Equal(("Corpus de conformite", "fr", ReadingDirection.RightToLeft, (SeriesEdit?)null), (current.Title, current.Language, current.Direction, current.Series));
         Assert.Equal(new SeriesEdit("Rivage", "HS2", null), MetadataEditor.Read(edited).Series);
     }
 
@@ -66,6 +68,48 @@ public sealed class MetadataEditorTests : IDisposable
         Assert.True(XNode.DeepEquals(original.Root!.Element(M("Accessibility")), edited.Root!.Element(M("Accessibility"))));
         Assert.True(XNode.DeepEquals(original.Root.Element(M("Identifiers")), edited.Root.Element(M("Identifiers"))));
         Assert.Equal("Corpus de conformite", Read(original).MainTitle.Text);
+    }
+
+    [Fact]
+    public void SaysHowAPublicationIsReadAndWhatItMayDo()
+    {
+        XDocument edited = MetadataEditor.Apply(Minimal(), new MetadataEdit(Accessibility: new AccessibilityEdit(["visual", "textual"], ["no-flashing-hazard"], "Pages decrites.")), Now);
+        XElement section = edited.Root!.Element(M("Accessibility"))!;
+
+        string[] written = ["AccessMode", "AccessMode", "AccessibilityHazard", "AccessibilitySummary"];
+        Assert.Equal(written, section.Elements().Select(e => e.Name.LocalName));
+
+        // The summary is written in the language of the document (§4.4).
+        Assert.Equal("fr", (string?)section.Element(M("AccessibilitySummary"))!.Attribute(XNamespace.Xml + "lang"));
+
+        AccessibilityEdit read = MetadataEditor.Read(edited).Accessibility!;
+        string[] modes = ["visual", "textual"];
+        Assert.Equal(modes, read.AccessModes);
+        Assert.Equal("Pages decrites.", read.Summary);
+    }
+
+    [Fact]
+    public void KeepsWhatTheAccessibilitySectionSaysBesides()
+    {
+        // Conformance and certification are §7.13's too, and an editor that
+        // rebuilt the section whole would drop them.
+        XDocument original = Minimal();
+        original.Root!.Element(M("Accessibility"))!.Add(new XElement(M("ConformsTo"), new XAttribute("identifier", "EPUB Accessibility 1.1 WCAG 2.2 AA")));
+
+        XDocument edited = MetadataEditor.Apply(original, new MetadataEdit(Accessibility: new AccessibilityEdit(["visual"], [], "")), Now);
+
+        Assert.Single(edited.Root!.Element(M("Accessibility"))!.Elements(M("ConformsTo")));
+    }
+
+    [Fact]
+    public void TakesTheAccessibilitySectionAwayWhenThereIsNothingToSay()
+    {
+        XDocument edited = MetadataEditor.Apply(Minimal(), new MetadataEdit(Accessibility: new AccessibilityEdit([], [], "")), Now);
+
+        Assert.Null(edited.Root!.Element(M("Accessibility")));
+
+        // A section that says something says at least how it is read.
+        Assert.Throws<ArgumentException>(() => MetadataEditor.Apply(Minimal(), new MetadataEdit(Accessibility: new AccessibilityEdit([], ["no-sound-hazard"], "")), Now));
     }
 
     [Fact]

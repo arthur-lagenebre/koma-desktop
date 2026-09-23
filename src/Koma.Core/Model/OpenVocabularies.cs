@@ -44,6 +44,16 @@ public static class OpenVocabularies
         "back-cover", "other"
     ];
 
+    /// <summary>The core access modes of §7.13, in the order it lists them.</summary>
+    public static IReadOnlyList<string> AccessModes { get; } = ["visual", "textual", "auditory", "tactile"];
+
+    /// <summary>The core accessibility hazards of §7.13, each with the statement that it is absent.</summary>
+    public static IReadOnlyList<string> AccessibilityHazards { get; } =
+    [
+        "flashing", "no-flashing-hazard", "motion-simulation", "no-motion-simulation-hazard",
+        "sound", "no-sound-hazard", "none", "unknown"
+    ];
+
     private static readonly Vocabulary[] All =
     [
         Of(Metadata, "Identifier", "scheme", false, ["uuid", "isbn-10", "isbn-13", "ean-13", "issn", "doi", "uri", "proprietary"]),
@@ -62,10 +72,10 @@ public static class OpenVocabularies
         Of(Metadata, "Source", "type", false, ["print", "digital", "microform", "original-artwork", "periodical", "other"]),
         Of(Metadata, "Method", null, false, ["flatbed-scan", "sheet-fed-scan", "overhead-scan", "photography", "born-digital", "other"]),
         Of(Metadata, "Processing", null, true, ["deskew", "despeckle", "crop", "level-adjust", "colour-correction", "denoise", "upscale", "recompression", "other"]),
-        Of(Metadata, "AccessMode", null, false, ["visual", "textual", "auditory", "tactile"]),
-        Of(Metadata, "AccessModeSufficient", null, true, ["visual", "textual", "auditory", "tactile"]),
+        Of(Metadata, "AccessMode", null, false, [.. AccessModes]),
+        Of(Metadata, "AccessModeSufficient", null, true, [.. AccessModes]),
         Of(Metadata, "AccessibilityFeature", null, false, ["alternative-text", "long-description", "reading-order", "structural-navigation", "page-navigation", "table-of-contents", "high-contrast-display", "none"]),
-        Of(Metadata, "AccessibilityHazard", null, false, ["flashing", "no-flashing-hazard", "motion-simulation", "no-motion-simulation-hazard", "sound", "no-sound-hazard", "none", "unknown"]),
+        Of(Metadata, "AccessibilityHazard", null, false, [.. AccessibilityHazards]),
         Of(Metadata, "ContentWarning", "type", false, ["violence", "gore", "sexual-content", "nudity", "language", "drug-use", "self-harm", "flashing-images", "other"]),
         Of(Metadata, "Link", "rel", false, ["homepage", "publisher", "author", "series", "purchase", "record", "errata", "license", "source", "related-publication", "other"]),
         Of(Manifest, "Item", "roles", true, [.. PageRoles]),

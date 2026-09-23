@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
+using Koma.Core.Model;
 using Koma.Core.Rendering;
 
 namespace Koma.Core.Writing;
@@ -12,9 +13,17 @@ namespace Koma.Core.Writing;
 public sealed record SeriesEdit(string Name, string? Position = null, string? Total = null);
 
 /// <summary>
+/// What a publication says about reading it (§7.13).
+/// </summary>
+/// <param name="AccessModes">How the publication is taken in: visual, textual, and so on.</param>
+/// <param name="Hazards">What it may do to a reader, or the absence of it.</param>
+/// <param name="Summary">A sentence for a reader deciding whether they can read it.</param>
+public sealed record AccessibilityEdit(IReadOnlyList<string> AccessModes, IReadOnlyList<string> Hazards, string? Summary);
+
+/// <summary>
 /// What an edit changes. A <see langword="null"/> field is left as it is.
 /// </summary>
-public sealed record MetadataEdit(string? Title = null, string? Language = null, ReadingDirection? Direction = null, SeriesEdit? Series = null);
+public sealed record MetadataEdit(string? Title = null, string? Language = null, ReadingDirection? Direction = null, SeriesEdit? Series = null, AccessibilityEdit? Accessibility = null);
 
 /// <summary>
 /// Applies an edit to <c>metadata.xml</c>, touching nothing it was not asked
@@ -60,7 +69,18 @@ public static partial class MetadataEditor
             root.Element(X("Titles"))?.Elements(X("Title")).FirstOrDefault(t => (string?)t.Attribute("type") == "main")?.Value.Trim(),
             root.Element(X("Languages"))?.Elements(X("Language")).FirstOrDefault(l => (string?)l.Attribute("role") == "content")?.Value.Trim(),
             (string?)root.Element(X("Reading"))?.Attribute("direction") == "rtl" ? ReadingDirection.RightToLeft : ReadingDirection.LeftToRight,
-            seriesName is null ? null : new SeriesEdit(seriesName, (string?)series!.Attribute("position"), (string?)series.Attribute("total")));
+            seriesName is null ? null : new SeriesEdit(seriesName, (string?)series!.Attribute("position"), (string?)series.Attribute("total")),
+            ReadAccessibility(root));
+    }
+
+    private static AccessibilityEdit ReadAccessibility(XElement root)
+    {
+        XElement? section = root.Element(X("Accessibility"));
+
+        return new AccessibilityEdit(
+            [.. section?.Elements(X("AccessMode")).Select(m => m.Value.Trim()) ?? []],
+            [.. section?.Elements(X("AccessibilityHazard")).Select(h => h.Value.Trim()) ?? []],
+            section?.Element(X("AccessibilitySummary"))?.Value.Trim() ?? string.Empty);
     }
 
     /// <summary>
@@ -88,6 +108,9 @@ public static partial class MetadataEditor
 
         if (edit.Series is { } series)
             SetSeries(root, series);
+
+        if (edit.Accessibility is { } accessibility)
+            SetAccessibility(root, accessibility);
 
         SetModified(root, now);
 
@@ -180,6 +203,67 @@ public static partial class MetadataEditor
         "relation" => 3,
         _ => 4
     };
+
+    /// <summary>
+    /// Writes what §7.13 asks of a publication about reading it, and leaves
+    /// alone what it does not model.
+    /// </summary>
+    /// <remarks>
+    /// The section holds more than three kinds of child — sufficient access
+    /// modes, features, conformance, certification — and an editor that
+    /// rebuilt it whole would drop them. Only the three it knows are
+    /// replaced, each back in the order §7.13 gives.
+    /// </remarks>
+    private static void SetAccessibility(XElement root, AccessibilityEdit edit)
+    {
+        string[] modes = [.. edit.AccessModes.Select(m => m.Trim()).Where(m => m.Length > 0)];
+        string[] hazards = [.. edit.Hazards.Select(h => h.Trim()).Where(h => h.Length > 0)];
+        string summary = (edit.Summary ?? string.Empty).Trim();
+
+        if (modes.Concat(hazards).FirstOrDefault(t => !KomaTokens.IsToken(t)) is { } malformed)
+            throw new ArgumentException($"'{malformed}' is not a token (§4.3).", nameof(edit));
+
+        XElement? section = root.Element(X("Accessibility"));
+
+        // Nothing to say: the section goes, and the publication is back to
+        // saying nothing about reading it, which §7.13 only warns about.
+        if (modes.Length == 0 && hazards.Length == 0 && summary.Length == 0)
+        {
+            section?.Remove();
+            return;
+        }
+
+        if (modes.Length == 0)
+            throw new ArgumentException("An accessibility section names at least one access mode (§7.13).", nameof(edit));
+
+        section ??= Container(root, "Accessibility");
+
+        var rebuilt = new List<XElement>();
+
+        rebuilt.AddRange(modes.Select(m => new XElement(X("AccessMode"), m)));
+        rebuilt.AddRange(section.Elements(X("AccessModeSufficient")));
+        rebuilt.AddRange(section.Elements(X("AccessibilityFeature")));
+        rebuilt.AddRange(hazards.Select(h => new XElement(X("AccessibilityHazard"), h)));
+
+        if (summary.Length > 0)
+            rebuilt.Add(Summary(root, summary));
+
+        rebuilt.AddRange(section.Elements(X("ConformsTo")));
+        rebuilt.AddRange(section.Elements(X("Certification")));
+
+        section.ReplaceNodes(rebuilt);
+    }
+
+    /// <summary>A summary in the language the document is written in (§4.4).</summary>
+    private static XElement Summary(XElement root, string text)
+    {
+        var summary = new XElement(X("AccessibilitySummary"), text);
+
+        if ((string?)root.Attribute(XNamespace.Xml + "lang") is { } language)
+            summary.SetAttributeValue(XNamespace.Xml + "lang", language);
+
+        return summary;
+    }
 
     private static void SetModified(XElement root, DateTimeOffset now)
     {
