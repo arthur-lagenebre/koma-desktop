@@ -51,7 +51,7 @@ public sealed class PageEditorTests : IDisposable
         (XDocument manifest, _) = Apply("p002", new PageEdit(SpreadPosition: SpreadPosition.Left));
 
         Assert.Equal("left", (string?)Reference(manifest, "p002").Attribute("spread-position"));
-        Assert.Equal(SpreadPosition.Left, PageEditor.Read(manifest, "p002").SpreadPosition);
+        Assert.Equal(SpreadPosition.Left, PageEditor.Read(manifest, null, "p002").SpreadPosition);
     }
 
     [Fact]
@@ -67,7 +67,7 @@ public sealed class PageEditorTests : IDisposable
         (XDocument described, _) = Apply("p002", new PageEdit(AlternativeText: "Alix quitte le port."));
         (XDocument cleared, _) = Apply("p001", new PageEdit(AlternativeText: ""));
 
-        Assert.Equal("Alix quitte le port.", PageEditor.Read(described, "p002").AlternativeText);
+        Assert.Equal("Alix quitte le port.", PageEditor.Read(described, null, "p002").AlternativeText);
         Assert.Null(Item(cleared, "p001").Element(XName.Get("Accessibility", "urn:koma:manifest")));
     }
 
@@ -76,7 +76,7 @@ public sealed class PageEditorTests : IDisposable
     {
         (XDocument manifest, _) = Apply("p002", new PageEdit(Decorative: true));
 
-        Assert.True(PageEditor.Read(manifest, "p002").Decorative);
+        Assert.True(PageEditor.Read(manifest, null, "p002").Decorative);
 
         // §8.7: a page that carries no information carries no description of
         // it either, which G7 of the schema also refuses.
@@ -95,12 +95,33 @@ public sealed class PageEditorTests : IDisposable
     [Fact]
     public void ReadsBackWhatAFormStartsFrom()
     {
-        PageEdit current = PageEditor.Read(Manifest(), "p001");
+        PageEdit current = PageEditor.Read(Manifest(), Navigation(), "p001");
 
         string[] roles = ["front-cover"];
 
         Assert.Equal(roles, current.Roles);
-        Assert.Equal((1, SpreadPosition.Auto, "Couverture.", false), (current.PageSpan, current.SpreadPosition, current.AlternativeText, current.Decorative));
+        Assert.Equal((1, SpreadPosition.Auto, "Couverture.", false, string.Empty), (current.PageSpan, current.SpreadPosition, current.AlternativeText, current.Decorative, current.Chapter));
+    }
+
+    [Fact]
+    public void OpensAChapterAtAPageAndClosesItAgain()
+    {
+        (XDocument manifest, XDocument? opened) = Apply("p003", new PageEdit(Chapter: "Chapitre 2"));
+
+        // Entries follow the spine: a table of contents running in another
+        // order than the pages would send a reader backwards.
+        string[] chapters = ["p002 Chapitre 1", "p003 Chapitre 2"];
+        Assert.Equal(chapters, Entries(opened!));
+
+        // The language of the navigation document is the label's (§4.4).
+        Assert.Equal("fr", (string?)opened!.Root!.Descendants(XName.Get("Label", "urn:koma:navigation")).Last().Attribute(XNamespace.Xml + "lang"));
+        Assert.Equal("Chapitre 2", PageEditor.Read(manifest, opened, "p003").Chapter);
+
+        (_, XDocument? closed) = PageEditor.Apply(Manifest(), Navigation(), "p002", new PageEdit(Chapter: ""));
+
+        // Nothing left in the section, so the section goes.
+        Assert.Empty(Entries(closed!));
+        Assert.Null(closed!.Root!.Element(XName.Get("TableOfContents", "urn:koma:navigation")));
     }
 
     [Fact]
@@ -165,6 +186,8 @@ public sealed class PageEditorTests : IDisposable
     private static XElement Reference(XDocument manifest, string item) => manifest.Root!.Descendants(XName.Get("ItemRef", "urn:koma:manifest")).First(r => (string?)r.Attribute("item") == item);
 
     private static string Roles(XDocument manifest, string item) => (string?)Item(manifest, item).Attribute("roles") ?? string.Empty;
+
+    private static string[] Entries(XDocument navigation) => [.. navigation.Root!.Descendants(XName.Get("Entry", "urn:koma:navigation")).Select(e => $"{(string?)e.Attribute("item")} {e.Element(XName.Get("Label", "urn:koma:navigation"))?.Value}")];
 
     private static string[] Landmarks(XDocument navigation) => [.. navigation.Root!.Descendants(XName.Get("Landmark", "urn:koma:navigation")).Select(l => $"{(string?)l.Attribute("type")} {(string?)l.Attribute("item")}")];
 

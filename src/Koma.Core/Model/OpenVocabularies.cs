@@ -29,6 +29,21 @@ public static class OpenVocabularies
     private const string Manifest = "urn:koma:manifest";
     private const string Navigation = "urn:koma:navigation";
 
+    /// <summary>
+    /// The core page roles of §8.4, in the order it lists them: what a form
+    /// offers before anyone reaches for a private-use token.
+    /// </summary>
+    /// <remarks>
+    /// Declared before the table, which is built from it: the two would
+    /// otherwise be two lists of the same thing, and one would drift.
+    /// </remarks>
+    public static IReadOnlyList<string> PageRoles { get; } =
+    [
+        "front-cover", "inner-cover", "title-page", "table-of-contents", "recap", "story", "interlude",
+        "illustration", "advertisement", "editorial", "letters", "preview", "credits", "bonus", "blank",
+        "back-cover", "other"
+    ];
+
     private static readonly Vocabulary[] All =
     [
         Of(Metadata, "Identifier", "scheme", false, ["uuid", "isbn-10", "isbn-13", "ean-13", "issn", "doi", "uri", "proprietary"]),
@@ -53,7 +68,7 @@ public static class OpenVocabularies
         Of(Metadata, "AccessibilityHazard", null, false, ["flashing", "no-flashing-hazard", "motion-simulation", "no-motion-simulation-hazard", "sound", "no-sound-hazard", "none", "unknown"]),
         Of(Metadata, "ContentWarning", "type", false, ["violence", "gore", "sexual-content", "nudity", "language", "drug-use", "self-harm", "flashing-images", "other"]),
         Of(Metadata, "Link", "rel", false, ["homepage", "publisher", "author", "series", "purchase", "record", "errata", "license", "source", "related-publication", "other"]),
-        Of(Manifest, "Item", "roles", true, ["front-cover", "inner-cover", "title-page", "table-of-contents", "recap", "story", "interlude", "illustration", "advertisement", "editorial", "letters", "preview", "credits", "bonus", "blank", "back-cover", "other"]),
+        Of(Manifest, "Item", "roles", true, [.. PageRoles]),
         Of(Navigation, "Landmark", "type", false, ["front-cover", "inner-cover", "title-page", "table-of-contents", "body-start", "story-start", "credits", "glossary", "appendix", "bonus", "preview", "back-cover"]),
         Of(Navigation, "Region", "type", false, ["panel", "group", "inset", "caption", "other"])
     ];

@@ -172,7 +172,7 @@ internal sealed partial class MainWindow : Window, IDisposable
 
             // §5.0 keeps a file from another era of the format apart from a
             // broken one, and so does the message.
-            Status.Text = result.Outcome == PackageOpenOutcome.UnsupportedVersion ? $"{name} is KOMA {result.DeclaredVersion?.ToString() ?? "of an unknown version"}; this build reads {KomaVersion.Supported} only (§5.0)." : $"{name} cannot be opened.{Environment.NewLine}{DescribeAll(result.Violations)}";
+            Status.Text = result.Outcome == PackageOpenOutcome.UnsupportedVersion ? $"{name} is KOMA {result.DeclaredVersion?.ToString() ?? "of an unknown version"}; this build reads {KomaVersion.Supported} only." : $"{name} cannot be opened.{Environment.NewLine}{DescribeAll(result.Violations)}";
             return;
         }
 
@@ -985,7 +985,7 @@ internal sealed partial class MainWindow : Window, IDisposable
         }
 
         if (publication.WithheldCount > 0)
-            text.AppendLine(string.Create(CultureInfo.InvariantCulture, $"Incomplete: {publication.WithheldCount} page(s) could not be shown (§16)."));
+            text.AppendLine(string.Create(CultureInfo.InvariantCulture, $"Incomplete: {publication.WithheldCount} page(s) could not be shown."));
 
         return text.ToString().TrimEnd();
     }

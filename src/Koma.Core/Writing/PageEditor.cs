@@ -13,12 +13,17 @@ namespace Koma.Core.Writing;
 /// <param name="SpreadPosition">Where the page sits in its spread (§8.8).</param>
 /// <param name="AlternativeText">The text of §8.7; empty removes it.</param>
 /// <param name="Decorative">Whether the page carries no information of its own (§8.7).</param>
+/// <param name="Chapter">
+/// The title under which the page opens a chapter in the table of contents
+/// (§9.1); empty takes the page out of it.
+/// </param>
 public sealed record PageEdit(
     IReadOnlyList<string>? Roles = null,
     int? PageSpan = null,
     SpreadPosition? SpreadPosition = null,
     string? AlternativeText = null,
-    bool? Decorative = null);
+    bool? Decorative = null,
+    string? Chapter = null);
 
 /// <summary>
 /// Edits what the manifest says about one page, and keeps the navigation in
@@ -47,8 +52,11 @@ public static class PageEditor
     /// <summary>The roles that make a landmark of the same name, in the order §9.3 lists them.</summary>
     private static readonly string[] LandmarkRoles = [FrontCover, InnerCover, "title-page", "back-cover"];
 
-    /// <summary>What the manifest says about a page now: the values an editing form starts from.</summary>
-    public static PageEdit Read(XDocument manifest, string item)
+    /// <summary>
+    /// What a package says about a page now: the values an editing form
+    /// starts from, the chapter it opens included.
+    /// </summary>
+    public static PageEdit Read(XDocument manifest, XDocument? navigation, string item)
     {
         ArgumentNullException.ThrowIfNull(manifest);
         ArgumentNullException.ThrowIfNull(item);
@@ -61,7 +69,8 @@ public static class PageEditor
             (string?)found.Attribute("page-span") == "2" ? 2 : 1,
             Position((string?)Reference(manifest, item).Attribute("spread-position")),
             accessibility?.Element(XName.Get("AlternativeText", Manifest))?.Value.Trim() ?? string.Empty,
-            (string?)accessibility?.Attribute("decorative") == "true");
+            (string?)accessibility?.Attribute("decorative") == "true",
+            Entry(navigation, item)?.Element(XName.Get("Label", Navigation))?.Value.Trim() ?? string.Empty);
     }
 
     /// <summary>
@@ -96,7 +105,15 @@ public static class PageEditor
         if ((string?)page.Attribute("page-span") == "2" && (string?)Reference(edited, item).Attribute("spread-position") is { } pinned && pinned != "auto")
             throw new ArgumentException($"A page of span 2 fills its spread and cannot sit on the {pinned} (§8.8).", nameof(edit));
 
-        return (edited, navigation is null ? null : Landmarks(navigation, edited));
+        if (edit.Chapter is not null && navigation is null)
+            throw new ArgumentException("The package has no navigation document to carry a table of contents (§1).", nameof(edit));
+
+        XDocument? renavigated = navigation is null ? null : Landmarks(navigation, edited);
+
+        if (edit.Chapter is not null && renavigated is not null)
+            SetChapter(renavigated, edited, item, edit.Chapter.Trim());
+
+        return (edited, renavigated);
     }
 
     private static void SetRoles(XDocument manifest, XElement page, IReadOnlyList<string> roles)
@@ -168,6 +185,82 @@ public static class PageEditor
         else
             page.AddFirst(written);
     }
+
+    /// <summary>
+    /// Opens a chapter at this page under that title, or takes the page out
+    /// of the table of contents (§9.1).
+    /// </summary>
+    /// <remarks>
+    /// Entries follow the spine, since a table of contents that ran in
+    /// another order than the pages would send a reader backwards. An entry
+    /// with entries of its own is not removed by clearing its title: its
+    /// children would be left with nothing to hang from, and what to do with
+    /// them is the author's to say, not this method's to guess.
+    /// </remarks>
+    private static void SetChapter(XDocument navigation, XDocument manifest, string item, string chapter)
+    {
+        XElement? entry = Entry(navigation, item);
+        XElement? contents = navigation.Root?.Element(XName.Get("TableOfContents", Navigation));
+
+        if (chapter.Length == 0)
+        {
+            if (entry is null)
+                return;
+
+            if (entry.Elements(XName.Get("Entry", Navigation)).Any())
+                throw new ArgumentException("This chapter holds chapters of its own; move them before taking it out of the table of contents (§9.1).", nameof(chapter));
+
+            entry.Remove();
+
+            // §9.1 wants at least one entry in the section: with none, the
+            // section goes rather than stay empty.
+            if (contents is not null && !contents.Elements(XName.Get("Entry", Navigation)).Any())
+                contents.Remove();
+
+            return;
+        }
+
+        if (entry is not null)
+        {
+            XElement? label = entry.Element(XName.Get("Label", Navigation));
+
+            if (label is null)
+                entry.AddFirst(Label(navigation, chapter));
+            else
+                label.Value = chapter;
+
+            return;
+        }
+
+        if (contents is null)
+        {
+            contents = new XElement(XName.Get("TableOfContents", Navigation));
+            navigation.Root!.AddFirst(contents);
+        }
+
+        var written = new XElement(XName.Get("Entry", Navigation), new XAttribute("item", item), Label(navigation, chapter));
+        string[] spine = [.. manifest.Root!.Element(XName.Get("Spine", Manifest))!.Elements(XName.Get("ItemRef", Manifest)).Select(r => (string?)r.Attribute("item") ?? string.Empty)];
+        XElement? after = contents.Elements(XName.Get("Entry", Navigation)).FirstOrDefault(e => Array.IndexOf(spine, (string?)e.Attribute("item")) > Array.IndexOf(spine, item));
+
+        if (after is null)
+            contents.Add(written);
+        else
+            after.AddBeforeSelf(written);
+    }
+
+    /// <summary>A label in the language the navigation document is written in (§4.4).</summary>
+    private static XElement Label(XDocument navigation, string text)
+    {
+        var label = new XElement(XName.Get("Label", Navigation), text);
+
+        if ((string?)navigation.Root?.Attribute(XNamespace.Xml + "lang") is { } language)
+            label.SetAttributeValue(XNamespace.Xml + "lang", language);
+
+        return label;
+    }
+
+    private static XElement? Entry(XDocument? navigation, string item) =>
+        navigation?.Root?.Element(XName.Get("TableOfContents", Navigation))?.Descendants(XName.Get("Entry", Navigation)).FirstOrDefault(e => (string?)e.Attribute("item") == item);
 
     /// <summary>
     /// The navigation with its landmarks rebuilt from the roles: the first

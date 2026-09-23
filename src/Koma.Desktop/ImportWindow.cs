@@ -56,7 +56,7 @@ internal sealed class ImportWindow : Window
                 comicInfo,
                 new TextBlock
                 {
-                    Text = "ComicInfo is never normative for KOMA (§1): it travels unchanged, for readers that still want it.",
+                    Text = "ComicInfo is never normative for KOMA: it travels unchanged, for readers that still want it.",
                     TextWrapping = TextWrapping.Wrap,
                     Opacity = 0.55
                 },

@@ -2,15 +2,16 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Koma.Core.Model;
 using Koma.Core.Rendering;
 using Koma.Core.Writing;
 
 namespace Koma.Desktop;
 
 /// <summary>
-/// The pages of a publication, and what the manifest says about the one
-/// chosen: its roles, its span, its side of the spread, and what a reader who
-/// cannot see it is told.
+/// The pages of a publication, and what the package says about the one
+/// chosen: its role, its span, its side of the spread, the chapter it opens,
+/// and what a reader who cannot see it is told.
 /// </summary>
 /// <remarks>
 /// One page is saved at a time, and each save rewrites the package, which
@@ -30,11 +31,12 @@ internal sealed class PagesWindow : Window
 
     private readonly string path;
     private readonly ListBox pages = new() { Width = 220 };
-    private readonly TextBox roles = new();
-    private readonly CheckBox span = new() { Content = "Drawn across the whole spread (§8.5)" };
+    private readonly ComboBox roles = new() { HorizontalAlignment = HorizontalAlignment.Stretch };
+    private readonly CheckBox span = new() { Content = "Drawn across the whole spread" };
     private readonly ComboBox position = new() { ItemsSource = Positions.Select(p => p.Label).ToArray(), HorizontalAlignment = HorizontalAlignment.Stretch };
     private readonly TextBox alternative = new() { AcceptsReturn = true, Height = 72, TextWrapping = TextWrapping.Wrap };
-    private readonly CheckBox decorative = new() { Content = "Decorative: carries nothing to describe (§8.7)" };
+    private readonly CheckBox decorative = new() { Content = "Decorative: carries nothing to describe" };
+    private readonly TextBox chapter = new();
     private readonly TextBlock problem = new() { Foreground = Brushes.OrangeRed, TextWrapping = TextWrapping.Wrap };
     private readonly Button save = new() { Content = "Save this page", IsDefault = true };
 
@@ -57,10 +59,11 @@ internal sealed class PagesWindow : Window
 
         var form = new StackPanel { Spacing = 8, Margin = new Thickness(16, 0, 0, 0) };
 
-        form.Children.Add(Field("Roles, separated by spaces (§8.4)", roles));
+        form.Children.Add(Field("Role", roles));
         form.Children.Add(span);
-        form.Children.Add(Field("Place in the spread (§8.8)", position));
-        form.Children.Add(Field("Alternative text (§8.7)", alternative));
+        form.Children.Add(Field("Place in the spread", position));
+        form.Children.Add(Field("Chapter opening here, if any", chapter));
+        form.Children.Add(Field("Alternative text", alternative));
         form.Children.Add(decorative);
         form.Children.Add(problem);
         form.Children.Add(new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, HorizontalAlignment = HorizontalAlignment.Right, Children = { close, save } });
@@ -113,9 +116,17 @@ internal sealed class PagesWindow : Window
             return;
         }
 
+        // The roles offered are the core vocabulary, plus whatever this page
+        // already carries: a private-use token, or several roles at once, is
+        // not lost for having opened the form.
+        string carried = string.Join(' ', page.Roles ?? []);
+        string[] offered = [.. OpenVocabularies.PageRoles.Concat(carried.Length == 0 ? [] : [carried]).Distinct(StringComparer.Ordinal)];
+
         // The form is filled, not edited: nothing here is a reader's choice.
         filling = true;
-        roles.Text = string.Join(' ', page.Roles ?? []);
+        roles.ItemsSource = offered;
+        roles.SelectedIndex = Math.Max(0, Array.IndexOf(offered, carried));
+        chapter.Text = page.Chapter;
         span.IsChecked = page.PageSpan == 2;
         position.SelectedIndex = Array.FindIndex(Positions, p => p.Position == (page.SpreadPosition ?? SpreadPosition.Auto));
         alternative.Text = page.AlternativeText;
@@ -131,11 +142,12 @@ internal sealed class PagesWindow : Window
 
         string item = items[pages.SelectedIndex];
         var edit = new PageEdit(
-            [.. (roles.Text ?? string.Empty).Split(' ', StringSplitOptions.RemoveEmptyEntries)],
+            [.. (roles.SelectedItem as string ?? string.Empty).Split(' ', StringSplitOptions.RemoveEmptyEntries)],
             span.IsChecked == true ? 2 : 1,
             Positions[Math.Max(position.SelectedIndex, 0)].Position,
             (alternative.Text ?? string.Empty).Trim(),
-            decorative.IsChecked == true);
+            decorative.IsChecked == true,
+            (chapter.Text ?? string.Empty).Trim());
 
         save.IsEnabled = false;
         problem.Text = string.Empty;

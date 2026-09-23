@@ -23,7 +23,7 @@ public static class PublicationEditor
     public static MetadataEdit Current(string path) => MetadataEditor.Read(Load(path, CorePaths.Metadata)!);
 
     /// <summary>What the manifest says about a page, as the values an editing form starts from.</summary>
-    public static PageEdit CurrentPage(string path, string item) => PageEditor.Read(Load(path, CorePaths.Manifest)!, item);
+    public static PageEdit CurrentPage(string path, string item) => PageEditor.Read(Load(path, CorePaths.Manifest)!, Load(path, CorePaths.Navigation), item);
 
     /// <summary>
     /// The pages of a publication, in reading order (§8.8), each with the
