@@ -168,18 +168,62 @@ internal static class Commands
         return refused ? Rejected : Opened;
     }
 
-    /// <summary>Converts a CBZ into a package beside it, or where it is told.</summary>
+    /// <summary>
+    /// Converts a CBZ into a package beside it, or where it is told, with the
+    /// choices the reader would have made in the window.
+    /// </summary>
+    /// <remarks>
+    /// The same options as the import window, over the same converter: what
+    /// turns a CBZ into a publication is one implementation, and the two
+    /// front ends offer the same of it.
+    /// </remarks>
     private static int Convert(string[] args, TextWriter output, TextWriter error)
     {
-        if (args.Length is 0 or > 2)
+        var options = new ConversionOptions(Checksums: true);
+        var paths = new List<string>();
+        var modes = new List<string>();
+        var hazards = new List<string>();
+
+        for (int i = 0; i < args.Length; i++)
+        {
+            switch (args[i])
+            {
+                case "--no-comicinfo":
+                    options = options with { KeepComicInfo = false };
+                    break;
+                case "--number-from-file-name":
+                    options = options with { NumberFromFileName = true };
+                    break;
+                case "--access-mode" when i + 1 < args.Length:
+                    modes.Add(args[++i]);
+                    break;
+                case "--hazard" when i + 1 < args.Length:
+                    hazards.Add(args[++i]);
+                    break;
+                default:
+                    if (args[i].StartsWith('-'))
+                    {
+                        error.WriteLine($"koma convert: unknown option '{args[i]}'.");
+
+                        return Usage;
+                    }
+
+                    paths.Add(args[i]);
+                    break;
+            }
+        }
+
+        if (paths.Count is 0 or > 2)
         {
             error.WriteLine("koma convert: give an archive, and a file to write it to.");
 
             return Usage;
         }
 
-        string cbz = args[0];
-        string koma = args.Length == 2 ? args[1] : Path.ChangeExtension(cbz, ".koma");
+        options = options with { AccessModes = modes, AccessibilityHazards = hazards };
+
+        string cbz = paths[0];
+        string koma = paths.Count == 2 ? paths[1] : Path.ChangeExtension(cbz, ".koma");
 
         if (!File.Exists(cbz))
         {
@@ -201,7 +245,7 @@ internal static class Commands
 
         try
         {
-            conversion = CbzConverter.Convert(cbz, koma, new ConversionOptions(Checksums: true));
+            conversion = CbzConverter.Convert(cbz, koma, options);
         }
         catch (Exception refused) when (refused is InvalidDataException or IOException or UnauthorizedAccessException)
         {
@@ -256,7 +300,13 @@ internal static class Commands
             usage:
               koma info <file.koma> [<file.koma> ...]     what a publication says about itself
               koma check <file.koma> [<file.koma> ...]    every layer of §15, pages included
-              koma convert <file.cbz> [<file.koma>]       a CBZ as a publication
+              koma convert [options] <file.cbz> [<file.koma>]
+
+            options of koma convert, as the import window offers them:
+              --no-comicinfo             leave the original ComicInfo out of the package
+              --number-from-file-name    take the volume number from the digits the name starts with
+              --access-mode <token>      how the publication is read (§7.13); repeatable
+              --hazard <token>           what it may do to a reader (§7.13); repeatable
 
             exit status:
               0  opened, or converted, warnings and all

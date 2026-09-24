@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using Koma.TestSupport;
 
 namespace Koma.Cli.Tests;
@@ -50,6 +51,33 @@ public sealed class CommandsTests : IDisposable
     }
 
     [Fact]
+    public void ConvertTakesTheChoicesTheImportWindowOffers()
+    {
+        // The same options over the same converter, so that what the window
+        // can do the command line can do.
+        string koma = Path.Combine(folder, "asked.koma");
+
+        (int returned, string output, _) = Run("convert", "--no-comicinfo", "--access-mode", "visual", "--hazard", "no-flashing-hazard", Corpus.Example("manga.cbz"), koma);
+
+        Assert.Equal(Commands.Opened, returned);
+        Assert.Contains("accessibility declared by the importer", output, StringComparison.Ordinal);
+
+        using ZipArchive package = ZipFile.OpenRead(koma);
+
+        Assert.Null(package.GetEntry("ComicInfo.xml"));
+        Assert.Contains("no-flashing-hazard", Read(package, "koma/metadata.xml"), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void RefusesAnOptionItDoesNotKnow()
+    {
+        (int returned, _, string error) = Run("convert", "--quickly", Corpus.Example("bare.cbz"));
+
+        Assert.Equal(Commands.Usage, returned);
+        Assert.Contains("unknown option", error, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ConvertRefusesToWriteOverAPublicationThatIsThere()
     {
         string koma = Path.Combine(folder, "taken.koma");
@@ -83,6 +111,13 @@ public sealed class CommandsTests : IDisposable
         {
             // The operating system's to clean up.
         }
+    }
+
+    private static string Read(ZipArchive package, string entry)
+    {
+        using var reader = new StreamReader(package.GetEntry(entry)!.Open());
+
+        return reader.ReadToEnd();
     }
 
     private static (int Status, string Output, string Error) Run(params string[] args)

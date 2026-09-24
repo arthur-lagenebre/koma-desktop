@@ -72,6 +72,20 @@ jobs:
             -p:DebugType=none \
             -p:Version="$version"
 
+          # The command line is published beside the reader, from the same
+          # commit and over the same Koma.Imaging: what converts a CBZ is one
+          # implementation, and a release ships it twice rather than letting
+          # the two drift.
+          dotnet publish src/Koma.Cli/Koma.Cli.csproj \
+            --configuration Release \
+            --runtime ${{ matrix.rid }} \
+            --self-contained true \
+            --output "$OUTPUT/cli" \
+            -p:PublishSingleFile=true \
+            -p:IncludeNativeLibrariesForSelfExtract=true \
+            -p:DebugType=none \
+            -p:Version="$version"
+
       # The release is one file a reader downloads and runs. Anything else
       # left in the output would have to travel with it, so a second file
       # fails the build rather than a reader's first launch, and says what
@@ -79,7 +93,7 @@ jobs:
       - name: Check the output is one file
         shell: bash
         run: |
-          count=$(find "$OUTPUT" -type f | wc -l)
+          count=$(find "$OUTPUT" -maxdepth 1 -type f | wc -l)
 
           if [ "$count" -ne 1 ]; then
             echo "The publish left $count files where one was expected:"
@@ -88,22 +102,36 @@ jobs:
             exit 1
           fi
 
+          # The same for the command line, in its own folder.
+          tools=$(find "$OUTPUT/cli" -maxdepth 1 -type f | wc -l)
+
+          if [ "$tools" -ne 1 ]; then
+            echo "The command line publish left $tools files where one was expected:"
+            ls -la "$OUTPUT/cli"
+            exit 1
+          fi
+
       - name: Name the executable
         shell: bash
         run: |
           name="koma-desktop-${GITHUB_REF_NAME}-${{ matrix.rid }}"
+          tool="koma-${GITHUB_REF_NAME}-${{ matrix.rid }}"
 
           if [ "${{ matrix.rid }}" = "win-x64" ]; then
             cp "$OUTPUT/Koma.Desktop.exe" "${name}.exe"
+            cp "$OUTPUT/cli/koma.exe" "${tool}.exe"
           else
             cp "$OUTPUT/Koma.Desktop" "${name}"
-            chmod +x "${name}"
+            cp "$OUTPUT/cli/koma" "${tool}"
+            chmod +x "${name}" "${tool}"
           fi
 
       - uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.rid }}
-          path: koma-desktop-*
+          path: |
+            koma-desktop-*
+            koma-v*
           if-no-files-found: error
 
   release:
@@ -123,7 +151,7 @@ jobs:
       # can be checked against what CI built.
       - name: Checksums
         working-directory: dist
-        run: sha256sum koma-desktop-* > SHA256SUMS
+        run: sha256sum koma-desktop-* koma-v* > SHA256SUMS
 
       - name: Create the release
         env:

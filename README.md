@@ -77,8 +77,10 @@ only when its path, size or modification time has changed.
 publication says about itself; `koma check` adds layer 4, reading the pages a
 package can open without, and answers 0 when a publication conforms and 1 when
 it does not, so a shell can walk a library; `koma convert` writes a CBZ as a
-publication, never over one that is there, and prints what it assumed in the
-words the reference converter uses.
+publication, never over one that is there, with the same options the import
+window offers and over the same converter, and prints what it assumed in the
+words the reference converter uses. A release ships it beside the reader, for
+whoever wants to convert without a window.
 
 `Koma.Desktop` opens on the shelf: the publications of the watched folders,
 with their covers, scanned in the background at startup and whenever the
