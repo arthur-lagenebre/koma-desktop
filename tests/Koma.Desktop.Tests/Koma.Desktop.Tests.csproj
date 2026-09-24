@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Avalonia's headless test integration is built on xunit v3, where the
+         other test projects are on v2. A v3 suite runs itself rather than
+         through VSTest, and dotnet test runs one or the other, not both: this
+         one is run on its own, with dotnet run, until the others follow. -->
+    <PackageReference Include="Avalonia.Headless.XUnit" Version="12.1.2" />
+    <PackageReference Include="xunit.v3" Version="3.2.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Koma.Desktop\Koma.Desktop.csproj" />
+    <ProjectReference Include="..\Koma.TestSupport\Koma.TestSupport.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -6,9 +6,19 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- Avalonia.Skia 12.1.2 asks for SkiaSharp 3.119.4 or later, and
+         Koma.Imaging pins exactly that, so the application loads the version
+         SkiaSharpDecodingTests characterises. Moving Avalonia means rereading
+         its SkiaSharp floor. -->
     <PackageReference Include="Avalonia" Version="12.1.2" />
     <PackageReference Include="Avalonia.Desktop" Version="12.1.2" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The interface tests draw the controls themselves, which are internal
+         to the application: nothing outside it has any use for them. -->
+    <InternalsVisibleTo Include="Koma.Desktop.Tests" />
   </ItemGroup>
 
   <ItemGroup>
@@ -17,6 +27,12 @@
     <ProjectReference Include="..\Koma.Library\Koma.Library.csproj" />
   </ItemGroup>
 
+  <!-- SkiaSharp and HarfBuzzSharp ship the symbols of their native Windows
+       libraries beside them. A single-file publish carries the libraries
+       inside the executable and leaves those symbols out beside it, so they
+       are dropped here: a reader has no use for them, and the release is one
+       file. Removed before the bundle is made, so that a local publish gives
+       one file too. -->
   <Target Name="LeaveSymbolsOutOfThePublish" AfterTargets="ComputeResolvedFilesToPublishList">
     <ItemGroup>
       <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(Extension)' == '.pdb'" />

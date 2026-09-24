@@ -14,21 +14,23 @@ image announced as migrating, and was fixed by pinning `runs-on: ubuntu-24.04`.
 The `koma` repository has the same job, unpinned, and will fail the same way at
 its next run. The same one-line change, with the same comment.
 
-### Tests for the interface
+### One test runner rather than two
 
-Every defect of the last weeks showed itself at runtime and none of them at
-build time or in the tests: the language switch that recursed until the stack
-gave out, the spread drawn at nothing when a publication was reopened, a call
-left with two arguments where the method had gained a third. `Koma.Core`,
-`Koma.Library` and `Koma.Imaging` are covered; `Koma.Desktop` is not covered at
-all.
+Avalonia's headless integration is built on xunit v3, which runs itself rather
+than through VSTest, while the other three suites are on v2, which does not.
+`dotnet test` runs one or the other, so the interface suite is run on its own,
+in its own CI step. Moving the three older suites to v3 would bring everything
+back under one command; it is mechanical, and worth doing when someone has an
+afternoon rather than in the middle of something else.
 
-Avalonia runs headless for tests. A handful of smoke tests would catch the
-class of defect that keeps getting through: the shelf draws for a library of a
-few entries, choosing one opens it, switching language redraws without
-recursing, the pages window fills its form from a package. Start with the test
-project and one test; the value is in the first one, which proves the harness
-works.
+### More tests for the interface
+
+`Koma.Desktop.Tests` runs the application headless and covers the shelf and the
+pages window. What is not covered yet: opening a publication and turning its
+pages, the edit window saving and refusing, the import window's choices. The
+main window itself is awkward to test as it stands, since it reads the
+library of whoever runs the tests; giving it its store rather than fetching
+one would make it testable, and is worth doing when a test needs it.
 
 ## Worth doing
 

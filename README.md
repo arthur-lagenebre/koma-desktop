@@ -147,6 +147,7 @@ src/Koma.Imaging          page loading and decoding over SkiaSharp — no UI
 src/Koma.Library          the library: its index, its covers, its scan — no UI
 tests/Koma.Core.Tests     xUnit, driven by the upstream conformance corpus
 tests/Koma.Imaging.Tests  SkiaSharp and the decoder, over the corpus page images
+tests/Koma.Desktop.Tests  the interface, drawn headless
 tests/Koma.Library.Tests  the library, over a folder of corpus packages
 tests/Koma.TestSupport    finds the corpus for the three test projects
 external/koma             git submodule: the specification, schemas and corpus
@@ -166,7 +167,8 @@ Requires the .NET SDK (see `Directory.Build.props` for the target framework).
 git clone --recurse-submodules <this repo>
 cd koma-desktop
 dotnet build
-dotnet test
+dotnet test                       # every suite but the interface
+dotnet run --project tests/Koma.Desktop.Tests   # the interface, headless
 ```
 
 If you cloned without `--recurse-submodules`:
