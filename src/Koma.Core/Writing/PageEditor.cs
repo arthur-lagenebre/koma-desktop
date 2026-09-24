@@ -473,16 +473,22 @@ public static class PageEditor
             .GroupBy(l => (string?)l.Attribute("type") ?? string.Empty, StringComparer.Ordinal)
             .ToDictionary(g => g.Key, g => (XElement[])[.. g.First().Elements(XName.Get("Label", Navigation))], StringComparer.Ordinal);
 
-        var rebuilt = new List<XElement>();
+        var found = new List<(string Item, XElement Landmark)>();
 
         foreach (string role in LandmarkRoles)
         {
             if (Items(manifest).FirstOrDefault(i => Tokens(i).Contains(role, StringComparer.Ordinal)) is { } page)
-                rebuilt.Add(Landmark(role, page, labels));
+                found.Add(((string?)page.Attribute("id") ?? string.Empty, Landmark(role, page, labels)));
         }
 
         if (Items(manifest).FirstOrDefault(i => Tokens(i).Contains(Story, StringComparer.Ordinal)) is { } story)
-            rebuilt.Add(Landmark("body-start", story, labels));
+            found.Add(((string?)story.Attribute("id") ?? string.Empty, Landmark("body-start", story, labels)));
+
+        // In the order the pages come, not the order the roles were listed: a
+        // back cover before the start of the story reads as a mistake, and a
+        // reader following the landmarks would be sent backwards.
+        string[] spine = [.. manifest.Root!.Element(XName.Get("Spine", Manifest))!.Elements(XName.Get("ItemRef", Manifest)).Select(r => (string?)r.Attribute("item") ?? string.Empty)];
+        List<XElement> rebuilt = [.. found.OrderBy(f => Array.IndexOf(spine, f.Item)).Select(f => f.Landmark)];
 
         // §9.3 wants at least one landmark in the section: with none, the
         // section goes rather than stay empty.

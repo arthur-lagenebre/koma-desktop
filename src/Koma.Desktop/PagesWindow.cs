@@ -38,7 +38,7 @@ internal sealed class PagesWindow : Window
     private const double TileHeight = 150;
 
     private readonly string path;
-    private readonly ListBox pages = new() { Width = 260, MaxHeight = 520 };
+    private readonly ListBox pages = new() { Width = 300 };
     private readonly ComboBox roles = new() { HorizontalAlignment = HorizontalAlignment.Stretch };
     private readonly CheckBox span = new() { Content = Text.Of("Drawn across the whole spread") };
     private readonly ComboBox position = new() { ItemsSource = Positions.Select(p => Text.Of(p.Label)).ToArray(), HorizontalAlignment = HorizontalAlignment.Stretch };
@@ -69,8 +69,12 @@ internal sealed class PagesWindow : Window
         this.path = path;
 
         Title = Text.Of("{0} — Pages", Path.GetFileName(path));
-        Width = 760;
-        Height = 520;
+
+        // Room for the pages beside the form, and for the form entire: a
+        // window that hides its own save button is a window that cannot save.
+        Width = 1040;
+        Height = 780;
+        WindowStartupLocation = WindowStartupLocation.CenterOwner;
 
         rightHalf = Field(Text.Of("Number printed on its right half"), printedRight);
         rightHalf.IsVisible = false;
@@ -101,7 +105,15 @@ internal sealed class PagesWindow : Window
         form.Children.Add(new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Children = { up, down, remove } });
         form.Children.Add(new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, HorizontalAlignment = HorizontalAlignment.Right, Children = { close, save } });
 
-        Content = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(16), Children = { pages, form } };
+        var body = new DockPanel { Margin = new Thickness(16) };
+
+        // The pages take the height they are given; the form scrolls when the
+        // window is made smaller than it.
+        DockPanel.SetDock(pages, Dock.Left);
+        body.Children.Add(pages);
+        body.Children.Add(new ScrollViewer { Content = form });
+
+        Content = body;
 
         Load(current);
 
@@ -149,14 +161,19 @@ internal sealed class PagesWindow : Window
                     thumbnails[item] = page;
             }
         }
-        catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException)
+        catch (Exception e)
         {
-            problem.Text = e.Message;
+            // Whatever it was: a decoder that gave up, a file that moved
+            // under us. The pictures are a convenience, and losing them must
+            // not leave a window that cannot save.
+            problem.Text = Text.Of("The pages could not all be read: {0}", e.Message);
         }
-
-        save.IsEnabled = true;
-        Fill();
-        Redraw();
+        finally
+        {
+            save.IsEnabled = true;
+            Fill();
+            Redraw();
+        }
     }
 
     private List<(string Item, Bitmap? Page)> Read()
@@ -183,10 +200,12 @@ internal sealed class PagesWindow : Window
                 // At the size it is shown, as the shelf decodes its covers.
                 read.Add((item.Id, Bitmap.DecodeToHeight(resource, (int)TileHeight)));
             }
-            catch (Exception e) when (e is IOException or InvalidDataException or ArgumentException)
+            catch (Exception)
             {
                 // A page that will not decode leaves a line without a
-                // picture, which the report of the publication explains.
+                // picture, whatever the reason: one page is not worth the
+                // window, and the report of the publication says what is
+                // wrong with it.
                 read.Add((item.Id, null));
             }
         }

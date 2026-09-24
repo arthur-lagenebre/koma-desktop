@@ -29,8 +29,8 @@ public sealed class PageEditorTests : IDisposable
         Assert.Equal("front-cover", Roles(manifest, "p003"));
 
         // The landmarks say what the roles say, or the package would say two
-        // different things.
-        string[] landmarks = ["front-cover p003", "inner-cover p001", "body-start p002"];
+        // different things, and they come in the order the pages do.
+        string[] landmarks = ["inner-cover p001", "body-start p002", "front-cover p003"];
         Assert.Equal(landmarks, Landmarks(navigation!));
     }
 

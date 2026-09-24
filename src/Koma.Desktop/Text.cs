@@ -146,6 +146,7 @@ internal static class Text
         ["Move up"] = "Monter",
         ["Move down"] = "Descendre",
         ["Take this page out"] = "Retirer cette page",
+        ["The pages could not all be read: {0}"] = "Les pages n'ont pas toutes pu être lues : {0}",
         ["Take {0} out of the publication? The page and its file go, and this cannot be taken back."] = "Retirer {0} de la publication ? La page et son fichier s'en vont, et cela ne se reprend pas.",
         ["Yes, take it out"] = "Oui, la retirer",
 
