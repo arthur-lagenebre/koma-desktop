@@ -22,11 +22,12 @@ choices, the folders window, and fitting and zooming while reading.
 
 ### The accessibility of the application itself
 
-The application edits the accessibility metadata of publications and has never
-been checked for its own: keyboard navigation across the shelf and the forms,
-labels a screen reader can announce, contrast, focus visible where it is. Not
-knowing whether it is usable without a mouse is the part to fix first, since it
-is also the cheapest to test — unplug the mouse for ten minutes.
+The shelf walks under the arrows and names its cards, its search and its
+orders for a screen reader. What is not done: the forms — the edit, pages,
+import and folders windows name none of their fields to assistive tools —
+contrast, and the focus, which is wherever Fluent puts it and has never been
+looked at. None of this has been tried with a screen reader running, which is
+the only test that counts.
 
 ## Deferred, and why
 

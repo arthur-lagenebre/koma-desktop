@@ -155,7 +155,10 @@ publication that will not open answers a click with that report, being the only
 useful thing to do with it. Control-click picks publications out, and what they
 have in common — their series and numbering, their language, their reading
 direction, what they say about reading them — is written into all of them at
-once, each on its own, so that one refusal stops itself and not the rest.
+once, each on its own, so that one refusal stops itself and not the rest. The
+arrows walk the shelf card to card and row to row, and what a card is — its
+title, its series, how far it was read — is said in one line for whoever is not
+looking at it.
 
 The format itself is at pre-release draft `0.9`. Per §5.0 of the specification,
 a reader supporting one `0.x` version **must reject every other `0.x`**, and

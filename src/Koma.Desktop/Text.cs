@@ -53,6 +53,9 @@ internal static class Text
         ["French"] = "Français",
 
         ["Search titles, series and files"] = "Chercher un titre, une série, un fichier",
+        ["Order of the shelf"] = "Ordre de l'étagère",
+        ["How a spread fits the window"] = "Ajustement d'une planche à la fenêtre",
+        ["Language of the application"] = "Langue de l'application",
         ["By title"] = "Par titre",
         ["By series"] = "Par série",
         ["Recently read"] = "Lues récemment",

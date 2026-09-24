@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Text;
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -346,6 +347,12 @@ internal sealed partial class MainWindow : Window, IDisposable
         LanguageChoice.SelectedIndex = language;
 
         localizing = false;
+
+        // Named for whoever is not looking at them: a combo box announces
+        // its value, not what the value is for.
+        AutomationProperties.SetName(FitChoice, Text.Of("How a spread fits the window"));
+        AutomationProperties.SetName(LanguageChoice, Text.Of("Language of the application"));
+        AutomationProperties.SetName(PrivateButton, Text.Of("Show private"));
 
         Shelf.Localize();
         ShowResume();

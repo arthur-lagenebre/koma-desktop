@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -6,6 +7,7 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Media.Immutable;
+using Avalonia.VisualTree;
 using Koma.Library;
 
 namespace Koma.Desktop;
@@ -79,6 +81,10 @@ internal sealed class LibraryView : DockPanel
 
         Localize();
 
+        // The arrows walk the shelf: a hundred cards under Tab alone is a
+        // hundred presses, and a shelf is looked at in rows.
+        AddHandler(KeyDownEvent, OnArrow, RoutingStrategies.Bubble);
+
         search.TextChanged += (_, _) => Draw();
         order.SelectionChanged += (_, _) =>
         {
@@ -106,6 +112,43 @@ internal sealed class LibraryView : DockPanel
 
     /// <summary>Raised when the reader chooses another order, which the library remembers.</summary>
     public event EventHandler<ShelfOrder>? Ordered;
+
+    /// <summary>
+    /// Moves the focus from card to card, along a row and across rows.
+    /// </summary>
+    /// <remarks>
+    /// How many cards a row holds depends on how wide the window is, which is
+    /// why the step down is measured rather than fixed.
+    /// </remarks>
+    private void OnArrow(object? sender, KeyEventArgs e)
+    {
+        if (e.Source is TextBox || e.Source is ComboBox)
+            return;
+
+        Button[] cards = [.. this.GetVisualDescendants().OfType<Button>().Where(b => b.Content is StackPanel)];
+        int at = Array.FindIndex(cards, c => c.IsFocused);
+
+        if (cards.Length == 0)
+            return;
+
+        int columns = Math.Max(1, (int)(Bounds.Width / CardWidth));
+        int to = e.Key switch
+        {
+            Key.Right => at + 1,
+            Key.Left => at - 1,
+            Key.Down => at + columns,
+            Key.Up => at - columns,
+            Key.Home => 0,
+            Key.End => cards.Length - 1,
+            _ => at
+        };
+
+        if (to == at || to < 0 || to >= cards.Length)
+            return;
+
+        e.Handled = true;
+        cards[Math.Max(to, 0)].Focus();
+    }
 
     /// <summary>Takes a publication into the picking, or out of it.</summary>
     private void Pick(string path)
@@ -138,6 +181,8 @@ internal sealed class LibraryView : DockPanel
         // must not be written to the library as one.
         restoring = true;
         search.PlaceholderText = Text.Of("Search titles, series and files");
+        AutomationProperties.SetName(search, Text.Of("Search titles, series and files"));
+        AutomationProperties.SetName(order, Text.Of("Order of the shelf"));
         order.ItemsSource = Orders.Select(o => Text.Of(o.Label)).ToArray();
         order.SelectedIndex = chosen;
         restoring = false;
@@ -233,6 +278,11 @@ internal sealed class LibraryView : DockPanel
             // which is the only useful thing to do with it.
             IsEnabled = true
         };
+
+        // What a card is, said in one line: a screen reader announces a
+        // button by its content, and a cover, a title and three lines of
+        // detail announce as a heap of fragments.
+        AutomationProperties.SetName(card, string.Join(". ", new[] { entry.Title ?? Path.GetFileName(entry.Path) }.Concat(Subtitle(entry))));
 
         if (picked.Contains(entry.Path))
         {

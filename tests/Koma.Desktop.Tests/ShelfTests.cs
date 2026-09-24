@@ -1,5 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
+using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.VisualTree;
 using Koma.Core.Rendering;
 using Koma.Library;
@@ -97,6 +99,28 @@ public sealed class ShelfTests : IDisposable
 
         string[] asked = [broken.Path];
         Assert.Equal(asked, checks);
+    }
+
+    [AvaloniaFact]
+    public void WalksTheShelfWithTheArrows()
+    {
+        // A hundred cards under Tab alone is a hundred presses.
+        (Window window, LibraryView shelf) = Shelf();
+
+        shelf.Show(Entries(), new LibraryStore(folder), ShelfOrder.Title, new HashSet<string>(StringComparer.Ordinal));
+
+        Button[] cards = [.. window.GetVisualDescendants().OfType<Button>().Where(b => b.Content is StackPanel)];
+
+        cards[0].Focus();
+        cards[0].RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Right });
+
+        Assert.True(cards[1].IsFocused);
+
+        // The last card is the last: nothing walks past it.
+        cards[^1].Focus();
+        cards[^1].RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Right });
+
+        Assert.True(cards[^1].IsFocused);
     }
 
     public void Dispose()
