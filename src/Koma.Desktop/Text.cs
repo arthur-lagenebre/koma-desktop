@@ -77,6 +77,7 @@ internal static class Text
         ["Importing… {0} / {1}"] = "Import… {0} / {1}",
         ["Edit metadata…"] = "Modifier les métadonnées…",
         ["Edit {0} together…"] = "Modifier les {0} ensemble…",
+        ["Drop the picking"] = "Annuler la sélection",
         ["{0} publications — Edit together"] = "{0} publications — Modifier ensemble",
         ["Editing — KOMA"] = "Modification — KOMA",
         ["Editing… {0} / {1}"] = "Modification… {0} / {1}",

@@ -40,6 +40,29 @@ public sealed class BatchEditTests : IDisposable
         Assert.Empty(picked[^1]);
     }
 
+    [AvaloniaFact]
+    public void DropsAWholePickingAtOnce()
+    {
+        // A picking of thirty is thirty control-clicks to undo one at a time.
+        var shelf = new LibraryView();
+        var window = new Window { Width = 1200, Height = 800, Content = shelf };
+        var picked = new List<IReadOnlyList<string>>();
+
+        window.Show();
+        shelf.Picked += (_, paths) => picked.Add(paths);
+        shelf.Show(Entries(), new LibraryStore(folder), ShelfOrder.Title, new HashSet<string>(StringComparer.Ordinal));
+
+        Pick(window, 0);
+        Pick(window, 1);
+        Pick(window, 2);
+
+        Assert.Equal(3, picked[^1].Count);
+
+        shelf.Unpick();
+
+        Assert.Empty(picked[^1]);
+    }
+
     public void Dispose()
     {
         try

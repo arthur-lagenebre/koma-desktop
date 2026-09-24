@@ -20,6 +20,28 @@ its next run. The same one-line change, with the same comment.
 window and the report window. What is not covered yet: the import window's
 choices, the folders window, and fitting and zooming while reading.
 
+### Everything a publication says, in the editor
+
+The edit window carries the title, the language, the reading direction, the
+series and the accessibility. §7 carries far more, and none of it can be
+edited: the people of §7.10 — publisher, writer, artist, translator, with
+their roles — the descriptions of §7.5, the subjects of §7.9, the ratings, the
+links, the rights. A conversion writes what ComicInfo had and nothing can be
+corrected afterwards.
+
+The subjects are worth a word of their own, since they are where a library is
+searched from. §7.9 defines `genre`, `theme`, `keyword`, `setting`,
+`time-period`, `audience` and `other`. A conversion fills `genre` from
+ComicInfo's own field, which is a catch-all there and stays one here, and
+fills `theme` with nothing at all, ComicInfo having no equivalent. Both exist
+in every package this application writes; neither can be read or changed
+without another tool.
+
+What this needs first is a decision about shape: a window with ten sections is
+a window nobody opens. Tabs, or a second window for what is rarely touched,
+or a plain list of fields with a search over it — worth thinking about before
+writing any of it.
+
 ### Try the application with a screen reader running
 
 The names are written and nobody has heard them. That is the test that counts:

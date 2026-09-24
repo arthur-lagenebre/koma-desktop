@@ -100,6 +100,7 @@ internal sealed partial class MainWindow : Window, IDisposable
         Shelf.CheckRequested += async (_, path) => await CheckAsync(path);
         Shelf.Picked += (_, paths) => ShowPicked(paths);
         BatchButton.Click += async (_, _) => await EditTogetherAsync();
+        UnpickButton.Click += (_, _) => Shelf.Unpick();
         LanguageChoice.SelectionChanged += (_, _) =>
         {
             if (!localizing)
@@ -383,6 +384,7 @@ internal sealed partial class MainWindow : Window, IDisposable
         RefreshButton.Content = Text.Of("Refresh");
         PrivateButton.Content = Text.Of("Show private");
         BatchButton.Content = Text.Of("Edit {0} together…", picked.Count);
+        UnpickButton.Content = Text.Of("Drop the picking");
         ImportButton.Content = Text.Of("Import CBZ…");
         OpenButton.Content = Text.Of("Open…");
         ContentsButton.Content = Text.Of("Contents");
@@ -517,6 +519,7 @@ internal sealed partial class MainWindow : Window, IDisposable
         picked = paths;
         BatchButton.IsVisible = paths.Count > 1;
         BatchButton.Content = Text.Of("Edit {0} together…", paths.Count);
+        UnpickButton.IsVisible = paths.Count > 0;
     }
 
     /// <summary>
@@ -674,6 +677,7 @@ internal sealed partial class MainWindow : Window, IDisposable
         RefreshButton.IsVisible = false;
         PrivateButton.IsVisible = false;
         BatchButton.IsVisible = false;
+        UnpickButton.IsVisible = false;
         Scroller.IsVisible = true;
         FitChoice.IsVisible = true;
 
@@ -1116,13 +1120,19 @@ internal sealed partial class MainWindow : Window, IDisposable
         }
 
         // Escape goes back to the shelf, from where the publication reopens
-        // where it was left.
+        // where it was left; on the shelf it drops a picking, which is thirty
+        // control-clicks to undo one at a time.
         if (e.Key == Key.Escape)
         {
             if (!Shelf.IsVisible)
             {
                 e.Handled = true;
                 ShowLibrary();
+            }
+            else if (picked.Count > 0)
+            {
+                e.Handled = true;
+                Shelf.Unpick();
             }
 
             return;
