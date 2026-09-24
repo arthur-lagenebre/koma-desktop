@@ -25,6 +25,11 @@ namespace Koma.Core.Importing;
 /// with, for a collection that numbers its files and not its metadata.
 /// </param>
 /// <param name="Number">The volume number to use where ComicInfo gives none.</param>
+/// <param name="AccessModes">
+/// How the publications are taken in (§7.13). A CBZ says nothing about
+/// reading its pages, so this comes from whoever converts it or not at all.
+/// </param>
+/// <param name="AccessibilityHazards">What the publications may do to a reader (§7.13).</param>
 /// <param name="PageList">
 /// Whether <c>nav.xml</c> numbers the pages. Off unless asked: §9.2 means the
 /// printed number, and a CBZ only knows the order of its scans.
@@ -40,7 +45,9 @@ public sealed record ConversionOptions(
     bool Navigation = true,
     bool PageList = false,
     bool NumberFromFileName = false,
-    string? Number = null);
+    string? Number = null,
+    IReadOnlyList<string>? AccessModes = null,
+    IReadOnlyList<string>? AccessibilityHazards = null);
 
 /// <summary>
 /// Projects a ComicInfo onto the metadata of §7, as <c>tools/cbz_to_koma.py</c>
@@ -135,6 +142,9 @@ public static partial class ComicInfoProjection
 
         if (Content(comicInfo, notes) is { } content)
             root.Add(content);
+
+        if (Accessibility(options, notes) is { } accessibility)
+            root.Add(accessibility);
 
         if (comicInfo["AgeRating"] is { } rating && rating != "Unknown")
             root.Add(new XElement(X("Ratings"), new XElement(X("Rating"), new XAttribute("scheme", "comicinfo-agerating"), new XAttribute("value", rating))));
@@ -266,6 +276,33 @@ public static partial class ComicInfoProjection
 
         notes.Add($"ComicInfo Manga={Repr(manga)} does not state a reading direction; assuming ltr.");
         return ReadingDirection.LeftToRight;
+    }
+
+    /// <summary>
+    /// What the publication says about reading it (§7.13), from what the
+    /// conversion was told.
+    /// </summary>
+    /// <remarks>
+    /// Nothing in a CBZ says how its pages are taken in, so this is asked of
+    /// whoever converts rather than guessed. Said out loud in the notes,
+    /// since it is the one part of the metadata the archive did not carry.
+    /// </remarks>
+    private static XElement? Accessibility(ConversionOptions options, List<string> notes)
+    {
+        string[] modes = [.. (options.AccessModes ?? []).Select(m => m.Trim()).Where(m => m.Length > 0)];
+        string[] hazards = [.. (options.AccessibilityHazards ?? []).Select(h => h.Trim()).Where(h => h.Length > 0)];
+
+        // §7.13 wants at least one access mode in the section, so hazards
+        // alone have nowhere to sit.
+        if (modes.Length == 0)
+            return null;
+
+        notes.Add($"accessibility declared by the importer: {string.Join(", ", modes.Concat(hazards))}");
+
+        return new XElement(
+            X("Accessibility"),
+            modes.Select(m => new XElement(X("AccessMode"), m)),
+            hazards.Select(h => new XElement(X("AccessibilityHazard"), h)));
     }
 
     private static XElement Collection(ComicInfo comicInfo, string series, string? position)

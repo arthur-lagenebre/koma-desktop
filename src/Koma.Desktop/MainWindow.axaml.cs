@@ -676,7 +676,13 @@ internal sealed partial class MainWindow : Window, IDisposable
         (string? root, string[] archives) = choice.Folder ? await FolderOfArchives() : (null, await ChosenArchives());
 
         if (archives.Length > 0)
-            await ImportAsync(Destinations(archives, root, choice.Destination), ImportOptions with { KeepComicInfo = choice.KeepComicInfo, NumberFromFileName = choice.NumberFromFileName });
+            await ImportAsync(Destinations(archives, root, choice.Destination), ImportOptions with
+            {
+                KeepComicInfo = choice.KeepComicInfo,
+                NumberFromFileName = choice.NumberFromFileName,
+                AccessModes = choice.AccessModes,
+                AccessibilityHazards = choice.Hazards
+            });
     }
 
     private async Task<string[]> ChosenArchives()

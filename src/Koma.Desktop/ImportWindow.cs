@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Platform.Storage;
+using Koma.Core.Model;
 
 namespace Koma.Desktop;
 
@@ -12,7 +13,9 @@ namespace Koma.Desktop;
 /// The folder the packages are written into, keeping whatever tree the
 /// archives sat in; <see langword="null"/> writes each one beside its archive.
 /// </param>
-public sealed record ImportChoice(bool Folder, bool KeepComicInfo, bool NumberFromFileName, string? Destination);
+/// <param name="AccessModes">How the publications are read (§7.13), which no CBZ says.</param>
+/// <param name="Hazards">What they may do to a reader (§7.13).</param>
+public sealed record ImportChoice(bool Folder, bool KeepComicInfo, bool NumberFromFileName, string? Destination, IReadOnlyList<string> AccessModes, IReadOnlyList<string> Hazards);
 
 /// <summary>
 /// Asks what to convert and what to carry over, before any picker opens.
@@ -38,6 +41,9 @@ internal sealed class ImportWindow : Window
 
     private readonly RadioButton beside = new() { Content = Text.Of("Write each package beside its archive"), IsChecked = true, GroupName = "destination" };
     private readonly RadioButton elsewhere = new() { GroupName = "destination" };
+
+    private readonly CheckBox[] modes = Boxes.For(OpenVocabularies.AccessModes);
+    private readonly CheckBox[] hazards = Boxes.For(OpenVocabularies.AccessibilityHazards);
 
     private string? destination;
 
@@ -70,7 +76,9 @@ internal sealed class ImportWindow : Window
         elsewhere.Content = destination;
     }
 
-    private ImportChoice Choice(bool folder) => new(folder, comicInfo.IsChecked == true, numbering.IsChecked == true, destination);
+    private static StackPanel Field(string label, Control input) => new() { Spacing = 2, Children = { new TextBlock { Text = label, Opacity = 0.75 }, input } };
+
+    private ImportChoice Choice(bool folder) => new(folder, comicInfo.IsChecked == true, numbering.IsChecked == true, destination, Boxes.Ticked(modes), Boxes.Ticked(hazards));
 
     public ImportWindow()
     {
@@ -111,6 +119,14 @@ internal sealed class ImportWindow : Window
                     Opacity = 0.55
                 },
                 comicInfo,
+                Field(Text.Of("How the publications are read"), Boxes.Row(modes)),
+                Field(Text.Of("What they may do to a reader"), Boxes.Row(hazards)),
+                new TextBlock
+                {
+                    Text = Text.Of("A CBZ says nothing about reading its pages, so a conversion can only say what it is told. Left empty, the packages say nothing either, and a reader is warned of it."),
+                    TextWrapping = TextWrapping.Wrap,
+                    Opacity = 0.55
+                },
                 numbering,
                 new TextBlock
                 {

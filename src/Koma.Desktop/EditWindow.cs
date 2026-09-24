@@ -36,8 +36,8 @@ internal sealed class EditWindow : Window
     private readonly TextBox series = new();
     private readonly TextBox position = new();
     private readonly TextBox total = new();
-    private readonly CheckBox[] modes = [.. OpenVocabularies.AccessModes.Select(m => new CheckBox { Content = m })];
-    private readonly CheckBox[] hazards = [.. OpenVocabularies.AccessibilityHazards.Select(h => new CheckBox { Content = h })];
+    private readonly CheckBox[] modes = Boxes.For(OpenVocabularies.AccessModes);
+    private readonly CheckBox[] hazards = Boxes.For(OpenVocabularies.AccessibilityHazards);
     private readonly TextBox summary = new() { AcceptsReturn = true, Height = 60, TextWrapping = TextWrapping.Wrap };
     private readonly TextBlock problem = new() { Foreground = Brushes.OrangeRed, TextWrapping = TextWrapping.Wrap };
     private readonly Button save = new() { Content = Text.Of("Save"), IsDefault = true };
@@ -64,11 +64,8 @@ internal sealed class EditWindow : Window
         position.Text = current.Series?.Position ?? (current.Series is null ? null : FromFileName(path));
         total.Text = current.Series?.Total;
 
-        foreach (CheckBox box in modes)
-            box.IsChecked = current.Accessibility?.AccessModes.Contains((string)box.Content!, StringComparer.Ordinal) == true;
-
-        foreach (CheckBox box in hazards)
-            box.IsChecked = current.Accessibility?.Hazards.Contains((string)box.Content!, StringComparer.Ordinal) == true;
+        Boxes.Tick(modes, current.Accessibility?.AccessModes);
+        Boxes.Tick(hazards, current.Accessibility?.Hazards);
 
         summary.Text = current.Accessibility?.Summary;
 
@@ -82,8 +79,8 @@ internal sealed class EditWindow : Window
         fields.Children.Add(Field(Text.Of("Series"), series));
         fields.Children.Add(Field(Text.Of("Number in the series"), position));
         fields.Children.Add(Field(Text.Of("Volumes in the series"), total));
-        fields.Children.Add(Field(Text.Of("How the publication is read"), Boxes(modes)));
-        fields.Children.Add(Field(Text.Of("What it may do to a reader"), Boxes(hazards)));
+        fields.Children.Add(Field(Text.Of("How the publication is read"), Boxes.Row(modes)));
+        fields.Children.Add(Field(Text.Of("What it may do to a reader"), Boxes.Row(hazards)));
         fields.Children.Add(Field(Text.Of("A sentence for a reader deciding whether they can read it"), summary));
         fields.Children.Add(writing);
         fields.Children.Add(problem);
@@ -134,7 +131,7 @@ internal sealed class EditWindow : Window
         ReadingDirection newDirection = direction.SelectedIndex == 1 ? ReadingDirection.RightToLeft : ReadingDirection.LeftToRight;
         SeriesEdit? newSeries = string.IsNullOrWhiteSpace(series.Text) ? null : new SeriesEdit(series.Text.Trim(), Blank(position.Text), Blank(total.Text));
 
-        var newAccessibility = new AccessibilityEdit(Checked(modes), Checked(hazards), (summary.Text ?? string.Empty).Trim());
+        var newAccessibility = new AccessibilityEdit(Boxes.Ticked(modes), Boxes.Ticked(hazards), (summary.Text ?? string.Empty).Trim());
 
         return new MetadataEdit(
             newTitle == current.Title ? null : newTitle,
@@ -143,8 +140,6 @@ internal sealed class EditWindow : Window
             newSeries is null || newSeries == current.Series ? null : newSeries,
             Same(newAccessibility, current.Accessibility) ? null : newAccessibility);
     }
-
-    private static string[] Checked(CheckBox[] boxes) => [.. boxes.Where(b => b.IsChecked == true).Select(b => (string)b.Content!)];
 
     /// <remarks>
     /// Compared by their contents: the record holds lists, which compare by
@@ -155,20 +150,6 @@ internal sealed class EditWindow : Window
         && left.AccessModes.SequenceEqual(right.AccessModes, StringComparer.Ordinal)
         && left.Hazards.SequenceEqual(right.Hazards, StringComparer.Ordinal)
         && (left.Summary ?? string.Empty) == (right.Summary ?? string.Empty);
-
-    /// <summary>A row of boxes, wrapped when the window is too narrow for them.</summary>
-    private static WrapPanel Boxes(CheckBox[] boxes)
-    {
-        var panel = new WrapPanel();
-
-        foreach (CheckBox box in boxes)
-        {
-            box.Margin = new Thickness(0, 0, 12, 0);
-            panel.Children.Add(box);
-        }
-
-        return panel;
-    }
 
     /// <summary>
     /// Shows that the package is being written, and takes the form out of

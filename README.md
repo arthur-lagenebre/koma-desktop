@@ -91,28 +91,28 @@ series, each in the order of its volume numbers, or by what was read last; the
 order it is left in is the order it opens on. Choosing one opens it where it
 was last left, fitted and zoomed as it was left too, since a dense manga and a
 large-format album are not read the same way; a Resume button takes up the
-publication read last. Escape goes back to the shelf. Import CBZ takes files or
-a whole folder, subfolders included, and asks once whether the original
-ComicInfo travels with the packages; it writes the packages beside their
-archives or into a folder of the reader's, keeping whatever tree a folder of
-archives sat in, never over an existing file, checksums included, and shows
-what each conversion assumed or refused as it happens, before the shelf is
-rescanned. Edit metadata, from a card's menu or from the publication on screen,
-changes the title, language, reading direction, series, and what the
-publication says about reading it — how it is taken in, what it may do to a
-reader, a sentence for someone deciding whether they can read it — writing only
-what changed. Pages lists the pages of the publication and changes what the
-package says about one — its role, its span, its side of the spread, the
-chapter it opens, the number printed on it, what a reader who cannot see it is
-told — and a right-click edits the page under the pointer. It also opens a
-publication from a file picker or the command line, paginates it for the window
-(§10.1), and turns spreads with the arrow keys along the reading direction,
-Page Up and Page Down, Home and End. A spread fits the window or its width, in
-its own proportions; Ctrl with the wheel or with plus, minus and zero zooms it,
-Space reads down a spread taller than the window before turning it, the wheel
-turns the page when there is nothing to scroll, a click turns towards the half
-it lands in and the side buttons of a mouse browse back and forth, and F11
-reads full screen, which Escape leaves. A Contents panel lists the table of
+publication read last. Escape goes back to the shelf. Import CBZ takes files or a whole folder, subfolders included, and asks once
+whether the original ComicInfo travels with the packages, and how the
+publications are read and what they may do to a reader, which no CBZ says; it
+writes the packages beside their archives or into a folder of the reader's,
+keeping whatever tree a folder of archives sat in, never over an existing file,
+checksums included, and shows what each conversion assumed or refused as it
+happens, before the shelf is rescanned. Edit metadata, from a card's menu or
+from the publication on screen, changes the title, language, reading direction,
+series, and what the publication says about reading it — how it is taken in,
+what it may do to a reader, a sentence for someone deciding whether they can
+read it — writing only what changed. Pages lists the pages of the publication
+and changes what the package says about one — its role, its span, its side of
+the spread, the chapter it opens, the number printed on it, what a reader who
+cannot see it is told — and a right-click edits the page under the pointer. It
+also opens a publication from a file picker or the command line, paginates it
+for the window (§10.1), and turns spreads with the arrow keys along the reading
+direction, Page Up and Page Down, Home and End. A spread fits the window or its
+width, in its own proportions; Ctrl with the wheel or with plus, minus and zero
+zooms it, Space reads down a spread taller than the window before turning it,
+the wheel turns the page when there is nothing to scroll, a click turns towards
+the half it lands in and the side buttons of a mouse browse back and forth, and
+F11 reads full screen, which Escape leaves. A Contents panel lists the table of
 contents and the landmarks of `nav.xml` in the reader's language, and a choice
 takes the reader to the spread that holds it; the counter shows the page-list
 labels on screen. Pages are laid out from their declared sizes (§16) and

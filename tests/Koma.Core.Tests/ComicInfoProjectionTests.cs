@@ -164,6 +164,30 @@ public sealed class ComicInfoProjectionTests
     }
 
     [Fact]
+    public void SaysHowThePublicationIsReadWhenTheConversionIsTold()
+    {
+        // No CBZ says how its pages are taken in, so §7.13 can only carry
+        // what the importer was told, and the notes say so.
+        var notes = new List<string>();
+        ComicInfo parsed = ComicInfo.Parse(Encoding.UTF8.GetBytes("<ComicInfo><Series>Rivage</Series></ComicInfo>"), notes);
+        var options = new ConversionOptions(Language: "fr", Direction: ReadingDirection.LeftToRight, AccessModes: ["visual"], AccessibilityHazards: ["no-flashing-hazard"]);
+
+        XDocument metadata = ComicInfoProjection.Metadata(parsed, options, [], notes).Metadata;
+        XNamespace m = "urn:koma:metadata";
+        XElement section = metadata.Root!.Element(m + "Accessibility")!;
+
+        string[] written = ["AccessMode", "AccessibilityHazard"];
+        Assert.Equal(written, section.Elements().Select(e => e.Name.LocalName));
+        Assert.Contains(notes, n => n.Contains("accessibility declared by the importer", StringComparison.Ordinal));
+
+        // §7.13 wants an access mode in the section, so hazards alone have
+        // nowhere to sit and the section is not written at all.
+        XDocument silent = ComicInfoProjection.Metadata(parsed, options with { AccessModes = [], AccessibilityHazards = ["sound"] }, [], notes).Metadata;
+
+        Assert.Null(silent.Root!.Element(m + "Accessibility"));
+    }
+
+    [Fact]
     public void NamesTheFieldsItHasNowhereToPut()
     {
         var notes = new List<string>();
