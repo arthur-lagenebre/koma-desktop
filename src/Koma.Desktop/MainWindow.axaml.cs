@@ -768,13 +768,26 @@ internal sealed partial class MainWindow : Window, IDisposable
         importing = true;
         ImportButton.IsEnabled = false;
 
-        var progress = new Progress<int>(done => Status.Text = Text.Of("Importing… {0} / {1}", done, archives.Length));
+        // Shown before the first conversion rather than after the last: an
+        // import of eighty volumes is worth watching, and a page taken for a
+        // cover is worth seeing when it happens.
+        var window = new ReportWindow(Text.Of("Import report — KOMA"), string.Empty);
+
+        window.Show(this);
+
+        var progress = new Progress<ImportStep>(step =>
+        {
+            Status.Text = Text.Of("Importing… {0} / {1}", step.Done, archives.Length);
+            window.Working(Text.Of("Importing… {0} / {1}", step.Done, archives.Length), step.Done, archives.Length);
+            window.Append(step.Lines);
+        });
+
         IReadOnlyList<string> folders = library.Folders;
-        string report;
+        string summary;
 
         try
         {
-            report = await Task.Run(() => Import(archives, folders, options, progress));
+            summary = await Task.Run(() => Import(archives, folders, options, progress));
         }
         finally
         {
@@ -782,19 +795,27 @@ internal sealed partial class MainWindow : Window, IDisposable
             ImportButton.IsEnabled = true;
         }
 
-        new ReportWindow(Text.Of("Import report — KOMA"), report).Show(this);
+        window.Done(summary);
+        Status.Text = summary;
 
         await ScanAsync();
     }
 
-    private static string Import((string Cbz, string Koma)[] archives, IReadOnlyList<string> folders, ConversionOptions options, IProgress<int> progress)
+    /// <summary>What one archive of an import produced, as it happens.</summary>
+    private sealed record ImportStep(int Done, string Lines);
+
+    /// <summary>
+    /// Converts each archive and says so as it goes, answering with what the
+    /// whole came to.
+    /// </summary>
+    private static string Import((string Cbz, string Koma)[] archives, IReadOnlyList<string> folders, ConversionOptions options, IProgress<ImportStep> progress)
     {
-        var report = new StringBuilder();
         int converted = 0;
         int refused = 0;
 
         for (int i = 0; i < archives.Length; i++)
         {
+            var report = new StringBuilder();
             (string cbz, string koma) = archives[i];
 
             // The tree under a chosen folder is kept, so the folders it needs
@@ -833,12 +854,10 @@ internal sealed partial class MainWindow : Window, IDisposable
             }
 
             report.AppendLine();
-            progress.Report(i + 1);
+            progress.Report(new ImportStep(i + 1, report.ToString()));
         }
 
-        report.Insert(0, string.Create(CultureInfo.InvariantCulture, $"{converted} converted, {refused} not converted.{Environment.NewLine}{Environment.NewLine}"));
-
-        return report.ToString();
+        return string.Create(CultureInfo.InvariantCulture, $"{converted} converted, {refused} not converted.");
     }
 
     private static bool IsWithin(string path, string folder)
