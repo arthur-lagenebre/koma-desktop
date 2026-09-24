@@ -38,11 +38,18 @@ public static class ShelfArrangement
     /// accents aside: "eleve" finds "Élève", as a French reader expects.
     /// </param>
     /// <param name="culture">The culture titles sort in; the current one when omitted.</param>
-    public static IReadOnlyList<ShelfGroup> Arrange(IEnumerable<LibraryEntry> entries, string? query, ShelfOrder order, CultureInfo? culture = null)
+    /// <param name="hidden">
+    /// The publications to keep off the shelf, by path: the private ones,
+    /// unless the reader has asked to see them.
+    /// </param>
+    public static IReadOnlyList<ShelfGroup> Arrange(IEnumerable<LibraryEntry> entries, string? query, ShelfOrder order, CultureInfo? culture = null, IReadOnlySet<string>? hidden = null)
     {
         ArgumentNullException.ThrowIfNull(entries);
 
         culture ??= CultureInfo.CurrentCulture;
+
+        if (hidden is { Count: > 0 })
+            entries = entries.Where(e => !hidden.Contains(e.Path));
 
         StringComparer titles = StringComparer.Create(culture, CompareOptions.IgnoreCase);
         LibraryEntry[] shown = [.. entries.Where(e => Matches(e, query?.Trim(), culture))];
@@ -95,6 +102,29 @@ public static class ShelfArrangement
             groups.Add(new ShelfGroup(Unreadable, refused));
 
         return [.. groups.Where(g => g.Entries.Count > 0)];
+    }
+
+    /// <summary>
+    /// Whether a publication is private: marked so itself, or sitting in a
+    /// folder that is.
+    /// </summary>
+    public static bool IsPrivate(LibraryEntry entry, IReadOnlyList<string> privateFolders)
+    {
+        ArgumentNullException.ThrowIfNull(entry);
+        ArgumentNullException.ThrowIfNull(privateFolders);
+
+        return entry.Private || privateFolders.Any(folder => Within(entry.Path, folder));
+    }
+
+    /// <remarks>
+    /// By path rather than by prefix: a folder named "comics" does not hold
+    /// what a folder named "comics-public" holds.
+    /// </remarks>
+    private static bool Within(string path, string folder)
+    {
+        string relative = Path.GetRelativePath(folder, path);
+
+        return !relative.StartsWith("..", StringComparison.Ordinal) && !Path.IsPathRooted(relative);
     }
 
     private static bool Matches(LibraryEntry entry, string? query, CultureInfo culture)

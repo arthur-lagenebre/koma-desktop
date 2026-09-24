@@ -67,6 +67,17 @@ public sealed record LibraryEntry
     public DateTimeOffset? LastOpened { get; init; }
 
     /// <summary>
+    /// Whether the publication is kept off the shelf until the reader asks
+    /// for the private ones.
+    /// </summary>
+    /// <remarks>
+    /// About the shelf and nothing else: the file stays where it is, readable
+    /// by anything that opens files, and its cover stays in the thumbnail
+    /// folder. What is hidden is what the room sees over a shoulder.
+    /// </remarks>
+    public bool Private { get; init; }
+
+    /// <summary>
     /// How the reader last had this publication fitted to the window, and at
     /// what zoom; zero for a publication never read, which starts fitted to
     /// the page.
@@ -104,6 +115,12 @@ public sealed record LibraryIndex
     public IReadOnlyList<string> Folders { get; init; } = [];
 
     public IReadOnlyList<LibraryEntry> Entries { get; init; } = [];
+
+    /// <summary>
+    /// The watched folders whose publications are private, whatever each
+    /// publication says of itself.
+    /// </summary>
+    public IReadOnlyList<string> PrivateFolders { get; init; } = [];
 
     /// <summary>How the shelf was last ordered, which it opens on again.</summary>
     public ShelfOrder Order { get; init; }

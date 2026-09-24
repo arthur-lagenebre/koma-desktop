@@ -20,11 +20,14 @@ internal sealed class FoldersWindow : Window
     private readonly ListBox folders = new() { Height = 220 };
     private readonly Button remove = new();
 
+    private readonly Button privacy = new();
     private readonly List<string> watched;
+    private readonly HashSet<string> secret;
 
-    public FoldersWindow(IReadOnlyList<string> watched)
+    public FoldersWindow(IReadOnlyList<string> watched, IReadOnlyList<string> secret)
     {
         this.watched = [.. watched];
+        this.secret = [.. secret];
 
         Title = Text.Of("Watched folders");
         Width = 620;
@@ -34,10 +37,12 @@ internal sealed class FoldersWindow : Window
         var close = new Button { Content = Text.Of("Close"), IsCancel = true, IsDefault = true };
 
         remove.Content = Text.Of("Remove");
+        privacy.Content = Text.Of("Keep off the shelf");
         add.Click += OnAdd;
         remove.Click += (_, _) => Remove();
+        privacy.Click += (_, _) => TogglePrivacy();
         close.Click += (_, _) => Close(Changed);
-        folders.SelectionChanged += (_, _) => remove.IsEnabled = folders.SelectedIndex >= 0;
+        folders.SelectionChanged += (_, _) => Chosen();
 
         Content = new StackPanel
         {
@@ -57,7 +62,7 @@ internal sealed class FoldersWindow : Window
                     Orientation = Orientation.Horizontal,
                     Spacing = 8,
                     HorizontalAlignment = HorizontalAlignment.Right,
-                    Children = { add, remove, close }
+                    Children = { add, privacy, remove, close }
                 }
             }
         };
@@ -71,13 +76,38 @@ internal sealed class FoldersWindow : Window
     /// <summary>The folders as they stand, for the library to keep.</summary>
     public IReadOnlyList<string> Watched => watched;
 
+    /// <summary>The folders whose publications stay off the shelf.</summary>
+    public IReadOnlyList<string> Secret => [.. secret];
+
     private void Fill()
     {
         int chosen = folders.SelectedIndex;
 
-        folders.ItemsSource = watched.ToArray();
+        folders.ItemsSource = watched.Select(f => secret.Contains(f) ? Text.Of("{0} — private", f) : f).ToArray();
         folders.SelectedIndex = Math.Min(chosen, watched.Count - 1);
+        Chosen();
+    }
+
+    /// <summary>What the buttons can do to the folder in hand.</summary>
+    private void Chosen()
+    {
         remove.IsEnabled = folders.SelectedIndex >= 0;
+        privacy.IsEnabled = folders.SelectedIndex >= 0;
+        privacy.Content = folders.SelectedIndex >= 0 && secret.Contains(watched[folders.SelectedIndex]) ? Text.Of("Show on the shelf") : Text.Of("Keep off the shelf");
+    }
+
+    private void TogglePrivacy()
+    {
+        if (folders.SelectedIndex < 0)
+            return;
+
+        string folder = watched[folders.SelectedIndex];
+
+        if (!secret.Remove(folder))
+            secret.Add(folder);
+
+        Changed = true;
+        Fill();
     }
 
     private async void OnAdd(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
@@ -105,6 +135,7 @@ internal sealed class FoldersWindow : Window
         if (folders.SelectedIndex < 0)
             return;
 
+        secret.Remove(watched[folders.SelectedIndex]);
         watched.RemoveAt(folders.SelectedIndex);
         Changed = true;
         Fill();

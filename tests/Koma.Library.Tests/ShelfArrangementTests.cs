@@ -76,6 +76,34 @@ public sealed class ShelfArrangementTests
     }
 
     [Fact]
+    public void KeepsThePrivateOnesOffTheShelfUntilTheyAreAskedFor()
+    {
+        LibraryEntry marked = Entry("secret.koma", "Un secret", null, null) with { Private = true };
+        LibraryEntry inFolder = Entry("adulte/autre.koma", "Un autre", null, null);
+        LibraryEntry[] shelf = [.. Shelf, marked, inFolder];
+
+        string[] privateFolders = [Path.Combine("books", "adulte")];
+        HashSet<string> hidden = [.. shelf.Where(e => ShelfArrangement.IsPrivate(e, privateFolders)).Select(e => e.Path)];
+
+        // Marked itself, or sitting in a folder that is.
+        string[] kept = ["Un secret", "Un autre"];
+        Assert.Equal(kept, shelf.Where(e => hidden.Contains(e.Path)).Select(e => e.Title));
+
+        // Off the shelf until asked for, and there when they are.
+        Assert.DoesNotContain(ShelfArrangement.Arrange(shelf, null, ShelfOrder.Title, French, hidden).SelectMany(g => g.Entries), e => hidden.Contains(e.Path));
+        Assert.Contains(ShelfArrangement.Arrange(shelf, null, ShelfOrder.Title, French).SelectMany(g => g.Entries), e => e.Title == "Un secret");
+    }
+
+    [Fact]
+    public void KeepsAFolderApartFromOneWhoseNameItStarts()
+    {
+        // "books" does not hold what "books-public" holds.
+        LibraryEntry elsewhere = new() { Path = Path.Combine("books-public", "x.koma"), Size = 1, Modified = DateTimeOffset.UnixEpoch };
+
+        Assert.False(ShelfArrangement.IsPrivate(elsewhere, ["books"]));
+    }
+
+    [Fact]
     public void ShowsNothingRatherThanEmptyHeadingsWhenNothingMatches()
     {
         Assert.Empty(ShelfArrangement.Arrange(Shelf, "zzz", ShelfOrder.Series, French));

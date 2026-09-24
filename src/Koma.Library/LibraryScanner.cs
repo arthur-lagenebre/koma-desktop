@@ -88,6 +88,7 @@ public static class LibraryScanner
             LastItem = previous?.LastItem,
             LastPage = previous?.LastPage ?? 0,
             LastOpened = previous?.LastOpened,
+            Private = previous?.Private ?? false,
             Fit = previous?.Fit ?? FitMode.Page,
             Zoom = previous?.Zoom ?? 0
         };

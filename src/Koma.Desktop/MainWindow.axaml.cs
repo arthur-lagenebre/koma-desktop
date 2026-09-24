@@ -75,6 +75,8 @@ internal sealed partial class MainWindow : Window, IDisposable
         LibraryButton.Click += (_, _) => ShowLibrary();
         FoldersButton.Click += OnFoldersClicked;
         RefreshButton.Click += async (_, _) => await ScanAsync();
+        PrivateButton.IsCheckedChanged += (_, _) => ShowLibrary();
+        Shelf.PrivacyToggled += (_, path) => ChangePrivacy(path);
         LanguageChoice.SelectionChanged += (_, _) =>
         {
             if (!localizing)
@@ -305,6 +307,7 @@ internal sealed partial class MainWindow : Window, IDisposable
         LibraryButton.Content = Text.Of("Library");
         FoldersButton.Content = Text.Of("Folders…");
         RefreshButton.Content = Text.Of("Refresh");
+        PrivateButton.Content = Text.Of("Show private");
         ImportButton.Content = Text.Of("Import CBZ…");
         OpenButton.Content = Text.Of("Open…");
         ContentsButton.Content = Text.Of("Contents");
@@ -348,9 +351,52 @@ internal sealed partial class MainWindow : Window, IDisposable
         Localize();
     }
 
+    /// <summary>
+    /// The publications the shelf keeps out of sight: the private ones,
+    /// unless the reader has asked for them.
+    /// </summary>
+    /// <remarks>
+    /// Asking is a button and not a passphrase, and it is never remembered:
+    /// the shelf opens without them every time, which is the whole point of
+    /// marking one.
+    /// </remarks>
+    private HashSet<string> Hidden()
+    {
+        if (PrivateButton.IsChecked == true)
+            return [];
+
+        return [.. library.Entries.Where(e => ShelfArrangement.IsPrivate(e, library.PrivateFolders)).Select(e => e.Path)];
+    }
+
+    /// <summary>Marks a publication private, or brings it back to the shelf.</summary>
+    private void ChangePrivacy(string path)
+    {
+        if (Entry(path) is not { } entry)
+            return;
+
+        LibraryEntry marked = entry with { Private = !entry.Private };
+        library = library with { Entries = [.. library.Entries.Select(e => e.Path == path ? marked : e)] };
+
+        try
+        {
+            store.Save(library);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            Status.Text = e.Message;
+        }
+
+        ShowLibrary();
+    }
+
     private void ShowResume()
     {
         LibraryEntry? entry = LastRead;
+
+        // A private publication does not name itself on a button in front of
+        // whoever is in the room.
+        if (entry is not null && Hidden().Contains(entry.Path))
+            entry = null;
 
         ResumeButton.IsVisible = entry is not null;
 
@@ -378,9 +424,10 @@ internal sealed partial class MainWindow : Window, IDisposable
         // No publication is on screen to name the window any more.
         Title = "KOMA";
 
-        Shelf.Show(library.Entries, store, library.Order);
+        Shelf.Show(library.Entries, store, library.Order, Hidden());
         Shelf.IsVisible = true;
         RefreshButton.IsVisible = true;
+        PrivateButton.IsVisible = true;
         ShowResume();
         EditButton.IsVisible = false;
         PagesButton.IsVisible = false;
@@ -388,7 +435,11 @@ internal sealed partial class MainWindow : Window, IDisposable
         Scroller.IsVisible = false;
         NavigationPanel.IsVisible = false;
         ContentsButton.IsVisible = false;
-        SpreadCounter.Text = library.Entries.Count == 1 ? Text.Of("{0} publication", 1) : Text.Of("{0} publications", library.Entries.Count);
+        // What is on the shelf, not what the library holds: a count that
+        // included the hidden ones would say how many there are.
+        int shown = library.Entries.Count - Hidden().Count;
+
+        SpreadCounter.Text = shown == 1 ? Text.Of("{0} publication", 1) : Text.Of("{0} publications", shown);
 
         if (!scanning)
             Status.Text = library.Folders.Count == 0 ? Text.Of("No folder is watched yet. Add one to fill the library.") : string.Join(Environment.NewLine, library.Folders);
@@ -399,6 +450,7 @@ internal sealed partial class MainWindow : Window, IDisposable
         Shelf.IsVisible = false;
         ResumeButton.IsVisible = false;
         RefreshButton.IsVisible = false;
+        PrivateButton.IsVisible = false;
         Scroller.IsVisible = true;
         FitChoice.IsVisible = true;
 
@@ -418,12 +470,12 @@ internal sealed partial class MainWindow : Window, IDisposable
     /// </remarks>
     private async void OnFoldersClicked(object? sender, RoutedEventArgs e)
     {
-        var window = new FoldersWindow(library.Folders);
+        var window = new FoldersWindow(library.Folders, library.PrivateFolders);
 
         if (!await window.ShowDialog<bool>(this))
             return;
 
-        library = library with { Folders = [.. window.Watched] };
+        library = library with { Folders = [.. window.Watched], PrivateFolders = [.. window.Secret] };
 
         // Written now rather than only by the scan, which a scan already
         // running would skip: the folders a reader chose are not lost to

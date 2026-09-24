@@ -32,28 +32,6 @@ works.
 
 ## Worth doing
 
-### Keep some publications off the shelf
-
-Adult or otherwise explicit publications sit on the same shelf as everything
-else, and a shelf is looked at by whoever is in front of the screen. A way to
-keep some of them out of sight — a folder marked private, a publication marked
-private, revealed by a passphrase for the session — would make the library
-usable in a room with other people in it.
-
-What such a thing can honestly promise has to be said plainly in the interface,
-or it promises what it cannot keep:
-
-- it hides publications from the shelf, and nothing more;
-- the files stay where they are, readable by anything that opens files, and the
-  covers stay in the thumbnail folder unless they are removed with them;
-- a passphrase that unlocks a view is not a passphrase that encrypts anything.
-
-Encrypting a library is a different feature, with key management, a decision
-about what a lost passphrase costs, and §2.1 to respect — a KOMA package is a
-ZIP with an unencrypted `mimetype` entry, so encryption belongs outside the
-package rather than inside it. Worth separating the two from the start: hiding
-is a shelf feature and can be built now; encryption is a project of its own.
-
 ### Show everything wrong with a publication that will not open
 
 A refused publication shows one line in its card and the rest in a tooltip. The
@@ -91,6 +69,11 @@ for anyone who wants to test a package without a window.
   are the vocabulary of the specification, read against a bug report or the
   reference converter's output. The interface is translated; these are not, on
   purpose.
+- **Encrypting a library.** Keeping publications off the shelf hides them from
+  the shelf and nothing else, which is what was asked for. Encryption is not
+  planned: it would mean key management, a decision about what a lost
+  passphrase costs, and encryption outside the package, since §2.1 wants an
+  unencrypted `mimetype` entry inside it.
 - **A TIFF decoder.** Skia reads no TIFF where Pillow does, so a CBZ the
   reference converter handles can be one this one refuses, naming the page. A
   decoder means a dependency for a format a CBZ rarely holds; worth reopening

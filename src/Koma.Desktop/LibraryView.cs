@@ -58,6 +58,7 @@ internal sealed class LibraryView : DockPanel
     private int drawing;
 
     private IReadOnlyList<LibraryEntry> entries = [];
+    private IReadOnlySet<string> hidden = new HashSet<string>(StringComparer.Ordinal);
     private LibraryStore? store;
     private bool restoring;
 
@@ -87,6 +88,9 @@ internal sealed class LibraryView : DockPanel
     /// <summary>Raised with the path of a publication whose metadata the reader wants to edit.</summary>
     public event EventHandler<string>? EditRequested;
 
+    /// <summary>Raised with the path of a publication the reader marks private, or brings back.</summary>
+    public event EventHandler<string>? PrivacyToggled;
+
     /// <summary>Raised when the reader chooses another order, which the library remembers.</summary>
     public event EventHandler<ShelfOrder>? Ordered;
 
@@ -107,13 +111,15 @@ internal sealed class LibraryView : DockPanel
         Draw();
     }
 
-    public void Show(IReadOnlyList<LibraryEntry> entries, LibraryStore store, ShelfOrder chosen)
+    public void Show(IReadOnlyList<LibraryEntry> entries, LibraryStore store, ShelfOrder chosen, IReadOnlySet<string> hidden)
     {
         ArgumentNullException.ThrowIfNull(entries);
         ArgumentNullException.ThrowIfNull(store);
+        ArgumentNullException.ThrowIfNull(hidden);
 
         this.entries = entries;
         this.store = store;
+        this.hidden = hidden;
 
         // Set before drawing, and without passing for a choice of the
         // reader's: it is the order they chose last time.
@@ -135,9 +141,9 @@ internal sealed class LibraryView : DockPanel
             return;
 
         ShelfOrder chosen = Orders[Math.Max(order.SelectedIndex, 0)].Order;
-        IReadOnlyList<ShelfGroup> arranged = ShelfArrangement.Arrange(entries, search.Text, chosen);
+        IReadOnlyList<ShelfGroup> arranged = ShelfArrangement.Arrange(entries, search.Text, chosen, hidden: hidden);
 
-        if (arranged.Count == 0 && entries.Count > 0)
+        if (arranged.Count == 0 && entries.Count > hidden.Count)
         {
             groups.Children.Add(new TextBlock { Text = Text.Of("Nothing on the shelf matches."), Opacity = 0.7, Margin = new Thickness(6) });
             return;
@@ -198,7 +204,11 @@ internal sealed class LibraryView : DockPanel
 
         var editItem = new MenuItem { Header = Text.Of("Edit metadata…") };
         editItem.Click += (_, _) => EditRequested?.Invoke(this, entry.Path);
-        card.ContextMenu = new ContextMenu { ItemsSource = new[] { editItem } };
+
+        var privacyItem = new MenuItem { Header = Text.Of(entry.Private ? "Show on the shelf" : "Keep off the shelf") };
+        privacyItem.Click += (_, _) => PrivacyToggled?.Invoke(this, entry.Path);
+
+        card.ContextMenu = new ContextMenu { ItemsSource = new[] { editItem, privacyItem } };
 
         return card;
     }
