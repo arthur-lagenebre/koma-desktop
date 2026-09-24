@@ -673,10 +673,10 @@ internal sealed partial class MainWindow : Window, IDisposable
         if (await new ImportWindow().ShowDialog<ImportChoice?>(this) is not { } choice)
             return;
 
-        string[] archives = choice.Folder ? await FolderOfArchives() : await ChosenArchives();
+        (string? root, string[] archives) = choice.Folder ? await FolderOfArchives() : (null, await ChosenArchives());
 
         if (archives.Length > 0)
-            await ImportAsync(archives, ImportOptions with { KeepComicInfo = choice.KeepComicInfo, NumberFromFileName = choice.NumberFromFileName });
+            await ImportAsync(Destinations(archives, root, choice.Destination), ImportOptions with { KeepComicInfo = choice.KeepComicInfo, NumberFromFileName = choice.NumberFromFileName });
     }
 
     private async Task<string[]> ChosenArchives()
@@ -695,7 +695,33 @@ internal sealed partial class MainWindow : Window, IDisposable
     /// Every archive of a chosen folder, subfolders included, in the order a
     /// reader numbers volumes.
     /// </summary>
-    private async Task<string[]> FolderOfArchives()
+    /// <summary>
+    /// Where each archive's package is written: beside it, or under the
+    /// folder chosen, keeping whatever tree it sat in.
+    /// </summary>
+    /// <remarks>
+    /// A collection is filed in folders, and a conversion that flattened
+    /// eighty volumes into one folder would lose that filing. Only the tree
+    /// below the folder that was imported is kept, since that is the part
+    /// that was chosen.
+    /// </remarks>
+    internal static (string Cbz, string Koma)[] Destinations(string[] archives, string? root, string? destination)
+    {
+        if (destination is null)
+            return [.. archives.Select(cbz => (cbz, Path.ChangeExtension(cbz, ".koma")))];
+
+        return
+        [
+            .. archives.Select(cbz =>
+            {
+                string relative = root is null ? Path.GetFileName(cbz) : Path.GetRelativePath(root, cbz);
+
+                return (cbz, Path.ChangeExtension(Path.Combine(destination, relative), ".koma"));
+            })
+        ];
+    }
+
+    private async Task<(string? Root, string[] Archives)> FolderOfArchives()
     {
         IReadOnlyList<IStorageFolder> folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
         {
@@ -704,7 +730,7 @@ internal sealed partial class MainWindow : Window, IDisposable
         });
 
         if (folders.Count == 0 || folders[0].TryGetLocalPath() is not { } folder)
-            return [];
+            return (null, []);
 
         string[] archives;
 
@@ -715,13 +741,13 @@ internal sealed partial class MainWindow : Window, IDisposable
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
             Status.Text = e.Message;
-            return [];
+            return (null, []);
         }
 
         if (archives.Length == 0)
             Status.Text = $"No .cbz archive under {folder}.";
 
-        return archives;
+        return (folder, archives);
     }
 
     /// <summary>
@@ -734,7 +760,7 @@ internal sealed partial class MainWindow : Window, IDisposable
     /// is scattered elsewhere. An existing file is never overwritten; it may
     /// be one the reader has been annotating, or one made by another tool.
     /// </remarks>
-    private async Task ImportAsync(string[] archives, ConversionOptions options)
+    private async Task ImportAsync((string Cbz, string Koma)[] archives, ConversionOptions options)
     {
         if (importing)
             return;
@@ -761,7 +787,7 @@ internal sealed partial class MainWindow : Window, IDisposable
         await ScanAsync();
     }
 
-    private static string Import(string[] archives, IReadOnlyList<string> folders, ConversionOptions options, IProgress<int> progress)
+    private static string Import((string Cbz, string Koma)[] archives, IReadOnlyList<string> folders, ConversionOptions options, IProgress<int> progress)
     {
         var report = new StringBuilder();
         int converted = 0;
@@ -769,8 +795,11 @@ internal sealed partial class MainWindow : Window, IDisposable
 
         for (int i = 0; i < archives.Length; i++)
         {
-            string cbz = archives[i];
-            string koma = Path.ChangeExtension(cbz, ".koma");
+            (string cbz, string koma) = archives[i];
+
+            // The tree under a chosen folder is kept, so the folders it needs
+            // may not be there yet.
+            Directory.CreateDirectory(Path.GetDirectoryName(koma)!);
 
             report.AppendLine(string.Create(CultureInfo.InvariantCulture, $"{cbz}{Environment.NewLine}  → {koma}"));
 

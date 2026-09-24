@@ -2,12 +2,17 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Platform.Storage;
 
 namespace Koma.Desktop;
 
 /// <summary>What the reader chose to import, and how.</summary>
 /// <param name="Folder">Whether a folder was chosen, to be searched for archives, rather than files.</param>
-public sealed record ImportChoice(bool Folder, bool KeepComicInfo, bool NumberFromFileName);
+/// <param name="Destination">
+/// The folder the packages are written into, keeping whatever tree the
+/// archives sat in; <see langword="null"/> writes each one beside its archive.
+/// </param>
+public sealed record ImportChoice(bool Folder, bool KeepComicInfo, bool NumberFromFileName, string? Destination);
 
 /// <summary>
 /// Asks what to convert and what to carry over, before any picker opens.
@@ -31,7 +36,41 @@ internal sealed class ImportWindow : Window
         Content = Text.Of("Number the volumes from the start of their file names")
     };
 
-    private ImportChoice Choice(bool folder) => new(folder, comicInfo.IsChecked == true, numbering.IsChecked == true);
+    private readonly RadioButton beside = new() { Content = Text.Of("Write each package beside its archive"), IsChecked = true, GroupName = "destination" };
+    private readonly RadioButton elsewhere = new() { GroupName = "destination" };
+
+    private string? destination;
+
+    /// <summary>
+    /// Asks where the packages go, and falls back to beside the archives when
+    /// no folder is chosen.
+    /// </summary>
+    private async Task ChooseDestination()
+    {
+        if (elsewhere.IsChecked != true)
+        {
+            destination = null;
+            return;
+        }
+
+        IReadOnlyList<IStorageFolder> chosen = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        {
+            Title = Text.Of("Write the packages into"),
+            AllowMultiple = false
+        });
+
+        destination = chosen.Count == 0 ? null : chosen[0].TryGetLocalPath();
+
+        if (destination is null)
+        {
+            beside.IsChecked = true;
+            return;
+        }
+
+        elsewhere.Content = destination;
+    }
+
+    private ImportChoice Choice(bool folder) => new(folder, comicInfo.IsChecked == true, numbering.IsChecked == true, destination);
 
     public ImportWindow()
     {
@@ -43,6 +82,9 @@ internal sealed class ImportWindow : Window
         var files = new Button { Content = Text.Of("Choose files…"), IsDefault = true };
         var folder = new Button { Content = Text.Of("Choose a folder…") };
         var cancel = new Button { Content = Text.Of("Cancel"), IsCancel = true };
+
+        elsewhere.Content = Text.Of("Write them into another folder…");
+        elsewhere.IsCheckedChanged += async (_, _) => await ChooseDestination();
 
         files.Click += (_, _) => Close(Choice(folder: false));
         folder.Click += (_, _) => Close(Choice(folder: true));
@@ -59,6 +101,14 @@ internal sealed class ImportWindow : Window
                     Text = Text.Of("A folder is searched for .cbz archives, subfolders included. Each package is written beside its archive, and an existing file is never replaced."),
                     TextWrapping = TextWrapping.Wrap,
                     Opacity = 0.75
+                },
+                beside,
+                elsewhere,
+                new TextBlock
+                {
+                    Text = Text.Of("A folder of archives keeps its tree: what sat in a subfolder is written into the same subfolder there."),
+                    TextWrapping = TextWrapping.Wrap,
+                    Opacity = 0.55
                 },
                 comicInfo,
                 numbering,
