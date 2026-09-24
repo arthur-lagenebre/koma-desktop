@@ -41,14 +41,7 @@ internal sealed partial class MainWindow : Window, IDisposable
     // same primary language, then on the first label, from there.
     private static readonly string[] Languages = [CultureInfo.CurrentUICulture.Name];
 
-    // A debug build is one run from the repository; a release is the copy a
-    // reader downloads. The two keep separate libraries, so that neither
-    // inherits the folders and positions of the other.
-#if DEBUG
-    private readonly LibraryStore store = LibraryStore.ForCurrentUser(development: true);
-#else
-    private readonly LibraryStore store = LibraryStore.ForCurrentUser(development: false);
-#endif
+    private readonly LibraryStore store;
 
     private LibraryIndex library;
     private Publication? publication;
@@ -64,8 +57,33 @@ internal sealed partial class MainWindow : Window, IDisposable
     private Point? pressed;
     private bool importing;
 
+    /// <summary>The window over the library of whoever is running it.</summary>
+    /// <remarks>
+    /// A debug build is one run from the repository; a release is the copy a
+    /// reader downloads. The two keep separate libraries, so that neither
+    /// inherits the folders and positions of the other.
+    /// </remarks>
     public MainWindow()
+#if DEBUG
+        : this(LibraryStore.ForCurrentUser(development: true))
+#else
+        : this(LibraryStore.ForCurrentUser(development: false))
+#endif
     {
+    }
+
+    /// <summary>
+    /// The window over a library given to it.
+    /// </summary>
+    /// <remarks>
+    /// Given rather than fetched, so that a test can put a library of its own
+    /// in front of the window instead of the one belonging to whoever runs
+    /// the tests.
+    /// </remarks>
+    internal MainWindow(LibraryStore store)
+    {
+        this.store = store;
+
         InitializeComponent();
 
         library = store.Load();

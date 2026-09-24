@@ -25,12 +25,9 @@ afternoon rather than in the middle of something else.
 
 ### More tests for the interface
 
-`Koma.Desktop.Tests` covers the shelf, the pages window, the edit window and
-the report window. What is not covered yet: reading itself — opening a
-publication, turning its pages, fitting and zooming — which lives in the main
-window, and the main window reads the library of whoever runs the tests.
-Giving it its store rather than fetching one would make it testable, and is
-the next step for this.
+`Koma.Desktop.Tests` covers the shelf, reading, the pages window, the edit
+window and the report window. What is not covered yet: the import window's
+choices, the folders window, and fitting and zooming while reading.
 
 ### The accessibility of the application itself
 
