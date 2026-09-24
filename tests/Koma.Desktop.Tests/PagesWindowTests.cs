@@ -32,6 +32,25 @@ public sealed class PagesWindowTests : IDisposable
     }
 
     [AvaloniaFact]
+    public async Task ShowsThePagesThemselvesBesideTheirLines()
+    {
+        // A reader editing p014 wants to see p014, not the word p014.
+        string path = Path.Combine(folder, "valid-page-list.koma");
+        File.Copy(Corpus.Package("valid-page-list.koma"), path);
+
+        var window = new PagesWindow(path, null);
+        window.Show();
+
+        await window.Reading;
+
+        // The pages that were read, not the controls the list has drawn:
+        // headless realises nothing until a layout asks for it, and a list
+        // realises only what fits on screen anyway.
+        Assert.Equal(4, window.Pictures);
+        Assert.Equal(4, window.GetVisualDescendants().OfType<ListBox>().First().ItemCount);
+    }
+
+    [AvaloniaFact]
     public void AsksForTheSecondPrintedNumberOnlyWhereThereCanBeOne()
     {
         // §9.2 lets a target name a half of a spread, and only a page drawn

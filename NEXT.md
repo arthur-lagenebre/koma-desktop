@@ -20,13 +20,6 @@ its next run. The same one-line change, with the same comment.
 window and the report window. What is not covered yet: the import window's
 choices, the folders window, and fitting and zooming while reading.
 
-### Thumbnails in the pages window
-
-The pages window lists identifiers: a reader edits `p014` without seeing what
-it is. A grid of page thumbnails, decoded as the covers are, would put the
-roles, the spans and the chapters under the eye — the same model, seen rather
-than named.
-
 ### Taking a page out, and putting pages in another order
 
 Nothing removes a page from a publication or moves one. Both touch the

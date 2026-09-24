@@ -3,7 +3,10 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Media.Imaging;
+using Avalonia.Media.Immutable;
 using Koma.Core.Model;
+using Koma.Core.Packaging;
 using Koma.Core.Rendering;
 using Koma.Core.Writing;
 
@@ -30,8 +33,12 @@ internal sealed class PagesWindow : Window
         ("Alone, centred", SpreadPosition.Center)
     ];
 
+    // The height a page is shown at in the grid: enough to tell a cover from
+    // an advertisement, not enough to read the text on it.
+    private const double TileHeight = 150;
+
     private readonly string path;
-    private readonly ListBox pages = new() { Width = 220 };
+    private readonly ListBox pages = new() { Width = 260, MaxHeight = 520 };
     private readonly ComboBox roles = new() { HorizontalAlignment = HorizontalAlignment.Stretch };
     private readonly CheckBox span = new() { Content = Text.Of("Drawn across the whole spread") };
     private readonly ComboBox position = new() { ItemsSource = Positions.Select(p => Text.Of(p.Label)).ToArray(), HorizontalAlignment = HorizontalAlignment.Stretch };
@@ -46,7 +53,12 @@ internal sealed class PagesWindow : Window
     private readonly StackPanel form = new() { Spacing = 8, Margin = new Thickness(16, 0, 0, 0) };
     private readonly WritingNotice writing = new();
 
+    private static readonly IImmutableSolidColorBrush MissingPage = new ImmutableSolidColorBrush(Color.FromArgb(40, 128, 128, 128));
+
+    private readonly Dictionary<string, Bitmap> thumbnails = new(StringComparer.Ordinal);
+
     private string[] items = [];
+    private string[] lines = [];
     private bool filling;
 
     public PagesWindow(string path, string? current)
@@ -85,10 +97,95 @@ internal sealed class PagesWindow : Window
         Content = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(16), Children = { pages, form } };
 
         Load(current);
+
+        // The pages themselves, read from the package on a worker: a
+        // publication of two hundred pages would otherwise hold the window
+        // shut while it decoded them all.
+        Reading = Decode();
     }
 
     /// <summary>Whether anything was written, which the reader behind needs to know.</summary>
     public bool Saved { get; private set; }
+
+    /// <summary>The reading of the pages, for a test to wait on rather than guess at.</summary>
+    internal Task Reading { get; }
+
+    /// <summary>How many pages have been read, whatever the list has drawn of them.</summary>
+    internal int Pictures => thumbnails.Count;
+
+    /// <summary>
+    /// Reads every page of the publication, small, and puts each one beside
+    /// its line.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A page is easier to recognise than an identifier: a reader editing
+    /// p014 wants to see p014. They are decoded once and kept, since editing
+    /// the metadata does not change the images.
+    /// </para>
+    /// <para>
+    /// The package is opened for the reading and closed as soon as it is
+    /// done, because saving rewrites the very file it is reading, and a file
+    /// cannot be replaced while it is held. Saving waits for that, which is
+    /// what the notice above the form is saying.
+    /// </para>
+    /// </remarks>
+    private async Task Decode()
+    {
+        save.IsEnabled = false;
+
+        try
+        {
+            foreach ((string item, Bitmap? page) in await Task.Run(Read))
+            {
+                if (page is not null)
+                    thumbnails[item] = page;
+            }
+        }
+        catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException)
+        {
+            problem.Text = e.Message;
+        }
+
+        save.IsEnabled = true;
+        Fill();
+        Redraw();
+    }
+
+    private List<(string Item, Bitmap? Page)> Read()
+    {
+        var read = new List<(string, Bitmap?)>();
+
+        using FileStream file = File.OpenRead(path);
+        PackageOpenResult result = PackageOpener.Open(file);
+
+        using KomaPackage? package = result.Package;
+
+        if (package is null)
+            return read;
+
+        foreach (ManifestItem item in package.Manifest.Items)
+        {
+            using Stream? resource = package.TryOpenResource(item.Href);
+
+            if (resource is null)
+                continue;
+
+            try
+            {
+                // At the size it is shown, as the shelf decodes its covers.
+                read.Add((item.Id, Bitmap.DecodeToHeight(resource, (int)TileHeight)));
+            }
+            catch (Exception e) when (e is IOException or InvalidDataException or ArgumentException)
+            {
+                // A page that will not decode leaves a line without a
+                // picture, which the report of the publication explains.
+                read.Add((item.Id, null));
+            }
+        }
+
+        return read;
+    }
 
     private static StackPanel Field(string label, Control input) => new() { Spacing = 2, Children = { new TextBlock { Text = label, Opacity = 0.75 }, input } };
 
@@ -135,8 +232,37 @@ internal sealed class PagesWindow : Window
         }
 
         items = [.. listed.Select(p => p.Item)];
-        pages.ItemsSource = listed.Select((p, i) => $"{i + 1}.  {p.Item}   {p.Roles}").ToArray();
+        lines = [.. listed.Select((p, i) => $"{i + 1}.  {p.Item}   {p.Roles}")];
+        Redraw();
         pages.SelectedIndex = Math.Max(0, Array.IndexOf(items, current));
+    }
+
+    /// <summary>
+    /// Draws the pages: each line with its picture beside it, once the
+    /// picture has been read.
+    /// </summary>
+    private void Redraw()
+    {
+        int chosen = pages.SelectedIndex;
+
+        pages.ItemsSource = items.Select((item, i) => (Control)new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 8,
+            Children =
+            {
+                new Border
+                {
+                    Width = TileHeight * 0.7,
+                    Height = TileHeight,
+                    Background = thumbnails.ContainsKey(item) ? null : MissingPage,
+                    Child = thumbnails.TryGetValue(item, out Bitmap? page) ? new Image { Source = page, Stretch = Stretch.Uniform } : null
+                },
+                new TextBlock { Text = lines[i], VerticalAlignment = VerticalAlignment.Center, TextWrapping = TextWrapping.Wrap, Width = 150 }
+            }
+        }).ToArray();
+
+        pages.SelectedIndex = chosen;
     }
 
     /// <summary>Puts what the manifest says about the chosen page into the form.</summary>
