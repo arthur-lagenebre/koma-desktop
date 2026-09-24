@@ -73,6 +73,13 @@ the last spread shown rather than as a spread number: pagination changes with
 the shape of the window, and an item does not. A publication is opened again
 only when its path, size or modification time has changed.
 
+`Koma.Cli` is the same reader without a window. `koma info` says what a
+publication says about itself; `koma check` adds layer 4, reading the pages a
+package can open without, and answers 0 when a publication conforms and 1 when
+it does not, so a shell can walk a library; `koma convert` writes a CBZ as a
+publication, never over one that is there, and prints what it assumed in the
+words the reference converter uses.
+
 `Koma.Desktop` opens on the shelf: the publications of the watched folders,
 with their covers, scanned in the background at startup and whenever the
 watched folders change; Folders adds and removes them, and marks one private;
@@ -144,15 +151,16 @@ This is **not** a conforming KOMA Validator: that requires all four layers of
 
 ```
 src/Koma.Core             format model, reader, writer, rendering, limits — no UI
-src/Koma.Cli              command-line front end over Koma.Core
+src/Koma.Cli              command line: info, check, convert
 src/Koma.Desktop          the Avalonia reader
 src/Koma.Imaging          page loading and decoding over SkiaSharp — no UI
 src/Koma.Library          the library: its index, its covers, its scan — no UI
+tests/Koma.Cli.Tests      the command line, over corpus packages and archives
 tests/Koma.Core.Tests     xUnit, driven by the upstream conformance corpus
 tests/Koma.Imaging.Tests  SkiaSharp and the decoder, over the corpus page images
-tests/Koma.Desktop.Tests  the interface, drawn headless
+tests/Koma.Desktop.Tests  the interface, drawn headless (xunit v3, run on its own)
 tests/Koma.Library.Tests  the library, over a folder of corpus packages
-tests/Koma.TestSupport    finds the corpus for the three test projects
+tests/Koma.TestSupport    finds the corpus for the other test projects
 external/koma             git submodule: the specification, schemas and corpus
 ```
 

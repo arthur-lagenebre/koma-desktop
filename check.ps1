@@ -38,6 +38,9 @@ function Step([string] $Name, [scriptblock] $Command) {
 
 Push-Location $PSScriptRoot
 
+# A run reads better on a clean screen than under the one before it.
+Clear-Host
+
 try {
     Step 'Build' { dotnet build --configuration $Configuration }
     Step 'Tests' { dotnet test --no-build --configuration $Configuration }

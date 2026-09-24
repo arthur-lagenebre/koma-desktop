@@ -25,14 +25,12 @@ afternoon rather than in the middle of something else.
 
 ### More tests for the interface
 
-`Koma.Desktop.Tests` runs the application headless and covers the shelf and the
-pages window. What is not covered yet: opening a publication and turning its
-pages, the edit window saving and refusing, the import window's choices. The
-main window itself is awkward to test as it stands, since it reads the
-library of whoever runs the tests; giving it its store rather than fetching
-one would make it testable, and is worth doing when a test needs it.
-
-## Worth doing
+`Koma.Desktop.Tests` covers the shelf, the pages window, the edit window and
+the report window. What is not covered yet: reading itself — opening a
+publication, turning its pages, fitting and zooming — which lives in the main
+window, and the main window reads the library of whoever runs the tests.
+Giving it its store rather than fetching one would make it testable, and is
+the next step for this.
 
 ### The accessibility of the application itself
 
@@ -41,14 +39,6 @@ been checked for its own: keyboard navigation across the shelf and the forms,
 labels a screen reader can announce, contrast, focus visible where it is. Not
 knowing whether it is usable without a mouse is the part to fix first, since it
 is also the cheapest to test — unplug the mouse for ten minutes.
-
-### `Koma.Cli` beyond `koma info`
-
-The command-line tool stopped at `koma info` while the core learned schema
-validation, page checks and writing. It could validate a package the way
-`check_corpus.py` does, convert a CBZ, and report a publication's faults — a
-second way into the same checks, scriptable over a whole library, and useful
-for anyone who wants to test a package without a window.
 
 ## Deferred, and why
 

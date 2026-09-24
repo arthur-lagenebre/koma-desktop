@@ -31,6 +31,26 @@ public sealed class PagesWindowTests : IDisposable
         Assert.Equal("story", role.SelectedItem);
     }
 
+    [AvaloniaFact]
+    public void AsksForTheSecondPrintedNumberOnlyWhereThereCanBeOne()
+    {
+        // §9.2 lets a target name a half of a spread, and only a page drawn
+        // across one has halves to name.
+        string path = Path.Combine(folder, "valid-page-list.koma");
+        File.Copy(Corpus.Package("valid-page-list.koma"), path);
+
+        var window = new PagesWindow(path, "p002");
+        window.Show();
+
+        Assert.False(window.Input<TextBox>(Text.Of("Number printed on its right half")).IsEffectivelyVisible);
+
+        // p004 is the one that fills its spread.
+        window.GetVisualDescendants().OfType<ListBox>().First().SelectedIndex = 3;
+
+        Assert.True(window.Input<TextBox>(Text.Of("Number printed on its right half")).IsEffectivelyVisible);
+        Assert.Equal("3", window.Input<TextBox>(Text.Of("Number printed on the page")).Text);
+    }
+
     public void Dispose()
     {
         try

@@ -7,6 +7,7 @@
     <Project Path="src/Koma.Library/Koma.Library.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Koma.Cli.Tests/Koma.Cli.Tests.csproj" />
     <Project Path="tests/Koma.Core.Tests/Koma.Core.Tests.csproj" />
     <Project Path="tests/Koma.Desktop.Tests/Koma.Desktop.Tests.csproj" />
     <Project Path="tests/Koma.Imaging.Tests/Koma.Imaging.Tests.csproj" />

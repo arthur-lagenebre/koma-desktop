@@ -67,6 +67,38 @@ public sealed class ShelfTests : IDisposable
         Assert.Equal(3, Cards(window));
     }
 
+    [AvaloniaFact]
+    public void OpensAPublicationOnAClick()
+    {
+        (Window window, LibraryView shelf) = Shelf();
+        var chosen = new List<string>();
+
+        shelf.Chosen += (_, path) => chosen.Add(path);
+        shelf.Show(Entries(), new LibraryStore(folder), ShelfOrder.Title, new HashSet<string>(StringComparer.Ordinal));
+
+        window.FindButton(b => b.Content is StackPanel).Press();
+
+        Assert.Single(chosen);
+    }
+
+    [AvaloniaFact]
+    public void AnswersAClickOnAPublicationThatWillNotOpenWithItsFaults()
+    {
+        // Its card used to be inert. Asking what is wrong is the only useful
+        // thing to do with it.
+        (Window window, LibraryView shelf) = Shelf();
+        var checks = new List<string>();
+        LibraryEntry broken = Entry("cassee.koma", "Cassée") with { Unreadable = "mimetype-missing" };
+
+        shelf.CheckRequested += (_, path) => checks.Add(path);
+        shelf.Show([broken], new LibraryStore(folder), ShelfOrder.Title, new HashSet<string>(StringComparer.Ordinal));
+
+        window.FindButton(b => b.Content is StackPanel).Press();
+
+        string[] asked = [broken.Path];
+        Assert.Equal(asked, checks);
+    }
+
     public void Dispose()
     {
         try
