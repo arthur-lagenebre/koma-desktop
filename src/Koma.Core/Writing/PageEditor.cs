@@ -81,6 +81,111 @@ public static class PageEditor
     }
 
     /// <summary>
+    /// Takes a page out of the publication: out of the manifest, out of the
+    /// spine, and out of everything the navigation said about it.
+    /// </summary>
+    /// <remarks>
+    /// §8.4 wants exactly one front cover, so the cover is not the page to
+    /// take out: naming another cover first is a decision for whoever is
+    /// editing, not one to make on their behalf. A publication is not
+    /// emptied either — the last page stays.
+    /// </remarks>
+    /// <exception cref="ArgumentException">The page cannot be taken out.</exception>
+    public static (XDocument Manifest, XDocument? Navigation, string Href) Remove(XDocument manifest, XDocument? navigation, string item)
+    {
+        ArgumentNullException.ThrowIfNull(manifest);
+        ArgumentNullException.ThrowIfNull(item);
+
+        var edited = new XDocument(manifest);
+        XElement page = Item(edited, item);
+
+        if (Tokens(page).Contains(FrontCover, StringComparer.Ordinal))
+            throw new ArgumentException("The front cover is not a page to take out; give the cover to another page first (§8.4).", nameof(item));
+
+        if (Items(edited).Count() == 1)
+            throw new ArgumentException("A publication has pages; this is the last one (§8).", nameof(item));
+
+        string href = (string?)page.Attribute("href") ?? string.Empty;
+
+        Reference(edited, item).Remove();
+        page.Remove();
+
+        XDocument? renavigated = navigation is null ? null : Landmarks(navigation, edited);
+
+        if (renavigated is not null)
+        {
+            // Everything the navigation said about the page goes with it: a
+            // chapter opening on a page that is gone opens on nothing.
+            foreach (XElement target in Targets(renavigated, item))
+                target.Remove();
+
+            Entry(renavigated, item)?.Remove();
+
+            Empty(renavigated, "PageList", "PageTarget");
+            Empty(renavigated, "TableOfContents", "Entry");
+        }
+
+        return (edited, renavigated, href);
+    }
+
+    /// <summary>
+    /// Moves a page to another place in the reading order (§8.8), and puts
+    /// the navigation back in that order.
+    /// </summary>
+    public static (XDocument Manifest, XDocument? Navigation) Move(XDocument manifest, XDocument? navigation, string item, int to)
+    {
+        ArgumentNullException.ThrowIfNull(manifest);
+        ArgumentNullException.ThrowIfNull(item);
+
+        var edited = new XDocument(manifest);
+        XElement reference = Reference(edited, item);
+        XElement[] spine = [.. edited.Root!.Element(XName.Get("Spine", Manifest))!.Elements(XName.Get("ItemRef", Manifest))];
+
+        if (to < 0 || to >= spine.Length)
+            throw new ArgumentException($"A publication of {spine.Length} pages has no place {to + 1} (§8.8).", nameof(to));
+
+        reference.Remove();
+
+        XElement[] rest = [.. spine.Where(r => r != reference)];
+
+        if (to == rest.Length)
+            rest[^1].AddAfterSelf(reference);
+        else
+            rest[to].AddBeforeSelf(reference);
+
+        // What the navigation lists follows the pages, or a table of contents
+        // would run in an order the publication no longer reads in.
+        XDocument? renavigated = navigation is null ? null : InSpineOrder(Landmarks(navigation, edited), edited);
+
+        return (edited, renavigated);
+    }
+
+    /// <summary>Puts the page list and the table of contents back in the order of the spine.</summary>
+    private static XDocument InSpineOrder(XDocument navigation, XDocument manifest)
+    {
+        string[] spine = [.. manifest.Root!.Element(XName.Get("Spine", Manifest))!.Elements(XName.Get("ItemRef", Manifest)).Select(r => (string?)r.Attribute("item") ?? string.Empty)];
+
+        foreach ((string section, string child) in new[] { ("PageList", "PageTarget"), ("TableOfContents", "Entry") })
+        {
+            if (navigation.Root?.Element(XName.Get(section, Navigation)) is not { } listed)
+                continue;
+
+            listed.ReplaceNodes(listed.Elements(XName.Get(child, Navigation))
+                .OrderBy(e => Array.IndexOf(spine, (string?)e.Attribute("item")))
+                .ToArray());
+        }
+
+        return navigation;
+    }
+
+    /// <summary>A section with nothing left in it goes, rather than stay empty.</summary>
+    private static void Empty(XDocument navigation, string section, string child)
+    {
+        if (navigation.Root?.Element(XName.Get(section, Navigation)) is { } listed && !listed.Elements(XName.Get(child, Navigation)).Any())
+            listed.Remove();
+    }
+
+    /// <summary>
     /// The edited manifest, and the navigation with its landmarks in step.
     /// The documents given are not changed.
     /// </summary>

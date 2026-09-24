@@ -50,6 +50,9 @@ internal sealed class PagesWindow : Window
     private readonly StackPanel rightHalf;
     private readonly TextBlock problem = new() { Foreground = Brushes.OrangeRed, TextWrapping = TextWrapping.Wrap };
     private readonly Button save = new() { Content = Text.Of("Save this page"), IsDefault = true };
+    private readonly Button up = new() { Content = Text.Of("Move up") };
+    private readonly Button down = new() { Content = Text.Of("Move down") };
+    private readonly Button remove = new() { Content = Text.Of("Take this page out") };
     private readonly StackPanel form = new() { Spacing = 8, Margin = new Thickness(16, 0, 0, 0) };
     private readonly WritingNotice writing = new();
 
@@ -78,6 +81,9 @@ internal sealed class PagesWindow : Window
 
         pages.SelectionChanged += (_, _) => Fill();
         save.Click += OnSave;
+        up.Click += async (_, _) => await Move(-1);
+        down.Click += async (_, _) => await Move(1);
+        remove.Click += async (_, _) => await Remove();
 
         var close = new Button { Content = Text.Of("Close"), IsCancel = true };
         close.Click += (_, _) => Close(Saved);
@@ -92,6 +98,7 @@ internal sealed class PagesWindow : Window
         form.Children.Add(decorative);
         form.Children.Add(writing);
         form.Children.Add(problem);
+        form.Children.Add(new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Children = { up, down, remove } });
         form.Children.Add(new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, HorizontalAlignment = HorizontalAlignment.Right, Children = { close, save } });
 
         Content = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(16), Children = { pages, form } };
@@ -188,6 +195,67 @@ internal sealed class PagesWindow : Window
     }
 
     private static StackPanel Field(string label, Control input) => new() { Spacing = 2, Children = { new TextBlock { Text = label, Opacity = 0.75 }, input } };
+
+    /// <summary>
+    /// Moves the chosen page one place earlier or later in the reading order
+    /// (§8.8), and keeps it chosen where it lands.
+    /// </summary>
+    private async Task Move(int by)
+    {
+        if (pages.SelectedIndex < 0)
+            return;
+
+        string item = items[pages.SelectedIndex];
+
+        await Written(() => PublicationEditor.MovePage(path, item, pages.SelectedIndex + by, DateTimeOffset.UtcNow), item);
+    }
+
+    /// <summary>
+    /// Takes the chosen page out of the publication, its file included.
+    /// </summary>
+    /// <remarks>
+    /// Asked for twice, since this one cannot be taken back: the page leaves
+    /// the package, and the package is rewritten without it.
+    /// </remarks>
+    private async Task Remove()
+    {
+        if (pages.SelectedIndex < 0)
+            return;
+
+        string item = items[pages.SelectedIndex];
+
+        if (!await Confirm.Ask(this, Text.Of("Take {0} out of the publication? The page and its file go, and this cannot be taken back.", item)))
+            return;
+
+        int chosen = pages.SelectedIndex;
+
+        await Written(() => PublicationEditor.RemovePage(path, item, DateTimeOffset.UtcNow), null);
+
+        pages.SelectedIndex = Math.Min(chosen, items.Length - 1);
+    }
+
+    /// <summary>
+    /// Writes the package, off the interface thread, and reads the pages
+    /// again from what was written.
+    /// </summary>
+    private async Task Written(Action write, string? chosen)
+    {
+        problem.Text = string.Empty;
+        Busy(true);
+
+        try
+        {
+            await Task.Run(write);
+            Saved = true;
+            Load(chosen);
+        }
+        catch (Exception refused) when (refused is ArgumentException or InvalidDataException or IOException or UnauthorizedAccessException)
+        {
+            problem.Text = refused.Message;
+        }
+
+        Busy(false);
+    }
 
     /// <summary>
     /// Shows that the package is being written, and takes the pages and the

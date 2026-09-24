@@ -161,6 +161,55 @@ public sealed class PageEditorTests : IDisposable
     }
 
     [Fact]
+    public void TakesAPageOutOfEverythingThatNamedIt()
+    {
+        (XDocument manifest, XDocument? navigation, string href) = PageEditor.Remove(Manifest(), Navigation(), "p003");
+
+        Assert.Equal("pages/003.png", href);
+        Assert.DoesNotContain("p003", Spine(manifest));
+        Assert.DoesNotContain(manifest.Root!.Descendants(XName.Get("Item", "urn:koma:manifest")), i => (string?)i.Attribute("id") == "p003");
+
+        // A chapter opening on a page that is gone opens on nothing, and a
+        // printed number labels no page.
+        Assert.DoesNotContain("p003", Entries(navigation!).Select(e => e.Split(' ')[0]));
+        Assert.DoesNotContain("p003", Labels(navigation!).Select(l => l.Split(' ')[0]));
+    }
+
+    [Fact]
+    public void RefusesToTakeOutTheCover()
+    {
+        // §8.4 wants exactly one front cover, and giving the cover to another
+        // page first is the editor's decision, not this method's.
+        Assert.Throws<ArgumentException>(() => PageEditor.Remove(Manifest(), Navigation(), "p001"));
+
+        XDocument manifest = Manifest();
+        XDocument? navigation = Navigation();
+
+        foreach (string page in new[] { "p002", "p003", "p004" })
+            (manifest, navigation, _) = PageEditor.Remove(manifest, navigation, page);
+
+        // Down to the cover alone, which is still the cover.
+        Assert.Single(Spine(manifest));
+        Assert.Throws<ArgumentException>(() => PageEditor.Remove(manifest, navigation, "p001"));
+    }
+
+    [Fact]
+    public void MovesAPageAndTakesTheNavigationWithIt()
+    {
+        (XDocument manifest, XDocument? navigation) = PageEditor.Move(Manifest(), Navigation(), "p004", 1);
+
+        string[] order = ["p001", "p004", "p002", "p003"];
+        Assert.Equal(order, Spine(manifest));
+
+        // A table of contents running in another order than the pages would
+        // send a reader backwards, so it follows.
+        string[] listed = ["p001", "p004", "p002", "p003"];
+        Assert.Equal(listed, Labels(navigation!).Select(l => l.Split(' ')[0]).Distinct());
+
+        Assert.Throws<ArgumentException>(() => PageEditor.Move(Manifest(), Navigation(), "p004", 9));
+    }
+
+    [Fact]
     public void RewritesThePackageAndStampsTheRelease()
     {
         string path = Copy("valid-page-list.koma");
@@ -178,6 +227,27 @@ public sealed class PageEditorTests : IDisposable
 
         // §7.2.1: a core document changed is a new release, and the date says so.
         Assert.Contains("2026-09-22T09:15:00Z", Text(path, CorePaths.Metadata), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void RewritesThePackageWithoutThePageAndWithoutItsFile()
+    {
+        string path = Copy("valid-page-list.koma");
+
+        PublicationEditor.RemovePage(path, "p003", Now);
+
+        PackageOpenResult result = PackageOpener.Open(File.OpenRead(path));
+
+        using KomaPackage? package = result.Package;
+
+        Assert.Equal(PackageOpenOutcome.Opened, result.Outcome);
+        Assert.Null(package!.Manifest.Item("p003"));
+
+        using ZipArchive archive = ZipFile.OpenRead(path);
+
+        // The file goes with its declaration: a page nothing declares is a
+        // fault of its own (§8).
+        Assert.Null(archive.GetEntry("pages/003.png"));
     }
 
     [Fact]
@@ -222,6 +292,8 @@ public sealed class PageEditorTests : IDisposable
     private static XElement Reference(XDocument manifest, string item) => manifest.Root!.Descendants(XName.Get("ItemRef", "urn:koma:manifest")).First(r => (string?)r.Attribute("item") == item);
 
     private static string Roles(XDocument manifest, string item) => (string?)Item(manifest, item).Attribute("roles") ?? string.Empty;
+
+    private static string[] Spine(XDocument manifest) => [.. manifest.Root!.Descendants(XName.Get("ItemRef", "urn:koma:manifest")).Select(r => (string?)r.Attribute("item") ?? string.Empty)];
 
     private static string[] Labels(XDocument navigation) => [.. navigation.Root!.Descendants(XName.Get("PageTarget", "urn:koma:navigation")).Select(t => string.Join(' ', new[] { (string?)t.Attribute("item"), (string?)t.Attribute("label"), (string?)t.Attribute("spread-position") }.Where(v => v is not null)))];
 

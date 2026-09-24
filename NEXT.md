@@ -20,15 +20,6 @@ its next run. The same one-line change, with the same comment.
 window and the report window. What is not covered yet: the import window's
 choices, the folders window, and fitting and zooming while reading.
 
-### Taking a page out, and putting pages in another order
-
-Nothing removes a page from a publication or moves one. Both touch the
-manifest, the spine, the landmarks of §9.3, the page targets of §9.2 and the
-resources at once, and must leave exactly one front cover (§8.4) and a package
-that reads back. It is the one item here that belongs to `Koma.Core` rather
-than to the interface, and the one that can damage a file, so it is worth its
-own increment and its own tests.
-
 ### The accessibility of the application itself
 
 The application edits the accessibility metadata of publications and has never

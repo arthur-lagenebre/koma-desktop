@@ -42,18 +42,19 @@ changes what it is asked to and nothing else, stamps the modified date of
 the new one is complete, copying the pages it is not changing straight from the
 old file to the new one. It edits a page the same way — its roles, its span,
 its side of the spread, its alternative text, the chapter it opens in the table
-of contents, the numbers printed on it — and moves the landmarks of §9.3 with
-the roles they come from, so that a manifest and its navigation never say two
-different things. Navigation labels carry the language §4.4 gives them, and
-`NavigationLabel.Choose` picks the one to show from the reader's languages;
-regions (§9.4) are not read, which §16 allows. `OpenVocabularies` judges the
-tokens of all twenty-five open vocabularies of §4.5 in whichever document holds
-them. An unknown token is an error of the publication that §16 lets a reader
-read past, so the opener opens the publication with its fallback and carries
-the error; every other error still refuses it. The pairing algorithm of §10.4
-agrees with the reference implementation on all fifteen upstream fixtures,
-which are written by hand from the prose and never regenerated from an
-implementation.
+of contents, the numbers printed on it — takes a page out of the publication
+and its file with it, moves a page to another place in the reading order, and
+moves the landmarks of §9.3 with the roles they come from, so that a manifest
+and its navigation never say two different things. Navigation labels carry the
+language §4.4 gives them, and `NavigationLabel.Choose` picks the one to show
+from the reader's languages; regions (§9.4) are not read, which §16 allows.
+`OpenVocabularies` judges the tokens of all twenty-five open vocabularies of
+§4.5 in whichever document holds them. An unknown token is an error of the
+publication that §16 lets a reader read past, so the opener opens the
+publication with its fallback and carries the error; every other error still
+refuses it. The pairing algorithm of §10.4 agrees with the reference
+implementation on all fifteen upstream fixtures, which are written by hand from
+the prose and never regenerated from an implementation.
 
 Page resources are checked in a pass of their own rather than at open time:
 each check reads a whole image, so running them on open would decompress the
@@ -126,34 +127,35 @@ what changed. Pages shows the pages of the publication, each beside its own
 picture, and changes what the package says about one — its role, its span, its
 side of the spread, the chapter it opens, the number printed on it, what a
 reader who cannot see it is told — and a right-click edits the page under the
-pointer. It also opens a publication from a file picker or the command line,
-paginates it for the window (§10.1), and turns spreads with the arrow keys
-along the reading direction, Page Up and Page Down, Home and End. A spread fits
-the window or its width, in its own proportions; Ctrl with the wheel or with
-plus, minus and zero zooms it, Space reads down a spread taller than the window
-before turning it, the wheel turns the page when there is nothing to scroll, a
-click turns towards the half it lands in and the side buttons of a mouse browse
-back and forth, and F11 reads full screen, which Escape leaves. A Contents
-panel lists the table of contents and the landmarks of `nav.xml` in the
-reader's language, and a choice takes the reader to the spread that holds it;
-the counter shows the page-list labels on screen. Pages are laid out from their
-declared sizes (§16) and decoded on a worker, one at a time, as the reader
-reaches them. The spreads either side follow, so that a turn usually finds its
-pages ready, and a page queued for a spread the reader has left is dropped
-before it is decoded. Warnings from opening, the faults of the pages on screen
-and a withheld page are reported in a status line. The interface is in English
-or in French, as the reader chooses, and the library remembers which; what
-Koma.Core reports stays in English, being the vocabulary of the specification.
-A publication or a folder kept private stays off the shelf until Show private
-is pressed, which is never remembered: it hides what the room sees over a
-shoulder, and touches neither the files nor their covers on disk. A card's menu
-checks a publication and reports every fault the opener finds, with the entry
-each one is about; a publication that will not open answers a click with that
-report, being the only useful thing to do with it. Control-click picks
-publications out, and what they have in common — their series and numbering,
-their language, their reading direction, what they say about reading them — is
-written into all of them at once, each on its own, so that one refusal stops
-itself and not the rest.
+pointer; a page can be moved in the reading order, or taken out of the
+publication once the question has been answered twice. It also opens a
+publication from a file picker or the command line, paginates it for the window
+(§10.1), and turns spreads with the arrow keys along the reading direction,
+Page Up and Page Down, Home and End. A spread fits the window or its width, in
+its own proportions; Ctrl with the wheel or with plus, minus and zero zooms it,
+Space reads down a spread taller than the window before turning it, the wheel
+turns the page when there is nothing to scroll, a click turns towards the half
+it lands in and the side buttons of a mouse browse back and forth, and F11
+reads full screen, which Escape leaves. A Contents panel lists the table of
+contents and the landmarks of `nav.xml` in the reader's language, and a choice
+takes the reader to the spread that holds it; the counter shows the page-list
+labels on screen. Pages are laid out from their declared sizes (§16) and
+decoded on a worker, one at a time, as the reader reaches them. The spreads
+either side follow, so that a turn usually finds its pages ready, and a page
+queued for a spread the reader has left is dropped before it is decoded.
+Warnings from opening, the faults of the pages on screen and a withheld page
+are reported in a status line. The interface is in English or in French, as the
+reader chooses, and the library remembers which; what Koma.Core reports stays
+in English, being the vocabulary of the specification. A publication or a
+folder kept private stays off the shelf until Show private is pressed, which is
+never remembered: it hides what the room sees over a shoulder, and touches
+neither the files nor their covers on disk. A card's menu checks a publication
+and reports every fault the opener finds, with the entry each one is about; a
+publication that will not open answers a click with that report, being the only
+useful thing to do with it. Control-click picks publications out, and what they
+have in common — their series and numbering, their language, their reading
+direction, what they say about reading them — is written into all of them at
+once, each on its own, so that one refusal stops itself and not the rest.
 
 The format itself is at pre-release draft `0.9`. Per §5.0 of the specification,
 a reader supporting one `0.x` version **must reject every other `0.x`**, and

@@ -22,7 +22,11 @@ namespace Koma.Core.Writing;
 /// </remarks>
 public static class PackageRewriter
 {
-    public static void Rewrite(string path, IReadOnlyDictionary<string, byte[]> replacements)
+    /// <param name="dropped">
+    /// Entries to leave out of the new file: a page taken out of a
+    /// publication goes with the manifest that declared it.
+    /// </param>
+    public static void Rewrite(string path, IReadOnlyDictionary<string, byte[]> replacements, IReadOnlySet<string>? dropped = null)
     {
         ArgumentNullException.ThrowIfNull(path);
         ArgumentNullException.ThrowIfNull(replacements);
@@ -37,7 +41,7 @@ public static class PackageRewriter
             {
                 var entries = new Dictionary<string, Func<Stream>>(StringComparer.Ordinal);
 
-                foreach (ZipArchiveEntry entry in archive.Entries.Where(e => e.Name.Length > 0 && e.FullName != KomaMediaType.EntryName))
+                foreach (ZipArchiveEntry entry in archive.Entries.Where(e => e.Name.Length > 0 && e.FullName != KomaMediaType.EntryName && dropped?.Contains(e.FullName) != true))
                     entries[entry.FullName] = entry.Open;
 
                 foreach ((string name, byte[] data) in replacements)

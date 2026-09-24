@@ -48,6 +48,35 @@ public static class PublicationEditor
     }
 
     /// <summary>
+    /// Takes a page out of the publication on disk, its file included.
+    /// </summary>
+    /// <exception cref="ArgumentException">The page cannot be taken out.</exception>
+    /// <exception cref="InvalidDataException">What is left would not be read back.</exception>
+    public static void RemovePage(string path, string item, DateTimeOffset now)
+    {
+        ArgumentNullException.ThrowIfNull(path);
+
+        (XDocument manifest, XDocument? navigation, string href) = PageEditor.Remove(Load(path, CorePaths.Manifest)!, Load(path, CorePaths.Navigation), item);
+
+        // The file goes with its declaration: a page nothing declares is a
+        // fault of its own (§8), and keeping it would trade one for another.
+        Write(path, manifest, navigation, now, dropped: new HashSet<string>(StringComparer.Ordinal) { href });
+    }
+
+    /// <summary>
+    /// Moves a page to another place in the reading order (§8.8).
+    /// </summary>
+    /// <param name="to">Where it goes, counting from zero.</param>
+    public static void MovePage(string path, string item, int to, DateTimeOffset now)
+    {
+        ArgumentNullException.ThrowIfNull(path);
+
+        (XDocument manifest, XDocument? navigation) = PageEditor.Move(Load(path, CorePaths.Manifest)!, Load(path, CorePaths.Navigation), item, to);
+
+        Write(path, manifest, navigation, now);
+    }
+
+    /// <summary>
     /// Changes what the manifest says about one page, and the landmarks that
     /// follow from it.
     /// </summary>
@@ -60,8 +89,19 @@ public static class PublicationEditor
 
         (XDocument manifest, XDocument? navigation) = PageEditor.Apply(Load(path, CorePaths.Manifest)!, Load(path, CorePaths.Navigation), item, edit);
 
-        // §7.2.1: a core document changed is a new release, whatever changed
-        // in it. An empty edit stamps the date and nothing else.
+        Write(path, manifest, navigation, now);
+    }
+
+    /// <summary>
+    /// Reads the edited documents back the way the opener does, then writes
+    /// them into the package.
+    /// </summary>
+    /// <remarks>
+    /// §7.2.1: a core document changed is a new release, whatever changed in
+    /// it, so the metadata is stamped even when nothing else in it moved.
+    /// </remarks>
+    private static void Write(string path, XDocument manifest, XDocument? navigation, DateTimeOffset now, IReadOnlySet<string>? dropped = null)
+    {
         XDocument metadata = MetadataEditor.Apply(Load(path, CorePaths.Metadata)!, new MetadataEdit(), now);
 
         var violations = new List<ContainerViolation>();
@@ -83,7 +123,7 @@ public static class PublicationEditor
         if (navigation is not null)
             written[CorePaths.Navigation] = CanonicalXml.Write(navigation);
 
-        PackageRewriter.Rewrite(path, written);
+        PackageRewriter.Rewrite(path, written, dropped);
     }
 
     /// <exception cref="ArgumentException">A value §4.3 does not allow.</exception>

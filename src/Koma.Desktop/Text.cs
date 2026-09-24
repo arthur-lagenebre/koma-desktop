@@ -140,6 +140,11 @@ internal static class Text
         ["Number printed on its right half"] = "Numéro imprimé sur sa moitié droite",
         ["Alternative text"] = "Texte alternatif",
         ["Decorative: carries nothing to describe"] = "Décorative : rien à décrire",
+        ["Move up"] = "Monter",
+        ["Move down"] = "Descendre",
+        ["Take this page out"] = "Retirer cette page",
+        ["Take {0} out of the publication? The page and its file go, and this cannot be taken back."] = "Retirer {0} de la publication ? La page et son fichier s'en vont, et cela ne se reprend pas.",
+        ["Yes, take it out"] = "Oui, la retirer",
 
         ["Writing the publication…"] = "Écriture de la publication…"
     };
