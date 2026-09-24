@@ -1,5 +1,12 @@
 # koma-desktop
 
+[![CI](https://github.com/arthur-lagenebre/koma-desktop/actions/workflows/ci.yml/badge.svg)](https://github.com/arthur-lagenebre/koma-desktop/actions/workflows/ci.yml)
+[![.NET](https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/)
+[![Avalonia](https://img.shields.io/badge/Avalonia-12.1-8B44AC)](https://avaloniaui.net/)
+[![KOMA](https://img.shields.io/badge/KOMA-0.9-0F6FC5)](https://github.com/arthur-lagenebre/koma)
+[![Licence](https://img.shields.io/badge/Licence-Apache%202.0-D22128)](LICENSE)
+[![Généré par](https://img.shields.io/badge/Généré%20par-Claude%20Code-D97757?logo=claude&logoColor=white)](https://claude.com/claude-code)
+
 A cross-platform desktop library manager, reader and editor for
 [KOMA](https://github.com/arthur-lagenebre/koma) publications.
 
