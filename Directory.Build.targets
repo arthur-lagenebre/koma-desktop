@@ -1,0 +1,17 @@
+<Project>
+
+  <!-- SkiaSharp and HarfBuzzSharp ship the symbols of their native Windows
+       libraries beside them. A single-file publish carries the libraries
+       inside the executable and leaves those symbols out beside it, so they
+       are dropped here: nobody downloading a program has a use for them, and
+       a release is one file per program. Here rather than in one project,
+       since the reader and the command line are both published and both pull
+       Skia. Removed before the bundle is made, so that a local publish gives
+       one file too. -->
+  <Target Name="LeaveSymbolsOutOfThePublish" AfterTargets="ComputeResolvedFilesToPublishList">
+    <ItemGroup>
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(Extension)' == '.pdb'" />
+    </ItemGroup>
+  </Target>
+
+</Project>

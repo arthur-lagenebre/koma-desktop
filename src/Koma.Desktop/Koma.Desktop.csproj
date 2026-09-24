@@ -27,16 +27,4 @@
     <ProjectReference Include="..\Koma.Library\Koma.Library.csproj" />
   </ItemGroup>
 
-  <!-- SkiaSharp and HarfBuzzSharp ship the symbols of their native Windows
-       libraries beside them. A single-file publish carries the libraries
-       inside the executable and leaves those symbols out beside it, so they
-       are dropped here: a reader has no use for them, and the release is one
-       file. Removed before the bundle is made, so that a local publish gives
-       one file too. -->
-  <Target Name="LeaveSymbolsOutOfThePublish" AfterTargets="ComputeResolvedFilesToPublishList">
-    <ItemGroup>
-      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(Extension)' == '.pdb'" />
-    </ItemGroup>
-  </Target>
-
 </Project>
