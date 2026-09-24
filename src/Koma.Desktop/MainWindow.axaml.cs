@@ -77,6 +77,7 @@ internal sealed partial class MainWindow : Window, IDisposable
         RefreshButton.Click += async (_, _) => await ScanAsync();
         PrivateButton.IsCheckedChanged += (_, _) => ShowLibrary();
         Shelf.PrivacyToggled += (_, path) => ChangePrivacy(path);
+        Shelf.CheckRequested += async (_, path) => await CheckAsync(path);
         LanguageChoice.SelectionChanged += (_, _) =>
         {
             if (!localizing)
@@ -366,6 +367,65 @@ internal sealed partial class MainWindow : Window, IDisposable
             return [];
 
         return [.. library.Entries.Where(e => ShelfArrangement.IsPrivate(e, library.PrivateFolders)).Select(e => e.Path)];
+    }
+
+    /// <summary>
+    /// Opens a publication for what it has to say about itself, and shows all
+    /// of it.
+    /// </summary>
+    /// <remarks>
+    /// A card holds one line of one fault. Whoever wants to repair a file
+    /// wants every fault, with the entry each one is about, which is what the
+    /// opener already reports and nothing was showing.
+    /// </remarks>
+    private async Task CheckAsync(string path)
+    {
+        string report;
+
+        try
+        {
+            report = await Task.Run(() => Check(path));
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            Status.Text = e.Message;
+            return;
+        }
+
+        new ReportWindow(Text.Of("{0} — report", Path.GetFileName(path)), report).Show(this);
+    }
+
+    private static string Check(string path)
+    {
+        using FileStream file = File.OpenRead(path);
+
+        PackageOpenResult result = PackageOpener.Open(file);
+
+        using KomaPackage? package = result.Package;
+
+        var report = new StringBuilder();
+
+        report.AppendLine(path);
+        report.AppendLine(result.Outcome switch
+        {
+            PackageOpenOutcome.Opened => Text.Of("Opens."),
+            PackageOpenOutcome.UnsupportedVersion => Text.Of("KOMA {0}, which this build does not read.", result.DeclaredVersion?.ToString() ?? "?"),
+            _ => Text.Of("Does not open.")
+        });
+
+        if (result.Violations.Count == 0)
+        {
+            report.AppendLine(Text.Of("Nothing to report."));
+
+            return report.ToString();
+        }
+
+        report.AppendLine();
+
+        foreach (ContainerViolation violation in result.Violations)
+            report.AppendLine(CultureInfo.InvariantCulture, $"{violation.Severity.ToString().ToUpperInvariant()}  {violation.Code} — {violation.Message}");
+
+        return report.ToString();
     }
 
     /// <summary>Marks a publication private, or brings it back to the shelf.</summary>

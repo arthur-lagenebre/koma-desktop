@@ -71,6 +71,12 @@ internal static class Text
         ["Scanning… {0} / {1}"] = "Balayage… {0} / {1}",
         ["Importing… {0} / {1}"] = "Import… {0} / {1}",
         ["Edit metadata…"] = "Modifier les métadonnées…",
+        ["Check this publication…"] = "Vérifier cette publication…",
+        ["{0} — report"] = "{0} — rapport",
+        ["Opens."] = "S'ouvre.",
+        ["Does not open."] = "Ne s'ouvre pas.",
+        ["KOMA {0}, which this build does not read."] = "KOMA {0}, que cette version ne lit pas.",
+        ["Nothing to report."] = "Rien à signaler.",
         ["Edit this page…"] = "Modifier cette page…",
 
         ["Open a KOMA publication"] = "Ouvrir une publication KOMA",

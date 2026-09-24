@@ -91,6 +91,9 @@ internal sealed class LibraryView : DockPanel
     /// <summary>Raised with the path of a publication the reader marks private, or brings back.</summary>
     public event EventHandler<string>? PrivacyToggled;
 
+    /// <summary>Raised with the path of a publication whose faults the reader wants in full.</summary>
+    public event EventHandler<string>? CheckRequested;
+
     /// <summary>Raised when the reader chooses another order, which the library remembers.</summary>
     public event EventHandler<ShelfOrder>? Ordered;
 
@@ -194,13 +197,20 @@ internal sealed class LibraryView : DockPanel
             Padding = new Thickness(8),
             HorizontalContentAlignment = HorizontalAlignment.Stretch,
             VerticalContentAlignment = VerticalAlignment.Top,
-            IsEnabled = entry.Unreadable is null
+            // A publication that will not open used to have a card nothing
+            // could touch. It stays live: a click on it asks what is wrong,
+            // which is the only useful thing to do with it.
+            IsEnabled = true
         };
+
+        if (entry.Unreadable is not null)
+            card.Click += (_, _) => CheckRequested?.Invoke(this, entry.Path);
 
         // The reason a package was refused runs longer than a card; the card
         // shows what it can and the tip holds the rest.
         ToolTip.SetTip(card, entry.Unreadable is null ? entry.Path : $"{entry.Path}{Environment.NewLine}{entry.Unreadable}");
-        card.Click += (_, _) => Chosen?.Invoke(this, entry.Path);
+        if (entry.Unreadable is null)
+            card.Click += (_, _) => Chosen?.Invoke(this, entry.Path);
 
         var editItem = new MenuItem { Header = Text.Of("Edit metadata…") };
         editItem.Click += (_, _) => EditRequested?.Invoke(this, entry.Path);
@@ -208,7 +218,10 @@ internal sealed class LibraryView : DockPanel
         var privacyItem = new MenuItem { Header = Text.Of(entry.Private ? "Show on the shelf" : "Keep off the shelf") };
         privacyItem.Click += (_, _) => PrivacyToggled?.Invoke(this, entry.Path);
 
-        card.ContextMenu = new ContextMenu { ItemsSource = new[] { editItem, privacyItem } };
+        var checkItem = new MenuItem { Header = Text.Of("Check this publication…") };
+        checkItem.Click += (_, _) => CheckRequested?.Invoke(this, entry.Path);
+
+        card.ContextMenu = new ContextMenu { ItemsSource = new[] { editItem, privacyItem, checkItem } };
 
         return card;
     }

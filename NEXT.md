@@ -34,13 +34,6 @@ one would make it testable, and is worth doing when a test needs it.
 
 ## Worth doing
 
-### Show everything wrong with a publication that will not open
-
-A refused publication shows one line in its card and the rest in a tooltip. The
-opener reports every violation it finds, and a reader who wants to repair a
-file wants them all, with the entry each concerns. The import report already
-does this for conversions; the same window would do for an opening.
-
 ### The accessibility of the application itself
 
 The application edits the accessibility metadata of publications and has never

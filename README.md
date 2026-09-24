@@ -116,7 +116,10 @@ or in French, as the reader chooses, and the library remembers which; what
 Koma.Core reports stays in English, being the vocabulary of the specification.
 A publication or a folder kept private stays off the shelf until Show private
 is pressed, which is never remembered: it hides what the room sees over a
-shoulder, and touches neither the files nor their covers on disk.
+shoulder, and touches neither the files nor their covers on disk. A card's menu
+checks a publication and reports every fault the opener finds, with the entry
+each one is about; a publication that will not open answers a click with that
+report, being the only useful thing to do with it.
 
 The format itself is at pre-release draft `0.9`. Per §5.0 of the specification,
 a reader supporting one `0.x` version **must reject every other `0.x`**, and
