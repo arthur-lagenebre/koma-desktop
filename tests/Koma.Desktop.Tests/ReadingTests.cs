@@ -59,6 +59,24 @@ public sealed class ReadingTests : IDisposable
         Assert.Contains("publication", Counter(window), StringComparison.Ordinal);
     }
 
+    [AvaloniaFact]
+    public void ShowsTheLandmarksInTheOrderThePagesCome()
+    {
+        // §9.3 fixes no order for the landmarks, so the reader puts them in
+        // the one a reader would follow, whatever the document lists.
+        MainWindow window = Reader();
+
+        window.FindButton(b => b.Content is StackPanel).Press();
+
+        ListBox landmarks = window.GetVisualDescendants().OfType<ListBox>().First(l => l.Name == "LandmarkList");
+        string[] shown = [.. landmarks.Items.OfType<ListBoxItem>().Select(i => (string?)i.Content ?? string.Empty)];
+
+        // valid-page-list has the cover on the first page and the story on
+        // the second.
+        Assert.Equal(2, shown.Length);
+        Assert.StartsWith("Front cover", shown[0], StringComparison.Ordinal);
+    }
+
     public void Dispose()
     {
         try

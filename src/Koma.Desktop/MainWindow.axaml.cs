@@ -1377,6 +1377,12 @@ internal sealed partial class MainWindow : Window, IDisposable
     }
 
     /// <summary>
+    /// Where a landmark's page stands in the reading order, and after the
+    /// last page when the spine does not name it at all.
+    /// </summary>
+    private int Place(string item) => publication?.PageNumber(item) is > 0 and { } number ? number : int.MaxValue;
+
+    /// <summary>
     /// Fills the panel from <c>nav.xml</c>, or hides it for a publication
     /// without one.
     /// </summary>
@@ -1395,7 +1401,11 @@ internal sealed partial class MainWindow : Window, IDisposable
         foreach (TocEntry entry in navigation.TableOfContents)
             Contents.Items.Add(TreeItemOf(entry));
 
-        foreach (Landmark landmark in navigation.Landmarks)
+        // In the order the pages come, whatever order the document lists them
+        // in: §9.3 fixes none, and a back cover above the start of the story
+        // is a list no reader would follow. A landmark on a page that is not
+        // in the spine keeps its place at the end rather than disappearing.
+        foreach (Landmark landmark in navigation.Landmarks.OrderBy(l => Place(l.Item)))
             LandmarkList.Items.Add(new ListBoxItem { Content = LandmarkName(landmark), Tag = landmark.Item });
 
         Contents.IsVisible = navigation.TableOfContents.Count > 0;
