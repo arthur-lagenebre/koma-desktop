@@ -5,12 +5,23 @@
 [![Avalonia](https://img.shields.io/badge/Avalonia-12.1-8B44AC)](https://avaloniaui.net/)
 [![KOMA](https://img.shields.io/badge/KOMA-0.9-0F6FC5)](https://github.com/arthur-lagenebre/koma)
 [![Licence](https://img.shields.io/badge/Licence-Apache%202.0-D22128)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/arthur-lagenebre/koma-desktop?logo=github&color=2EA043)](https://github.com/arthur-lagenebre/koma-desktop/releases/latest)
 [![Généré par](https://img.shields.io/badge/Généré%20par-Claude%20Code-D97757?logo=claude&logoColor=white)](https://claude.com/claude-code)
 
 A cross-platform desktop library manager, reader and editor for
 [KOMA](https://github.com/arthur-lagenebre/koma) publications.
 
 Written in C# with Avalonia. Windows is the primary target; Linux is supported.
+
+## Download
+
+The [latest release](https://github.com/arthur-lagenebre/koma-desktop/releases/latest)
+carries four files: the reader and the command-line tool, for Windows and for
+Linux. Each is one self-contained executable — nothing to install, no runtime
+to fetch — and `SHA256SUMS` beside them says what CI built.
+
+Windows will call the executable an unknown publisher until the project is
+signed, which it is not yet.
 
 ## Status
 
