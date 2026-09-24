@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
@@ -76,7 +77,16 @@ internal sealed class ImportWindow : Window
         elsewhere.Content = destination;
     }
 
-    private static StackPanel Field(string label, Control input) => new() { Spacing = 2, Children = { new TextBlock { Text = label, Opacity = 0.75 }, input } };
+    /// <summary>
+    /// A field under its label, the label being what assistive tools
+    /// announce: a text box says its content, never what the content is for.
+    /// </summary>
+    private static StackPanel Field(string label, Control input)
+    {
+        AutomationProperties.SetName(input, label);
+
+        return new StackPanel { Spacing = 2, Children = { new TextBlock { Text = label, Opacity = 0.75 }, input } };
+    }
 
     private ImportChoice Choice(bool folder) => new(folder, comicInfo.IsChecked == true, numbering.IsChecked == true, destination, Boxes.Ticked(modes), Boxes.Ticked(hazards));
 

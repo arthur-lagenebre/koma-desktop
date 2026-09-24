@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
@@ -73,6 +74,10 @@ internal sealed class BatchEditWindow : Window
 
         direction.ItemsSource = Directions.Select(d => Text.Of(d.Label)).ToArray();
 
+        // Inside a panel, so Under names the panel and not this: the box says
+        // Series, and so must the field it governs.
+        AutomationProperties.SetName(series, Text.Of("Series"));
+
         seriesTicked.Content = Text.Of("Series");
         numberTicked.Content = Text.Of("Number them in the order they are shown, from");
         languageTicked.Content = Text.Of("Language (BCP 47, such as fr or en-GB)");
@@ -125,16 +130,31 @@ internal sealed class BatchEditWindow : Window
         Content = new ScrollViewer { Content = fields };
     }
 
-    /// <summary>A field under its box, greyed until the box is ticked.</summary>
+    /// <summary>
+    /// A field under its box, greyed until the box is ticked, and named after
+    /// the box: here the box is what says what the field is for.
+    /// </summary>
     private static StackPanel Under(CheckBox ticked, Control field)
     {
         field.IsEnabled = false;
         ticked.IsCheckedChanged += (_, _) => field.IsEnabled = ticked.IsChecked == true;
 
+        if (ticked.Content is string label)
+            AutomationProperties.SetName(field, label);
+
         return new StackPanel { Spacing = 4, Children = { ticked, field } };
     }
 
-    private static StackPanel Labelled(string label, Control input) => new() { Spacing = 2, Children = { new TextBlock { Text = label, Opacity = 0.75 }, input } };
+    /// <summary>
+    /// A field under its label, the label being what assistive tools
+    /// announce: a text box says its content, never what the content is for.
+    /// </summary>
+    private static StackPanel Labelled(string label, Control input)
+    {
+        AutomationProperties.SetName(input, label);
+
+        return new StackPanel { Spacing = 2, Children = { new TextBlock { Text = label, Opacity = 0.75 }, input } };
+    }
 
     private BatchEdit Plan() => new(
         seriesTicked.IsChecked == true ? (series.Text ?? string.Empty).Trim() : null,

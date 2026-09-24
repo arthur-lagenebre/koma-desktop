@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Layout;
@@ -89,7 +90,16 @@ internal sealed class EditWindow : Window
         Content = fields;
     }
 
-    private static StackPanel Field(string label, Control input) => new() { Spacing = 2, Children = { new TextBlock { Text = label, Opacity = 0.75 }, input } };
+    /// <summary>
+    /// A field under its label, the label being what assistive tools
+    /// announce: a text box says its content, never what the content is for.
+    /// </summary>
+    private static StackPanel Field(string label, Control input)
+    {
+        AutomationProperties.SetName(input, label);
+
+        return new StackPanel { Spacing = 2, Children = { new TextBlock { Text = label, Opacity = 0.75 }, input } };
+    }
 
     private async void OnSave(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {

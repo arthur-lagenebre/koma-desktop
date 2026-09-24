@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
@@ -36,6 +37,8 @@ internal sealed class ReportWindow : Window
 
         heading.IsVisible = false;
         body.Text = report;
+
+        AutomationProperties.SetName(body, title);
 
         var panel = new DockPanel();
 

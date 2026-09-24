@@ -54,6 +54,8 @@ internal static class Text
 
         ["Search titles, series and files"] = "Chercher un titre, une série, un fichier",
         ["Order of the shelf"] = "Ordre de l'étagère",
+        ["Pages of the publication"] = "Pages de la publication",
+        ["What was refused"] = "Ce qui a été refusé",
         ["How a spread fits the window"] = "Ajustement d'une planche à la fenêtre",
         ["Language of the application"] = "Langue de l'application",
         ["By title"] = "Par titre",

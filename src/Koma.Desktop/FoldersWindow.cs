@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
@@ -42,6 +43,8 @@ internal sealed class FoldersWindow : Window
         remove.Click += (_, _) => Remove();
         privacy.Click += (_, _) => TogglePrivacy();
         close.Click += (_, _) => Close(Changed);
+        AutomationProperties.SetName(folders, Text.Of("Watched folders"));
+
         folders.SelectionChanged += (_, _) => Chosen();
 
         Content = new StackPanel

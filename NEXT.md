@@ -22,12 +22,13 @@ choices, the folders window, and fitting and zooming while reading.
 
 ### The accessibility of the application itself
 
-The shelf walks under the arrows and names its cards, its search and its
-orders for a screen reader. What is not done: the forms — the edit, pages,
-import and folders windows name none of their fields to assistive tools —
-contrast, and the focus, which is wherever Fluent puts it and has never been
-looked at. None of this has been tried with a screen reader running, which is
-the only test that counts.
+The shelf walks under the arrows, and the windows name their fields, their
+lists and their reports for a screen reader. What is not done: contrast, the
+focus, which is wherever Fluent puts it and has never been looked at, and the
+reading view itself, where a spread is a picture with nothing to announce.
+None of it has been tried with a screen reader running, which is the only test
+that counts: under Windows the Narrator starts with Ctrl+Windows+Enter, and
+ten minutes will say more than this paragraph.
 
 ## Deferred, and why
 

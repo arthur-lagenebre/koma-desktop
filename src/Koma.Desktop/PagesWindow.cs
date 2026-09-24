@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Layout;
@@ -82,6 +83,9 @@ internal sealed class PagesWindow : Window
         // Only a page drawn across a spread carries two printed numbers, one
         // for each half of the spread it fills (§9.2).
         span.IsCheckedChanged += (_, _) => rightHalf.IsVisible = span.IsChecked == true;
+
+        AutomationProperties.SetName(pages, Text.Of("Pages of the publication"));
+        AutomationProperties.SetName(problem, Text.Of("What was refused"));
 
         pages.SelectionChanged += (_, _) => Fill();
         save.Click += OnSave;
@@ -213,7 +217,16 @@ internal sealed class PagesWindow : Window
         return read;
     }
 
-    private static StackPanel Field(string label, Control input) => new() { Spacing = 2, Children = { new TextBlock { Text = label, Opacity = 0.75 }, input } };
+    /// <summary>
+    /// A field under its label, the label being what assistive tools
+    /// announce: a text box says its content, never what the content is for.
+    /// </summary>
+    private static StackPanel Field(string label, Control input)
+    {
+        AutomationProperties.SetName(input, label);
+
+        return new StackPanel { Spacing = 2, Children = { new TextBlock { Text = label, Opacity = 0.75 }, input } };
+    }
 
     /// <summary>
     /// Moves the chosen page one place earlier or later in the reading order
