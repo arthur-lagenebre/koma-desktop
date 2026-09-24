@@ -54,6 +54,7 @@ internal sealed partial class MainWindow : Window, IDisposable
     private bool restoring;
     private bool localizing;
     private string? rightClicked;
+    private IReadOnlyList<string> picked = [];
     private Point? pressed;
     private bool importing;
 
@@ -96,6 +97,8 @@ internal sealed partial class MainWindow : Window, IDisposable
         PrivateButton.IsCheckedChanged += (_, _) => ShowLibrary();
         Shelf.PrivacyToggled += (_, path) => ChangePrivacy(path);
         Shelf.CheckRequested += async (_, path) => await CheckAsync(path);
+        Shelf.Picked += (_, paths) => ShowPicked(paths);
+        BatchButton.Click += async (_, _) => await EditTogetherAsync();
         LanguageChoice.SelectionChanged += (_, _) =>
         {
             if (!localizing)
@@ -327,6 +330,7 @@ internal sealed partial class MainWindow : Window, IDisposable
         FoldersButton.Content = Text.Of("Folders…");
         RefreshButton.Content = Text.Of("Refresh");
         PrivateButton.Content = Text.Of("Show private");
+        BatchButton.Content = Text.Of("Edit {0} together…", picked.Count);
         ImportButton.Content = Text.Of("Import CBZ…");
         OpenButton.Content = Text.Of("Open…");
         ContentsButton.Content = Text.Of("Contents");
@@ -446,6 +450,88 @@ internal sealed partial class MainWindow : Window, IDisposable
         return report.ToString();
     }
 
+    /// <summary>
+    /// Says how many publications are picked out, and offers to edit them
+    /// together.
+    /// </summary>
+    private void ShowPicked(IReadOnlyList<string> paths)
+    {
+        picked = paths;
+        BatchButton.IsVisible = paths.Count > 1;
+        BatchButton.Content = Text.Of("Edit {0} together…", paths.Count);
+    }
+
+    /// <summary>
+    /// Writes one edit into every publication picked out, and says what
+    /// happened to each as it goes.
+    /// </summary>
+    /// <remarks>
+    /// One at a time and each on its own: a volume that refuses the edit —
+    /// a language that is no tag, a file another program is holding — stops
+    /// itself and not the others, and the report names it.
+    /// </remarks>
+    private async Task EditTogetherAsync()
+    {
+        if (picked.Count < 2 || await new BatchEditWindow(picked.Count).ShowDialog<BatchEdit?>(this) is not { } plan)
+            return;
+
+        string[] paths = [.. picked];
+        var window = new ReportWindow(Text.Of("Editing — KOMA"), string.Empty);
+
+        window.Show(this);
+
+        var progress = new Progress<(int Done, string Line)>(step =>
+        {
+            window.Working(Text.Of("Editing… {0} / {1}", step.Done, paths.Length), step.Done, paths.Length);
+            window.Append(step.Line);
+        });
+
+        (int changed, int refused) = await Task.Run(() => EditTogether(paths, plan, progress));
+
+        window.Done(Text.Of("{0} changed, {1} refused.", changed, refused));
+        Status.Text = Text.Of("{0} changed, {1} refused.", changed, refused);
+
+        Shelf.Unpick();
+
+        await ScanAsync();
+    }
+
+    private static (int Changed, int Refused) EditTogether(string[] paths, BatchEdit plan, IProgress<(int Done, string Line)> progress)
+    {
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        int changed = 0;
+        int refused = 0;
+
+        for (int i = 0; i < paths.Length; i++)
+        {
+            // The numbering follows the order the shelf showed, which is the
+            // order a reader has just checked with their eyes.
+            SeriesEdit? series = plan.Series is null && plan.NumberFrom is null ? null : new SeriesEdit(
+                plan.Series ?? PublicationEditor.Current(paths[i]).Series?.Name ?? string.Empty,
+                plan.NumberFrom is { } from ? (from + i).ToString(CultureInfo.InvariantCulture) : PublicationEditor.Current(paths[i]).Series?.Position,
+                plan.Total is { Length: > 0 } total ? total : PublicationEditor.Current(paths[i]).Series?.Total);
+
+            var edit = new MetadataEdit(null, plan.Language, plan.Direction, series, plan.Accessibility);
+            string line;
+
+            try
+            {
+                PublicationEditor.EditMetadata(paths[i], edit, now);
+                changed++;
+                line = $"{Path.GetFileName(paths[i])}{Environment.NewLine}";
+            }
+            catch (Exception e) when (e is ArgumentException or InvalidDataException or IOException or UnauthorizedAccessException)
+            {
+                refused++;
+                line = $"{Path.GetFileName(paths[i])}{Environment.NewLine}  refused    {e.Message}{Environment.NewLine}";
+            }
+
+            progress.Report((i + 1, line));
+        }
+
+        return (changed, refused);
+    }
+
     /// <summary>Marks a publication private, or brings it back to the shelf.</summary>
     private void ChangePrivacy(string path)
     {
@@ -529,6 +615,7 @@ internal sealed partial class MainWindow : Window, IDisposable
         ResumeButton.IsVisible = false;
         RefreshButton.IsVisible = false;
         PrivateButton.IsVisible = false;
+        BatchButton.IsVisible = false;
         Scroller.IsVisible = true;
         FitChoice.IsVisible = true;
 

@@ -12,6 +12,7 @@
             <Button x:Name="FoldersButton" Content="Folders…" />
             <Button x:Name="RefreshButton" Content="Refresh" IsVisible="False" />
             <ToggleButton x:Name="PrivateButton" IsVisible="False" />
+            <Button x:Name="BatchButton" IsVisible="False" />
             <Button x:Name="ImportButton" Content="Import CBZ…" />
             <Button x:Name="EditButton" Content="Edit…" IsVisible="False" />
             <Button x:Name="PagesButton" Content="Pages…" IsVisible="False" />

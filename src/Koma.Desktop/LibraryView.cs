@@ -1,5 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
@@ -59,6 +61,11 @@ internal sealed class LibraryView : DockPanel
 
     private IReadOnlyList<LibraryEntry> entries = [];
     private IReadOnlySet<string> hidden = new HashSet<string>(StringComparer.Ordinal);
+
+    // Ctrl-click picks out publications to edit together; the shelf keeps the
+    // picking as it is redrawn, since searching for the next one to add is
+    // the usual way of building it.
+    private readonly HashSet<string> picked = new(StringComparer.Ordinal);
     private LibraryStore? store;
     private bool restoring;
 
@@ -94,8 +101,32 @@ internal sealed class LibraryView : DockPanel
     /// <summary>Raised with the path of a publication whose faults the reader wants in full.</summary>
     public event EventHandler<string>? CheckRequested;
 
+    /// <summary>Raised with the publications picked out for an edit of them all.</summary>
+    public event EventHandler<IReadOnlyList<string>>? Picked;
+
     /// <summary>Raised when the reader chooses another order, which the library remembers.</summary>
     public event EventHandler<ShelfOrder>? Ordered;
+
+    /// <summary>Takes a publication into the picking, or out of it.</summary>
+    private void Pick(string path)
+    {
+        if (!picked.Remove(path))
+            picked.Add(path);
+
+        Picked?.Invoke(this, [.. picked]);
+        Draw();
+    }
+
+    /// <summary>Forgets the picking, once something has been done with it.</summary>
+    public void Unpick()
+    {
+        if (picked.Count == 0)
+            return;
+
+        picked.Clear();
+        Picked?.Invoke(this, []);
+        Draw();
+    }
 
     /// <summary>Writes the fixed words of the shelf in the current language.</summary>
     public void Localize()
@@ -202,6 +233,23 @@ internal sealed class LibraryView : DockPanel
             // which is the only useful thing to do with it.
             IsEnabled = true
         };
+
+        if (picked.Contains(entry.Path))
+        {
+            card.BorderBrush = Brushes.DodgerBlue;
+            card.BorderThickness = new Thickness(2);
+        }
+
+        // Ctrl-click picks rather than opens, and picking is what the button
+        // reports: the click that follows opens nothing.
+        card.AddHandler(PointerPressedEvent, (_, e) =>
+        {
+            if (!e.KeyModifiers.HasFlag(KeyModifiers.Control))
+                return;
+
+            e.Handled = true;
+            Pick(entry.Path);
+        }, RoutingStrategies.Tunnel);
 
         if (entry.Unreadable is not null)
             card.Click += (_, _) => CheckRequested?.Invoke(this, entry.Path);
