@@ -169,7 +169,11 @@ Requires the .NET SDK (see `Directory.Build.props` for the target framework).
 ```
 git clone --recurse-submodules <this repo>
 cd koma-desktop
-dotnet build
+
+./check.ps1                       # build, then both suites, stopping at the first
+                                  # failure; -Configuration Release for what CI runs
+
+dotnet build                      # or the three by hand
 dotnet test                       # every suite but the interface
 dotnet run --project tests/Koma.Desktop.Tests   # the interface, headless
 ```
