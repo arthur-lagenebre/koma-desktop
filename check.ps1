@@ -2,13 +2,9 @@
 
 <#
 .SYNOPSIS
-Builds the solution and runs both test suites.
+Builds the solution and runs the tests.
 
 .DESCRIPTION
-Two suites and two runners: the three older ones go through dotnet test, and
-the interface suite runs itself, xunit v3 having no VSTest adapter. Until they
-are all on v3, checking the tree means three commands, which this is.
-
 Built once and run with --no-build, so that what the suites run is what was
 just compiled and not a second compilation of it.
 
@@ -44,7 +40,6 @@ Clear-Host
 try {
     Step 'Build' { dotnet build --configuration $Configuration }
     Step 'Tests' { dotnet test --no-build --configuration $Configuration }
-    Step 'Interface tests' { dotnet run --no-build --configuration $Configuration --project tests/Koma.Desktop.Tests }
 
     Write-Host ""
     Write-Host "All green." -ForegroundColor Green

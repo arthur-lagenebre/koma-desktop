@@ -10,6 +10,13 @@
   </PropertyGroup>
 
   <PropertyGroup>
+    <!-- Every suite is on xunit v3, which runs through the testing platform
+         rather than through VSTest. dotnet test then drives them all, which
+         is why there is one command again. -->
+    <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
+  </PropertyGroup>
+
+  <PropertyGroup>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <AnalysisLevel>latest-recommended</AnalysisLevel>

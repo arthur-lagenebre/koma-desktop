@@ -37,14 +37,10 @@ jobs:
       - name: Build
         run: dotnet build --no-restore --configuration Release
 
+      # Every suite, the interface one included: it draws no window, so it
+      # needs no display.
       - name: Test
         run: dotnet test --no-build --configuration Release --verbosity normal
-
-      # A suite of its own: Avalonia's headless integration is built on xunit
-      # v3, which runs itself rather than through VSTest, and dotnet test runs
-      # one or the other. It draws no window, so it needs no display.
-      - name: Test the interface
-        run: dotnet run --no-build --configuration Release --project tests/Koma.Desktop.Tests
 
   # A workflow that does not parse fails before it starts, and says so only
   # in the Actions tab. actionlint reads the workflows the way GitHub will,

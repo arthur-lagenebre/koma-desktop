@@ -158,7 +158,7 @@ src/Koma.Library          the library: its index, its covers, its scan — no UI
 tests/Koma.Cli.Tests      the command line, over corpus packages and archives
 tests/Koma.Core.Tests     xUnit, driven by the upstream conformance corpus
 tests/Koma.Imaging.Tests  SkiaSharp and the decoder, over the corpus page images
-tests/Koma.Desktop.Tests  the interface, drawn headless (xunit v3, run on its own)
+tests/Koma.Desktop.Tests  the interface, drawn headless
 tests/Koma.Library.Tests  the library, over a folder of corpus packages
 tests/Koma.TestSupport    finds the corpus for the other test projects
 external/koma             git submodule: the specification, schemas and corpus
@@ -178,12 +178,11 @@ Requires the .NET SDK (see `Directory.Build.props` for the target framework).
 git clone --recurse-submodules <this repo>
 cd koma-desktop
 
-./check.ps1                       # build, then both suites, stopping at the first
+./check.ps1                       # build, then the tests, stopping at the first
                                   # failure; -Configuration Release for what CI runs
 
-dotnet build                      # or the three by hand
-dotnet test                       # every suite but the interface
-dotnet run --project tests/Koma.Desktop.Tests   # the interface, headless
+dotnet build                      # or the two by hand
+dotnet test                       # every suite, the interface one included
 ```
 
 If you cloned without `--recurse-submodules`:

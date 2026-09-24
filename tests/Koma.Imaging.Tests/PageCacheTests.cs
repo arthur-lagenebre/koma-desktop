@@ -10,6 +10,10 @@ public sealed class PageCacheTests
 {
     private static readonly TimeSpan Patience = TimeSpan.FromSeconds(10);
 
+    // xunit v3 wants the test's own token wherever one can be passed, so that
+    // a cancelled run does not sit out a timeout.
+    private static CancellationToken Token => TestContext.Current.CancellationToken;
+
     [Fact]
     public async Task BuildsEachPageOnce()
     {
@@ -22,7 +26,7 @@ public sealed class PageCacheTests
 
         Task<FakePage> first = cache.GetAsync("a");
         Task<FakePage> second = cache.GetAsync("a");
-        await first.WaitAsync(Patience);
+        await first.WaitAsync(Patience, Token);
 
         Assert.Same(first, second);
         Assert.Equal(1, builds);
@@ -50,7 +54,7 @@ public sealed class PageCacheTests
         });
         string[] items = ["a", "b", "c", "d"];
 
-        await Task.WhenAll(items.Select(cache.GetAsync)).WaitAsync(Patience);
+        await Task.WhenAll(items.Select(cache.GetAsync)).WaitAsync(Patience, Token);
 
         Assert.Equal(1, most);
     }
@@ -61,7 +65,7 @@ public sealed class PageCacheTests
         using var release = new ManualResetEventSlim();
         using var cache = new PageCache<FakePage>(item =>
         {
-            release.Wait(Patience);
+            release.Wait(Patience, Token);
             return new FakePage(item);
         });
 
@@ -70,7 +74,7 @@ public sealed class PageCacheTests
         Assert.Null(cache.TryGet("a"));
 
         release.Set();
-        FakePage page = await build.WaitAsync(Patience);
+        FakePage page = await build.WaitAsync(Patience, Token);
 
         Assert.Same(page, cache.TryGet("a"));
     }
@@ -79,8 +83,8 @@ public sealed class PageCacheTests
     public async Task Retain_DisposesAPageLeftBehind()
     {
         using var cache = new PageCache<FakePage>(item => new FakePage(item));
-        FakePage kept = await cache.GetAsync("a").WaitAsync(Patience);
-        FakePage dropped = await cache.GetAsync("b").WaitAsync(Patience);
+        FakePage kept = await cache.GetAsync("a").WaitAsync(Patience, Token);
+        FakePage dropped = await cache.GetAsync("b").WaitAsync(Patience, Token);
 
         cache.Retain(["a"]);
 
@@ -99,21 +103,21 @@ public sealed class PageCacheTests
         {
             built.Add(item);
             started.Set();
-            release.Wait(Patience);
+            release.Wait(Patience, Token);
             return new FakePage(item);
         });
 
         // "a" holds the gate before "b" is asked for, so "b" is still queued
         // when it is dropped.
         Task<FakePage> first = cache.GetAsync("a");
-        Assert.True(started.Wait(Patience));
+        Assert.True(started.Wait(Patience, Token));
         Task<FakePage> queued = cache.GetAsync("b");
 
         cache.Retain(["a"]);
         release.Set();
-        await first.WaitAsync(Patience);
+        await first.WaitAsync(Patience, Token);
 
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => queued.WaitAsync(Patience));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => queued.WaitAsync(Patience, Token));
         Assert.DoesNotContain("b", built);
     }
 
@@ -126,17 +130,17 @@ public sealed class PageCacheTests
         using var cache = new PageCache<FakePage>(item =>
         {
             started.Set();
-            release.Wait(Patience);
+            release.Wait(Patience, Token);
             return made = new FakePage(item);
         });
 
         Task<FakePage> build = cache.GetAsync("a");
-        Assert.True(started.Wait(Patience));
+        Assert.True(started.Wait(Patience, Token));
 
         cache.Retain([]);
         release.Set();
 
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => build.WaitAsync(Patience));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => build.WaitAsync(Patience, Token));
         Assert.NotNull(made);
         Assert.True(made.IsDisposed);
     }
@@ -159,7 +163,7 @@ public sealed class PageCacheTests
         });
 
         _ = cache.GetAsync("a");
-        Assert.True(started.Wait(Patience));
+        Assert.True(started.Wait(Patience, Token));
         cache.Dispose();
 
         Assert.Equal(1, Volatile.Read(ref finished));

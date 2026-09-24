@@ -14,15 +14,6 @@ image announced as migrating, and was fixed by pinning `runs-on: ubuntu-24.04`.
 The `koma` repository has the same job, unpinned, and will fail the same way at
 its next run. The same one-line change, with the same comment.
 
-### One test runner rather than two
-
-Avalonia's headless integration is built on xunit v3, which runs itself rather
-than through VSTest, while the other three suites are on v2, which does not.
-`dotnet test` runs one or the other, so the interface suite is run on its own,
-in its own CI step. Moving the three older suites to v3 would bring everything
-back under one command; it is mechanical, and worth doing when someone has an
-afternoon rather than in the middle of something else.
-
 ### More tests for the interface
 
 `Koma.Desktop.Tests` covers the shelf, reading, the pages window, the edit
