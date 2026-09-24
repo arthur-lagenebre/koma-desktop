@@ -20,15 +20,26 @@ its next run. The same one-line change, with the same comment.
 window and the report window. What is not covered yet: the import window's
 choices, the folders window, and fitting and zooming while reading.
 
-### The accessibility of the application itself
+### Try the application with a screen reader running
 
-The shelf walks under the arrows, and the windows name their fields, their
-lists and their reports for a screen reader. What is not done: contrast, the
-focus, which is wherever Fluent puts it and has never been looked at, and the
-reading view itself, where a spread is a picture with nothing to announce.
-None of it has been tried with a screen reader running, which is the only test
-that counts: under Windows the Narrator starts with Ctrl+Windows+Enter, and
-ten minutes will say more than this paragraph.
+The names are written and nobody has heard them. That is the test that counts:
+a name can be present, announced, and still say nothing useful — "Series" read
+out after a combo box has already said "Rivage" is noise, and a card that
+announces four sentences in a row is a card nobody will sit through.
+
+Under Windows, the Narrator starts with Ctrl+Windows+Enter. Half an hour is
+enough for the pass that matters: reach the shelf, walk it with the arrows,
+open a publication, turn a page, open the edit window and change a field —
+mouse unplugged, eyes on something else. What comes back from that is worth
+more than another round of names.
+
+### The rest of the accessibility
+
+What is not done at all: contrast, which has never been measured; the focus,
+which is wherever Fluent puts it and has never been looked at; and the reading
+view, where a spread is a picture with nothing to announce — the alternative
+text of §8.7 is written into packages by this application and read back by
+nothing in it.
 
 ## Deferred, and why
 

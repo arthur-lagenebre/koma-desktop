@@ -147,6 +147,7 @@ internal sealed partial class MainWindow : Window, IDisposable
         AddHandler(KeyDownEvent, OnNavigationKey, RoutingStrategies.Tunnel);
 
         Localize();
+        Restore();
         ShowLibrary();
 
         // A file named on the command line opens over the shelf a moment later.
@@ -297,6 +298,56 @@ internal sealed partial class MainWindow : Window, IDisposable
 
     /// <summary>The publication read last, which the shelf offers to take up again.</summary>
     private LibraryEntry? LastRead => library.Entries.Where(e => e.Unreadable is null && e.LastOpened is not null).MaxBy(e => e.LastOpened);
+
+    /// <summary>
+    /// Opens the window the size it was left, and full screen if it was left
+    /// full screen.
+    /// </summary>
+    /// <remarks>
+    /// A reader who works maximised does so every time, and putting the
+    /// window back where it was is the least an application can do with what
+    /// it already writes down.
+    /// </remarks>
+    private void Restore()
+    {
+        Closing += (_, _) => Remember();
+
+        if (library.Placement is not { } placement)
+            return;
+
+        // Guarded: a screen that has shrunk since, or a placement written by
+        // hand, must not leave a window nobody can reach.
+        if (placement.Width >= 640 && placement.Height >= 480)
+        {
+            Width = placement.Width;
+            Height = placement.Height;
+        }
+
+        if (placement.Maximized)
+            WindowState = WindowState.Maximized;
+    }
+
+    /// <summary>Writes down the size the window is being left at.</summary>
+    private void Remember()
+    {
+        // The restored size, not the maximised one: a window put back to its
+        // own size should be the size it was, not the size of the screen.
+        var placement = new WindowPlacement(Width, Height, WindowState == WindowState.Maximized);
+
+        if (library.Placement == placement)
+            return;
+
+        library = library with { Placement = placement };
+
+        try
+        {
+            store.Save(library);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            // Nothing to tell a window that is closing.
+        }
+    }
 
     /// <summary>
     /// Keeps the order the reader chose, so that the shelf opens the way they

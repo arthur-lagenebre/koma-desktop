@@ -77,6 +77,20 @@ public sealed class ReadingTests : IDisposable
         Assert.StartsWith("Front cover", shown[0], StringComparison.Ordinal);
     }
 
+    [AvaloniaFact]
+    public void OpensTheSizeItWasLeft()
+    {
+        // A reader who works maximised does so every time.
+        var store = new LibraryStore(Path.Combine(folder, "library"));
+
+        store.Save(new LibraryIndex { Placement = new WindowPlacement(1000, 700, Maximized: false) });
+
+        var window = new MainWindow(store);
+        window.Show();
+
+        Assert.Equal((1000, 700), (window.Width, window.Height));
+    }
+
     public void Dispose()
     {
         try

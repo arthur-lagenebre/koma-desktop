@@ -122,6 +122,11 @@ public sealed record LibraryIndex
     /// </summary>
     public IReadOnlyList<string> PrivateFolders { get; init; } = [];
 
+    /// <summary>
+    /// The size and state the window was left in, which it opens in again.
+    /// </summary>
+    public WindowPlacement? Placement { get; init; }
+
     /// <summary>How the shelf was last ordered, which it opens on again.</summary>
     public ShelfOrder Order { get; init; }
 
@@ -131,3 +136,13 @@ public sealed record LibraryIndex
     /// </summary>
     public string? Language { get; init; }
 }
+
+/// <summary>
+/// Where a window was left: its size, and whether it filled the screen.
+/// </summary>
+/// <remarks>
+/// Kept beside the library rather than in a settings file of its own, as the
+/// shelf order and the language are: one file holds what the application
+/// remembers between two sessions.
+/// </remarks>
+public sealed record WindowPlacement(double Width, double Height, bool Maximized);
