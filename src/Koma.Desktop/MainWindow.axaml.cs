@@ -578,7 +578,7 @@ internal sealed partial class MainWindow : Window, IDisposable
         return [.. had, .. given.Where(one => !had.Any(other => same(one, other)))];
     }
 
-    private static (int Changed, int Refused) EditTogether(string[] paths, BatchEdit plan, IProgress<(int Done, string Line)> progress)
+    internal static (int Changed, int Refused) EditTogether(string[] paths, BatchEdit plan, IProgress<(int Done, string Line)> progress)
     {
         DateTimeOffset now = DateTimeOffset.UtcNow;
         int changed = 0;
@@ -586,27 +586,31 @@ internal sealed partial class MainWindow : Window, IDisposable
 
         for (int i = 0; i < paths.Length; i++)
         {
-            // The numbering follows the order the shelf showed, which is the
-            // order a reader has just checked with their eyes.
-            SeriesEdit? series = plan.Series is null && plan.NumberFrom is null ? null : new SeriesEdit(
-                plan.Series ?? PublicationEditor.Current(paths[i]).Series?.Name ?? string.Empty,
-                plan.NumberFrom is { } from ? (from + i).ToString(CultureInfo.InvariantCulture) : PublicationEditor.Current(paths[i]).Series?.Position,
-                plan.Total is { Length: > 0 } total ? total : PublicationEditor.Current(paths[i]).Series?.Total);
-
-            MetadataEdit publication = PublicationEditor.Current(paths[i]);
-
-            var edit = new MetadataEdit(
-                null,
-                plan.Language,
-                plan.Direction,
-                series,
-                plan.Accessibility,
-                Merged(plan.People, publication.Contributors, plan.Replace, (left, right) => left.Name.Trim() == right.Name.Trim()),
-                Merged(plan.Subjects, publication.Subjects, plan.Replace, (left, right) => left.Type == right.Type && left.Text.Trim() == right.Text.Trim()));
             string line;
 
             try
             {
+                // Read inside the try: a file that is not there, or that
+                // another program is holding, must count as one refusal and
+                // not end the batch.
+                MetadataEdit publication = PublicationEditor.Current(paths[i]);
+
+                // The numbering follows the order the shelf showed, which is
+                // the order a reader has just checked with their eyes.
+                SeriesEdit? series = plan.Series is null && plan.NumberFrom is null ? null : new SeriesEdit(
+                    plan.Series ?? publication.Series?.Name ?? string.Empty,
+                    plan.NumberFrom is { } from ? (from + i).ToString(CultureInfo.InvariantCulture) : publication.Series?.Position,
+                    plan.Total is { Length: > 0 } total ? total : publication.Series?.Total);
+
+                var edit = new MetadataEdit(
+                    null,
+                    plan.Language,
+                    plan.Direction,
+                    series,
+                    plan.Accessibility,
+                    Merged(plan.People, publication.Contributors, plan.Replace, (left, right) => left.Name.Trim() == right.Name.Trim()),
+                    Merged(plan.Subjects, publication.Subjects, plan.Replace, (left, right) => left.Type == right.Type && left.Text.Trim() == right.Text.Trim()));
+
                 PublicationEditor.EditMetadata(paths[i], edit, now);
                 changed++;
                 line = $"{Path.GetFileName(paths[i])}{Environment.NewLine}";
@@ -987,13 +991,13 @@ internal sealed partial class MainWindow : Window, IDisposable
     }
 
     /// <summary>What one archive of an import produced, as it happens.</summary>
-    private sealed record ImportStep(int Done, string Lines);
+    internal sealed record ImportStep(int Done, string Lines);
 
     /// <summary>
     /// Converts each archive and says so as it goes, answering with what the
     /// whole came to.
     /// </summary>
-    private static string Import((string Cbz, string Koma)[] archives, IReadOnlyList<string> folders, ConversionOptions options, IProgress<ImportStep> progress)
+    internal static string Import((string Cbz, string Koma)[] archives, IReadOnlyList<string> folders, ConversionOptions options, IProgress<ImportStep> progress)
     {
         int converted = 0;
         int refused = 0;

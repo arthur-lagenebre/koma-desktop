@@ -16,11 +16,12 @@ its next run. The same one-line change, with the same comment.
 
 ### More tests for the interface
 
-`Koma.Desktop.Tests` covers the shelf, reading with its fit and zoom, the
-pages window, the edit window, the import and folders windows and the report.
-What is not covered: the batch edit end to end — a picking of three actually
-written to three files — and an import actually converting, both of which
-want a temporary library and a minute of patience rather than any new idea.
+`Koma.Desktop.Tests` covers the shelf and its series, reading with its fit and
+zoom, the pages, edit, import, folders and report windows, and the two long
+pieces of work over real files — an edit written into three publications, an
+archive converted into one. What is not covered: the conversion of a whole
+folder, which is the same work with more of it, and anything that needs a
+picker, which belongs to the platform rather than to this application.
 
 ### The last corners of §7
 
