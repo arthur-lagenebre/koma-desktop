@@ -8,6 +8,7 @@ namespace Koma.Desktop.Tests;
 /// <summary>
 /// The pages of a publication, filled from a package on disk.
 /// </summary>
+[Collection(DrawnSuites.Name)]
 public sealed class PagesWindowTests : IDisposable
 {
     private readonly string folder = Directory.CreateTempSubdirectory("koma-pages-window").FullName;

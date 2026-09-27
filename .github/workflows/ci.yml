@@ -40,8 +40,10 @@ jobs:
       # Every suite, the interface one included: it draws no window, so it
       # needs no display. The arguments after -- go to the testing platform,
       # which otherwise writes the failures to a log nobody reads.
+      # --output Detailed, so that a failure names the test here rather than
+      # in a log file nobody fetches from a runner.
       - name: Test
-        run: dotnet test --no-build --configuration Release --verbosity normal -- --output Detailed
+        run: dotnet test --no-build --configuration Release --verbosity normal -- --output Detailed -- --output Detailed
 
   # A workflow that does not parse fails before it starts, and says so only
   # in the Actions tab. actionlint reads the workflows the way GitHub will,

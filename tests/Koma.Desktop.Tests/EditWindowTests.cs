@@ -8,6 +8,7 @@ namespace Koma.Desktop.Tests;
 /// <summary>
 /// The metadata of a publication, as a form.
 /// </summary>
+[Collection(DrawnSuites.Name)]
 public sealed class EditWindowTests : IDisposable
 {
     private readonly string folder = Directory.CreateTempSubdirectory("koma-edit-window").FullName;

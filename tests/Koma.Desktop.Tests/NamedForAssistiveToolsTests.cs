@@ -15,6 +15,7 @@ namespace Koma.Desktop.Tests;
 /// what it is for. The label above a field is what says that, and this holds
 /// the windows to putting it where a screen reader will find it.
 /// </remarks>
+[Collection(DrawnSuites.Name)]
 public sealed class NamedForAssistiveToolsTests : IDisposable
 {
     private readonly string folder = Directory.CreateTempSubdirectory("koma-named").FullName;

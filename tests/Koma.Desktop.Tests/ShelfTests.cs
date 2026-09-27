@@ -17,6 +17,7 @@ namespace Koma.Desktop.Tests;
 /// nothing, a call left with two arguments where the method had three. None
 /// of it showed at build time or in the other suites.
 /// </remarks>
+[Collection(DrawnSuites.Name)]
 public sealed class ShelfTests : IDisposable
 {
     private readonly string folder = Directory.CreateTempSubdirectory("koma-shelf").FullName;
@@ -62,6 +63,8 @@ public sealed class ShelfTests : IDisposable
         }
         finally
         {
+            // Global, so it goes back whatever happens: a suite that left the
+            // application in French would decide the next one's assertions.
             Text.Current = UiLanguage.English;
         }
 

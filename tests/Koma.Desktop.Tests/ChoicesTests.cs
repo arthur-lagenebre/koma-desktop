@@ -8,6 +8,7 @@ namespace Koma.Desktop.Tests;
 /// The two windows that ask before doing something: what to import and how,
 /// and which folders the library watches.
 /// </summary>
+[Collection(DrawnSuites.Name)]
 public sealed class ChoicesTests
 {
     [AvaloniaFact]

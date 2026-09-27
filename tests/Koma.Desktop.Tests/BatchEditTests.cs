@@ -13,6 +13,7 @@ namespace Koma.Desktop.Tests;
 /// Picking several publications out of the shelf, to edit what they have in
 /// common.
 /// </summary>
+[Collection(DrawnSuites.Name)]
 public sealed class BatchEditTests : IDisposable
 {
     private readonly string folder = Directory.CreateTempSubdirectory("koma-batch").FullName;

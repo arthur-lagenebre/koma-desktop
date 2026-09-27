@@ -16,6 +16,7 @@ namespace Koma.Desktop.Tests;
 /// The window is given a library of its own, in a folder of the test's, so
 /// that the tests neither read nor write the library of whoever runs them.
 /// </remarks>
+[Collection(DrawnSuites.Name)]
 public sealed class ReadingTests : IDisposable
 {
     private readonly string folder = Directory.CreateTempSubdirectory("koma-reading").FullName;

@@ -3,6 +3,7 @@ namespace Koma.Desktop.Tests;
 /// <summary>
 /// Where an import writes what it converts.
 /// </summary>
+[Collection(DrawnSuites.Name)]
 public sealed class ImportDestinationTests
 {
     [Fact]

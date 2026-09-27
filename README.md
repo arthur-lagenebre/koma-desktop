@@ -202,7 +202,7 @@ src/Koma.Library          the library: its index, its covers, its scan — no UI
 tests/Koma.Cli.Tests      the command line, over corpus packages and archives
 tests/Koma.Core.Tests     xUnit, driven by the upstream conformance corpus
 tests/Koma.Imaging.Tests  SkiaSharp and the decoder, over the corpus page images
-tests/Koma.Desktop.Tests  the interface, drawn headless
+tests/Koma.Desktop.Tests  the interface, drawn headless, one suite at a time
 tests/Koma.Library.Tests  the library, over a folder of corpus packages
 tests/Koma.TestSupport    finds the corpus for the other test projects
 external/koma             git submodule: the specification, schemas and corpus

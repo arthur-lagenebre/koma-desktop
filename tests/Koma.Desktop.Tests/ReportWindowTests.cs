@@ -7,6 +7,7 @@ namespace Koma.Desktop.Tests;
 /// <summary>
 /// The report of an import or of a publication, which is read and copied.
 /// </summary>
+[Collection(DrawnSuites.Name)]
 public sealed class ReportWindowTests
 {
     [AvaloniaFact]

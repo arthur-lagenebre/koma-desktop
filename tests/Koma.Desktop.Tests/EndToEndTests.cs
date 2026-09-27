@@ -17,6 +17,7 @@ namespace Koma.Desktop.Tests;
 /// ruined. No window is opened, so these are plain facts about the work
 /// rather than about the interface.
 /// </remarks>
+[Collection(DrawnSuites.Name)]
 public sealed class EndToEndTests : IDisposable
 {
     private readonly string folder = Directory.CreateTempSubdirectory("koma-end-to-end").FullName;
