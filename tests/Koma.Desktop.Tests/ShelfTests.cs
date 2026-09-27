@@ -123,6 +123,27 @@ public sealed class ShelfTests : IDisposable
         Assert.True(cards[^1].IsFocused);
     }
 
+    [AvaloniaFact]
+    public void ShowsASeriesAsOneCardUntilItIsOpened()
+    {
+        // Forty volumes of six series are six things to look at, not forty.
+        (Window window, LibraryView shelf) = Shelf();
+
+        shelf.Show(Series(), new LibraryStore(folder), ShelfOrder.Series, new HashSet<string>(StringComparer.Ordinal));
+
+        // Two volumes of one series, and the one that belongs to none.
+        Assert.Equal(2, Cards(window));
+
+        window.GetVisualDescendants().OfType<Button>().First(b => b.Content is StackPanel).Press();
+
+        // Opened: the volumes themselves, and the way back.
+        Assert.Equal(2, Cards(window));
+        Assert.Contains(window.GetVisualDescendants().OfType<Button>(), b => (b.Content as string)?.Contains("All series", StringComparison.Ordinal) == true);
+
+        Assert.True(shelf.LeaveSeries());
+        Assert.False(shelf.LeaveSeries());
+    }
+
     public void Dispose()
     {
         try
@@ -147,6 +168,13 @@ public sealed class ShelfTests : IDisposable
     }
 
     private static int Cards(Window window) => window.GetVisualDescendants().OfType<Button>().Count(b => b.Content is StackPanel);
+
+    private static LibraryEntry[] Series() =>
+    [
+        Entry("un.koma", "Un") with { Series = "Rivage", SeriesPosition = "1" },
+        Entry("deux.koma", "Deux") with { Series = "Rivage", SeriesPosition = "2" },
+        Entry("seul.koma", "Seul")
+    ];
 
     private static LibraryEntry[] Entries() =>
     [

@@ -1159,6 +1159,12 @@ internal sealed partial class MainWindow : Window, IDisposable
                 e.Handled = true;
                 ShowLibrary();
             }
+            else if (Shelf.LeaveSeries())
+            {
+                // A series opened is a place to come back from, before a
+                // picking is.
+                e.Handled = true;
+            }
             else if (picked.Count > 0)
             {
                 e.Handled = true;

@@ -60,6 +60,7 @@ internal sealed class LibraryView : DockPanel
     private Task reading = Task.CompletedTask;
 
     private int drawing;
+    private string? openSeries;
 
     private IReadOnlyList<LibraryEntry> entries = [];
     private IReadOnlySet<string> hidden = new HashSet<string>(StringComparer.Ordinal);
@@ -228,10 +229,24 @@ internal sealed class LibraryView : DockPanel
             return;
         }
 
+        // A series stands as one card until it is opened: forty volumes of
+        // six series are six things to look at, not forty. Searching is
+        // looking for a title, so it shows the volumes themselves.
+        bool asSeries = chosen == ShelfOrder.Series && string.IsNullOrWhiteSpace(search.Text);
+
+        if (asSeries && openSeries is null)
+        {
+            Tiles(arranged, store);
+            return;
+        }
+
         foreach (ShelfGroup group in arranged)
         {
+            if (asSeries && group.Heading != openSeries)
+                continue;
+
             if (group.Heading is not null)
-                groups.Children.Add(new TextBlock { Text = Text.Of(group.Heading), FontSize = 18, FontWeight = FontWeight.SemiBold, Margin = new Thickness(6, 14, 6, 2) });
+                groups.Children.Add(Heading(group.Heading, back: asSeries));
 
             var shelf = new WrapPanel { ItemWidth = CardWidth, ItemHeight = CardHeight };
 
@@ -240,6 +255,121 @@ internal sealed class LibraryView : DockPanel
 
             groups.Children.Add(shelf);
         }
+    }
+
+    /// <summary>
+    /// One card per series, and the publications outside a series as they
+    /// are: those belong to nothing to open.
+    /// </summary>
+    private void Tiles(IReadOnlyList<ShelfGroup> arranged, LibraryStore store)
+    {
+        var series = new WrapPanel { ItemWidth = CardWidth, ItemHeight = CardHeight };
+        var alone = new WrapPanel { ItemWidth = CardWidth, ItemHeight = CardHeight };
+
+        foreach (ShelfGroup group in arranged)
+        {
+            bool named = group.Heading is { } heading && heading != ShelfArrangement.NoSeries && heading != ShelfArrangement.Unreadable;
+
+            // A series of one volume is a book: it opens on that volume
+            // rather than on a card holding a single card.
+            if (named && group.Entries.Count > 1)
+            {
+                series.Children.Add(Tile(group.Heading!, group.Entries, store));
+                continue;
+            }
+
+            foreach (LibraryEntry entry in group.Entries)
+                alone.Children.Add(Card(entry, store));
+        }
+
+        // Two shelves, since one holds things to open and the other things to
+        // read, and a reader looking for one is not looking for the other.
+        if (series.Children.Count > 0)
+        {
+            groups.Children.Add(Heading(Text.Of("Series on the shelf"), back: false));
+            groups.Children.Add(series);
+        }
+
+        if (alone.Children.Count > 0)
+        {
+            groups.Children.Add(Heading(Text.Of("On their own"), back: false));
+            groups.Children.Add(alone);
+        }
+    }
+
+    /// <summary>A whole series as one card, which opens on its volumes.</summary>
+    private Button Tile(string series, IReadOnlyList<LibraryEntry> volumes, LibraryStore store)
+    {
+        LibraryEntry first = volumes[0];
+        var contents = new StackPanel { Spacing = 4 };
+
+        contents.Children.Add(Cover(first, store));
+        contents.Children.Add(Line(series, FontWeight.SemiBold, lines: 2));
+        contents.Children.Add(Line(volumes.Count == 1 ? Text.Of("1 volume") : Text.Of("{0} volumes", volumes.Count), FontWeight.Normal, lines: 1, opacity: 0.75));
+
+        // The one being read says so, since it is why a reader opens a series
+        // rather than a volume.
+        if (volumes.Where(v => v.LastOpened is not null).MaxBy(v => v.LastOpened) is { } reading)
+            contents.Children.Add(Line(Text.Of("Reading {0}", reading.Title ?? Path.GetFileName(reading.Path)), FontWeight.Normal, lines: 2, opacity: 0.75));
+
+        var card = new Button
+        {
+            Content = contents,
+            Width = CardWidth - (2 * CardMargin),
+            Height = CardHeight - (2 * CardMargin),
+            Margin = new Thickness(CardMargin),
+            Padding = new Thickness(8),
+            HorizontalContentAlignment = HorizontalAlignment.Stretch,
+            VerticalContentAlignment = VerticalAlignment.Top
+        };
+
+        AutomationProperties.SetName(card, Text.Of("{0}, {1} volumes", series, volumes.Count));
+
+        card.Click += (_, _) =>
+        {
+            openSeries = series;
+            Draw();
+        };
+
+        return card;
+    }
+
+    /// <summary>
+    /// The heading of a group, with the way back where there is one to take.
+    /// </summary>
+    private StackPanel Heading(string heading, bool back)
+    {
+        var line = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Margin = new Thickness(6, 14, 6, 2) };
+
+        if (back)
+        {
+            var button = new Button { Content = Text.Of("← All series"), VerticalAlignment = VerticalAlignment.Center };
+
+            button.Click += (_, _) => LeaveSeries();
+            line.Children.Add(button);
+        }
+
+        line.Children.Add(new TextBlock
+        {
+            Text = Text.Of(heading),
+            FontSize = 18,
+            FontWeight = FontWeight.SemiBold,
+            VerticalAlignment = VerticalAlignment.Center
+        });
+
+        return line;
+    }
+
+    /// <summary>Closes an open series, and says whether one was open.</summary>
+    public bool LeaveSeries()
+    {
+        if (openSeries is null)
+            return false;
+
+        openSeries = null;
+        Draw();
+
+        return true;
     }
 
     private Button Card(LibraryEntry entry, LibraryStore store)
