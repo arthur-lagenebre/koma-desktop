@@ -18,6 +18,10 @@ internal static class MetadataRows
 {
     private static readonly string[] SubjectTypes = [.. OpenVocabularies.SubjectTypes];
     private static readonly string[] DescriptionTypes = [.. OpenVocabularies.DescriptionTypes];
+    private static readonly string[] EntityTypes = [.. OpenVocabularies.EntityTypes];
+    private static readonly string[] EntityRoles = ["", .. OpenVocabularies.EntityRoles];
+    private static readonly string[] ContentWarnings = [.. OpenVocabularies.ContentWarnings];
+    private static readonly string[] LinkRelations = [.. OpenVocabularies.LinkRelations];
 
     public static Rows People() => new(Text.Of("Add someone"), () => new StackPanel
     {
@@ -69,6 +73,99 @@ internal static class MetadataRows
         .. rows.Lines.Select(line => new DescriptionEdit(
             Input<ComboBox>(line, 0).SelectedItem as string ?? "summary",
             Input<TextBox>(line, 1).Text ?? string.Empty))
+    ];
+
+    public static Rows Entities() => new(Text.Of("Add a character or a place"), () => new StackPanel
+    {
+        Orientation = Orientation.Horizontal,
+        Spacing = 8,
+        Children =
+        {
+            Field(Text.Of("Name"), new TextBox { Width = 220 }),
+            Field(Text.Of("Kind"), new ComboBox { ItemsSource = EntityTypes, SelectedIndex = 0, Width = 150 }),
+            Field(Text.Of("Part in the story"), new ComboBox { ItemsSource = EntityRoles, SelectedIndex = 0, Width = 150 })
+        }
+    });
+
+    public static Rows Warnings() => new(Text.Of("Add a warning"), () => new StackPanel
+    {
+        Orientation = Orientation.Horizontal,
+        Spacing = 8,
+        Children =
+        {
+            Field(Text.Of("What a reader is warned about"), new ComboBox { ItemsSource = ContentWarnings, SelectedIndex = 0, Width = 180 }),
+            Field(Text.Of("A word about it"), new TextBox { Width = 320 })
+        }
+    });
+
+    public static Rows Links() => new(Text.Of("Add a link"), () => new StackPanel
+    {
+        Orientation = Orientation.Horizontal,
+        Spacing = 8,
+        Children =
+        {
+            Field(Text.Of("What is at the other end"), new ComboBox { ItemsSource = LinkRelations, SelectedIndex = 0, Width = 180 }),
+            Field(Text.Of("Address"), new TextBox { Width = 300 }),
+            Field(Text.Of("What to call it"), new TextBox { Width = 180 })
+        }
+    });
+
+    public static void Fill(Rows rows, IReadOnlyList<EntityEdit> entities)
+    {
+        rows.Fill(entities.Count);
+
+        foreach ((StackPanel line, EntityEdit entity) in rows.Lines.Zip(entities))
+        {
+            Input<TextBox>(line, 0).Text = entity.Name;
+            Input<ComboBox>(line, 1).SelectedIndex = Math.Max(0, Array.IndexOf(EntityTypes, entity.Type));
+            Input<ComboBox>(line, 2).SelectedIndex = Math.Max(0, Array.IndexOf(EntityRoles, entity.Role));
+        }
+    }
+
+    public static void Fill(Rows rows, IReadOnlyList<WarningEdit> warnings)
+    {
+        rows.Fill(warnings.Count);
+
+        foreach ((StackPanel line, WarningEdit warning) in rows.Lines.Zip(warnings))
+        {
+            Input<ComboBox>(line, 0).SelectedIndex = Math.Max(0, Array.IndexOf(ContentWarnings, warning.Type));
+            Input<TextBox>(line, 1).Text = warning.Text;
+        }
+    }
+
+    public static void Fill(Rows rows, IReadOnlyList<LinkEdit> links)
+    {
+        rows.Fill(links.Count);
+
+        foreach ((StackPanel line, LinkEdit link) in rows.Lines.Zip(links))
+        {
+            Input<ComboBox>(line, 0).SelectedIndex = Math.Max(0, Array.IndexOf(LinkRelations, link.Relation));
+            Input<TextBox>(line, 1).Text = link.Href;
+            Input<TextBox>(line, 2).Text = link.Text;
+        }
+    }
+
+    public static EntityEdit[] ReadEntities(Rows rows) =>
+    [
+        .. rows.Lines.Select(line => new EntityEdit(
+            Input<TextBox>(line, 0).Text ?? string.Empty,
+            Input<ComboBox>(line, 1).SelectedItem as string ?? "character",
+            Input<ComboBox>(line, 2).SelectedItem as string ?? string.Empty))
+    ];
+
+    public static WarningEdit[] ReadWarnings(Rows rows) =>
+    [
+        .. rows.Lines.Select(line => new WarningEdit(
+            Input<ComboBox>(line, 0).SelectedItem as string ?? "other",
+            Input<TextBox>(line, 1).Text ?? string.Empty))
+    ];
+
+    public static LinkEdit[] ReadLinks(Rows rows) =>
+    [
+        .. rows.Lines.Select(line => new LinkEdit(
+            Input<ComboBox>(line, 0).SelectedItem as string ?? "other",
+            Input<TextBox>(line, 1).Text ?? string.Empty,
+            Input<TextBox>(line, 2).Text ?? string.Empty))
     ];
 
     public static void Fill(Rows rows, IReadOnlyList<ContributorEdit> people)

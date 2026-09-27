@@ -54,6 +54,18 @@ public static class OpenVocabularies
         "sound", "no-sound-hazard", "none", "unknown"
     ];
 
+    /// <summary>The core entity types of §7.10, in the order it lists them.</summary>
+    public static IReadOnlyList<string> EntityTypes { get; } = ["character", "team", "organization", "location", "vehicle", "object", "event", "other"];
+
+    /// <summary>The core entity roles of §7.10, in the order it lists them.</summary>
+    public static IReadOnlyList<string> EntityRoles { get; } = ["protagonist", "antagonist", "supporting", "cameo", "narrator"];
+
+    /// <summary>The core content warnings of §7.14, in the order it lists them.</summary>
+    public static IReadOnlyList<string> ContentWarnings { get; } = ["violence", "gore", "sexual-content", "nudity", "language", "drug-use", "self-harm", "flashing-images", "other"];
+
+    /// <summary>The core link relations of §7.15, in the order it lists them.</summary>
+    public static IReadOnlyList<string> LinkRelations { get; } = ["homepage", "publisher", "author", "series", "purchase", "record", "errata", "license", "source", "related-publication", "other"];
+
     /// <summary>The core description types of §7.7, in the order it lists them.</summary>
     public static IReadOnlyList<string> DescriptionTypes { get; } = ["summary", "synopsis", "blurb", "note", "edition-note", "series-note", "other"];
 
@@ -79,8 +91,8 @@ public static class OpenVocabularies
         Of(Metadata, "Description", "type", false, [.. DescriptionTypes]),
         Of(Metadata, "Date", "event", false, ["publication", "first-publication", "creation", "digitization", "modified"]),
         Of(Metadata, "Subject", "type", false, [.. SubjectTypes]),
-        Of(Metadata, "Entity", "type", false, ["character", "team", "organization", "location", "vehicle", "object", "event", "other"]),
-        Of(Metadata, "Entity", "role", false, ["protagonist", "antagonist", "supporting", "cameo", "narrator"]),
+        Of(Metadata, "Entity", "type", false, [.. EntityTypes]),
+        Of(Metadata, "Entity", "role", false, [.. EntityRoles]),
         Of(Metadata, "Content", "original-medium", false, ["print", "digital", "webtoon", "mixed", "unknown"]),
         Of(Metadata, "Source", "type", false, ["print", "digital", "microform", "original-artwork", "periodical", "other"]),
         Of(Metadata, "Method", null, false, ["flatbed-scan", "sheet-fed-scan", "overhead-scan", "photography", "born-digital", "other"]),
@@ -89,8 +101,8 @@ public static class OpenVocabularies
         Of(Metadata, "AccessModeSufficient", null, true, [.. AccessModes]),
         Of(Metadata, "AccessibilityFeature", null, false, ["alternative-text", "long-description", "reading-order", "structural-navigation", "page-navigation", "table-of-contents", "high-contrast-display", "none"]),
         Of(Metadata, "AccessibilityHazard", null, false, [.. AccessibilityHazards]),
-        Of(Metadata, "ContentWarning", "type", false, ["violence", "gore", "sexual-content", "nudity", "language", "drug-use", "self-harm", "flashing-images", "other"]),
-        Of(Metadata, "Link", "rel", false, ["homepage", "publisher", "author", "series", "purchase", "record", "errata", "license", "source", "related-publication", "other"]),
+        Of(Metadata, "ContentWarning", "type", false, [.. ContentWarnings]),
+        Of(Metadata, "Link", "rel", false, [.. LinkRelations]),
         Of(Manifest, "Item", "roles", true, [.. PageRoles]),
         Of(Navigation, "Landmark", "type", false, ["front-cover", "inner-cover", "title-page", "table-of-contents", "body-start", "story-start", "credits", "glossary", "appendix", "bonus", "preview", "back-cover"]),
         Of(Navigation, "Region", "type", false, ["panel", "group", "inset", "caption", "other"])

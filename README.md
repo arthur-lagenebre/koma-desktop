@@ -120,10 +120,12 @@ archives or into a folder of the reader's, keeping whatever tree a folder of
 archives sat in, never over an existing file, checksums included, and shows
 what each conversion assumed or refused as it happens, before the shelf is
 rescanned. Edit metadata, from a card's menu or from the publication on screen,
-changes, over four tabs, the title, language, reading direction, publisher,
+changes, over seven tabs, the title, language, reading direction, publisher,
 series and what the publication says about reading it, the imprint and place of
 §7.8, who it is the work of (§7.6), what it is about (§7.9) and what it says of
-itself (§7.7) — how it is taken in, what it may do to a reader, a sentence for
+itself (§7.7), who and what its story is about (§7.10), what a reader is warned
+of (§7.14), where else it is spoken of (§7.15) and what may be done with it
+(§7.16) — how it is taken in, what it may do to a reader, a sentence for
 someone deciding whether they can read it — writing only what changed. Pages
 shows the pages of the publication, each beside its own picture, and changes
 what the package says about one — its role, its span, its side of the spread,

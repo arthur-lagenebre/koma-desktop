@@ -40,6 +40,9 @@ internal sealed class EditWindow : Window
     private readonly TextBox publisher = new();
     private readonly TextBox imprint = new();
     private readonly TextBox place = new();
+    private readonly TextBox copyright = new();
+    private readonly TextBox license = new();
+    private readonly TextBox statement = new() { AcceptsReturn = true, Height = 90, TextWrapping = TextWrapping.Wrap };
     private readonly CheckBox[] modes = Boxes.For(OpenVocabularies.AccessModes);
     private readonly CheckBox[] hazards = Boxes.For(OpenVocabularies.AccessibilityHazards);
     private readonly TextBox summary = new() { AcceptsReturn = true, Height = 60, TextWrapping = TextWrapping.Wrap };
@@ -49,6 +52,9 @@ internal sealed class EditWindow : Window
     private Rows people = null!;
     private Rows subjects = null!;
     private Rows descriptions = null!;
+    private Rows entities = null!;
+    private Rows warnings = null!;
+    private Rows links = null!;
     private readonly StackPanel fields = new() { Spacing = 6, Margin = new Thickness(16) };
     private readonly WritingNotice writing = new();
 
@@ -112,7 +118,10 @@ internal sealed class EditWindow : Window
                 new TabItem { Header = Text.Of("Publication"), Content = new ScrollViewer { Content = publication } },
                 new TabItem { Header = Text.Of("People"), Content = new ScrollViewer { Content = People(current) } },
                 new TabItem { Header = Text.Of("Subjects"), Content = new ScrollViewer { Content = Subjects(current) } },
-                new TabItem { Header = Text.Of("Descriptions"), Content = new ScrollViewer { Content = Descriptions(current) } }
+                new TabItem { Header = Text.Of("Descriptions"), Content = new ScrollViewer { Content = Descriptions(current) } },
+                new TabItem { Header = Text.Of("Story"), Content = new ScrollViewer { Content = Story(current) } },
+                new TabItem { Header = Text.Of("Warnings and links"), Content = new ScrollViewer { Content = WarningsAndLinks(current) } },
+                new TabItem { Header = Text.Of("Rights"), Content = new ScrollViewer { Content = Rights(current) } }
             }
         });
 
@@ -148,6 +157,66 @@ internal sealed class EditWindow : Window
         MetadataRows.Fill(subjects, current.Subjects ?? []);
 
         return new StackPanel { Spacing = 8, Margin = new Thickness(12), Children = { subjects } };
+    }
+
+    /// <summary>Who and what the story is about (§7.10).</summary>
+    private StackPanel Story(MetadataEdit current)
+    {
+        entities = MetadataRows.Entities();
+        MetadataRows.Fill(entities, current.Entities ?? []);
+
+        return new StackPanel
+        {
+            Spacing = 8,
+            Margin = new Thickness(12),
+            Children =
+            {
+                new TextBlock { Text = Text.Of("The characters, teams and places of the story, which is a different list from the people who made it."), Opacity = 0.6, TextWrapping = TextWrapping.Wrap },
+                entities
+            }
+        };
+    }
+
+    /// <summary>What a reader is warned about (§7.14), and where else to look (§7.15).</summary>
+    private StackPanel WarningsAndLinks(MetadataEdit current)
+    {
+        warnings = MetadataRows.Warnings();
+        links = MetadataRows.Links();
+
+        MetadataRows.Fill(warnings, current.Warnings ?? []);
+        MetadataRows.Fill(links, current.Links ?? []);
+
+        return new StackPanel
+        {
+            Spacing = 12,
+            Margin = new Thickness(12),
+            Children =
+            {
+                warnings,
+                new TextBlock { Text = Text.Of("The ratings a conversion wrote are kept as they are; only the warnings are edited here."), Opacity = 0.6, TextWrapping = TextWrapping.Wrap },
+                links
+            }
+        };
+    }
+
+    /// <summary>What may be done with the publication (§7.16).</summary>
+    private StackPanel Rights(MetadataEdit current)
+    {
+        copyright.Text = current.Rights?.Copyright;
+        license.Text = current.Rights?.License;
+        statement.Text = current.Rights?.Statement;
+
+        return new StackPanel
+        {
+            Spacing = 6,
+            Margin = new Thickness(12),
+            Children =
+            {
+                Field(Text.Of("Copyright"), copyright),
+                Field(Text.Of("Licence, by its identifier"), license),
+                Field(Text.Of("Anything else worth saying"), statement)
+            }
+        };
     }
 
     /// <summary>What the publication says about itself (§7.7).</summary>
@@ -216,6 +285,15 @@ internal sealed class EditWindow : Window
         SubjectEdit[] newSubjects = MetadataRows.ReadSubjects(subjects);
 
         DescriptionEdit[] newDescriptions = MetadataRows.ReadDescriptions(descriptions);
+        EntityEdit[] newEntities = MetadataRows.ReadEntities(entities);
+        WarningEdit[] newWarnings = MetadataRows.ReadWarnings(warnings);
+        LinkEdit[] newLinks = MetadataRows.ReadLinks(links);
+
+        var newRights = new RightsEdit(
+            (copyright.Text ?? string.Empty).Trim(),
+            (license.Text ?? string.Empty).Trim(),
+            (statement.Text ?? string.Empty).Trim());
+
         string newPublisher = (publisher.Text ?? string.Empty).Trim();
         string newImprint = (imprint.Text ?? string.Empty).Trim();
         string newPlace = (place.Text ?? string.Empty).Trim();
@@ -229,6 +307,10 @@ internal sealed class EditWindow : Window
             Same(newPeople, current.Contributors) ? null : newPeople,
             Same(newSubjects, current.Subjects) ? null : newSubjects,
             Same(newDescriptions, current.Descriptions) ? null : newDescriptions,
+            Same(newEntities, current.Entities) ? null : newEntities,
+            Same(newWarnings, current.Warnings) ? null : newWarnings,
+            Same(newLinks, current.Links) ? null : newLinks,
+            newRights == current.Rights ? null : newRights,
             newPublisher == (current.Publisher ?? string.Empty) ? null : newPublisher,
             newImprint == (current.Imprint ?? string.Empty) ? null : newImprint,
             newPlace == (current.Place ?? string.Empty) ? null : newPlace);
@@ -248,6 +330,25 @@ internal sealed class EditWindow : Window
         && left.Zip(right).All(both => both.First.Name.Trim() == both.Second.Name.Trim()
             && both.First.Organization == both.Second.Organization
             && both.First.Roles.SequenceEqual(both.Second.Roles, StringComparer.Ordinal));
+
+    private static bool Same(EntityEdit[] left, IReadOnlyList<EntityEdit>? right) =>
+        right is not null
+        && left.Length == right.Count
+        && left.Zip(right).All(both => both.First.Name.Trim() == both.Second.Name.Trim()
+            && both.First.Type == both.Second.Type
+            && both.First.Role == both.Second.Role);
+
+    private static bool Same(WarningEdit[] left, IReadOnlyList<WarningEdit>? right) =>
+        right is not null
+        && left.Length == right.Count
+        && left.Zip(right).All(both => both.First.Type == both.Second.Type && both.First.Text.Trim() == both.Second.Text.Trim());
+
+    private static bool Same(LinkEdit[] left, IReadOnlyList<LinkEdit>? right) =>
+        right is not null
+        && left.Length == right.Count
+        && left.Zip(right).All(both => both.First.Relation == both.Second.Relation
+            && both.First.Href.Trim() == both.Second.Href.Trim()
+            && both.First.Text.Trim() == both.Second.Text.Trim());
 
     private static bool Same(DescriptionEdit[] left, IReadOnlyList<DescriptionEdit>? right) =>
         right is not null

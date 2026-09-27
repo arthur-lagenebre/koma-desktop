@@ -167,6 +167,55 @@ public sealed class MetadataEditorTests : IDisposable
     }
 
     [Fact]
+    public void WritesTheStoryTheWarningsTheLinksAndTheRights()
+    {
+        var edit = new MetadataEdit(
+            Entities: [new EntityEdit("Nemo", "character", "protagonist"), new EntityEdit("Nautilus", "vehicle")],
+            Warnings: [new WarningEdit("violence", "Combats")],
+            Links: [new LinkEdit("purchase", "https://example.org/nemo", "Chez l'éditeur")],
+            Rights: new RightsEdit("© 2026 Soleil", "CC-BY-4.0", "Reproduction interdite."));
+
+        XDocument edited = MetadataEditor.Apply(Minimal(), edit, Now);
+        XElement root = edited.Root!;
+
+        Assert.Equal("protagonist", (string?)root.Element(M("Entities"))!.Elements(M("Entity")).First().Attribute("role"));
+
+        // A part in the story is optional (§7.10), so an entity without one
+        // says nothing rather than saying nothing useful.
+        Assert.Null(root.Element(M("Entities"))!.Elements(M("Entity")).Last().Attribute("role"));
+
+        Assert.Equal("violence", (string?)root.Element(M("Ratings"))!.Element(M("ContentWarning"))!.Attribute("type"));
+        Assert.Equal("https://example.org/nemo", (string?)root.Element(M("Links"))!.Element(M("Link"))!.Attribute("href"));
+
+        // §7.16 gives the order: copyright, licence, statement.
+        string[] rights = ["Copyright", "License", "Statement"];
+        Assert.Equal(rights, root.Element(M("Rights"))!.Elements().Select(e => e.Name.LocalName));
+
+        MetadataEdit read = MetadataEditor.Read(edited);
+
+        Assert.Equal("Nemo", read.Entities![0].Name);
+        Assert.Equal("CC-BY-4.0", read.Rights!.License);
+    }
+
+    [Fact]
+    public void KeepsTheRatingsAConversionWroteWhenTheWarningsChange()
+    {
+        // §7.14 holds both, and this editor knows only one of them: the other
+        // must survive an edit rather than be lost to it.
+        XDocument original = Minimal();
+        XNamespace m = "urn:koma:metadata";
+
+        original.Root!.Add(new XElement(m + "Ratings", new XElement(m + "Rating", new XAttribute("scheme", "cero"), new XAttribute("value", "B"))));
+
+        XDocument edited = MetadataEditor.Apply(original, new MetadataEdit(Warnings: [new WarningEdit("gore")]), Now);
+        XElement section = edited.Root!.Element(M("Ratings"))!;
+
+        // §7.14 puts the ratings before the warnings.
+        string[] order = ["Rating", "ContentWarning"];
+        Assert.Equal(order, section.Elements().Select(e => e.Name.LocalName));
+    }
+
+    [Fact]
     public void EmptyingAListTakesItsSectionAway()
     {
         // An editor that could not clear a list could not undo a bad

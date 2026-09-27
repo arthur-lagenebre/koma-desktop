@@ -43,6 +43,38 @@ public sealed record DescriptionEdit(string Type, string Text);
 public sealed record SubjectEdit(string Type, string Text);
 
 /// <summary>
+/// Someone or something the story is about (§7.10): a character, a team, a
+/// place.
+/// </summary>
+/// <param name="Name">The name as it is written.</param>
+/// <param name="Type">What it is, from the vocabulary of §7.10.</param>
+/// <param name="Role">What it does in the story, or empty.</param>
+public sealed record EntityEdit(string Name, string Type, string Role = "");
+
+/// <summary>
+/// A warning about what a publication holds (§7.14).
+/// </summary>
+/// <param name="Type">What is being warned about, from the vocabulary of §7.14.</param>
+/// <param name="Text">A word about it, or empty.</param>
+public sealed record WarningEdit(string Type, string Text = "");
+
+/// <summary>
+/// Somewhere else about this publication (§7.15).
+/// </summary>
+/// <param name="Relation">What is at the other end, from the vocabulary of §7.15.</param>
+/// <param name="Href">The address itself.</param>
+/// <param name="Text">What to call it, or empty.</param>
+public sealed record LinkEdit(string Relation, string Href, string Text = "");
+
+/// <summary>
+/// What may be done with a publication (§7.16).
+/// </summary>
+/// <param name="Copyright">The copyright line, or empty.</param>
+/// <param name="License">The licence, by its identifier, or empty.</param>
+/// <param name="Statement">Anything else worth saying, or empty.</param>
+public sealed record RightsEdit(string Copyright, string License, string Statement);
+
+/// <summary>
 /// What an edit changes. A <see langword="null"/> field is left as it is.
 /// </summary>
 /// <remarks>
@@ -59,6 +91,10 @@ public sealed record MetadataEdit(
     IReadOnlyList<ContributorEdit>? Contributors = null,
     IReadOnlyList<SubjectEdit>? Subjects = null,
     IReadOnlyList<DescriptionEdit>? Descriptions = null,
+    IReadOnlyList<EntityEdit>? Entities = null,
+    IReadOnlyList<WarningEdit>? Warnings = null,
+    IReadOnlyList<LinkEdit>? Links = null,
+    RightsEdit? Rights = null,
     string? Publisher = null,
     string? Imprint = null,
     string? Place = null);
@@ -122,6 +158,21 @@ public static partial class MetadataEditor
             [.. root.Element(X("Descriptions"))?.Elements(X("Description")).Select(d => new DescriptionEdit(
                 (string?)d.Attribute("type") ?? "summary",
                 d.Value.Trim())) ?? []],
+            [.. root.Element(X("Entities"))?.Elements(X("Entity")).Select(e => new EntityEdit(
+                e.Element(X("Name"))?.Value.Trim() ?? string.Empty,
+                (string?)e.Attribute("type") ?? "character",
+                (string?)e.Attribute("role") ?? string.Empty)) ?? []],
+            [.. root.Element(X("Ratings"))?.Elements(X("ContentWarning")).Select(w => new WarningEdit(
+                (string?)w.Attribute("type") ?? "other",
+                w.Value.Trim())) ?? []],
+            [.. root.Element(X("Links"))?.Elements(X("Link")).Select(l => new LinkEdit(
+                (string?)l.Attribute("rel") ?? "other",
+                (string?)l.Attribute("href") ?? string.Empty,
+                l.Value.Trim())) ?? []],
+            new RightsEdit(
+                root.Element(X("Rights"))?.Element(X("Copyright"))?.Value.Trim() ?? string.Empty,
+                (string?)root.Element(X("Rights"))?.Element(X("License"))?.Attribute("identifier") ?? string.Empty,
+                root.Element(X("Rights"))?.Element(X("Statement"))?.Value.Trim() ?? string.Empty),
             root.Element(X("Publication"))?.Element(X("Publisher"))?.Value.Trim() ?? string.Empty,
             root.Element(X("Publication"))?.Element(X("Imprint"))?.Value.Trim() ?? string.Empty,
             root.Element(X("Publication"))?.Element(X("Place"))?.Value.Trim() ?? string.Empty);
@@ -174,6 +225,18 @@ public static partial class MetadataEditor
 
         if (edit.Descriptions is { } descriptions)
             SetDescriptions(root, descriptions);
+
+        if (edit.Entities is { } entities)
+            SetEntities(root, entities);
+
+        if (edit.Warnings is { } warnings)
+            SetWarnings(root, warnings);
+
+        if (edit.Links is { } links)
+            SetLinks(root, links);
+
+        if (edit.Rights is { } rights)
+            SetRights(root, rights);
 
         if (edit.Publisher is { } publisher)
             SetPublication(root, "Publisher", publisher);
@@ -389,6 +452,131 @@ public static partial class MetadataEditor
 
             return subject;
         }));
+    }
+
+    /// <summary>Writes who and what the story is about (§7.10).</summary>
+    private static void SetEntities(XElement root, IReadOnlyList<EntityEdit> entities)
+    {
+        EntityEdit[] written = [.. entities.Where(e => !string.IsNullOrWhiteSpace(e.Name))];
+
+        if (written.Length == 0)
+        {
+            root.Element(X("Entities"))?.Remove();
+            return;
+        }
+
+        Tokens(written.Select(e => e.Type).Concat(written.Select(e => e.Role)), nameof(entities), typeRequired: written.Select(e => e.Type));
+
+        Container(root, "Entities").ReplaceNodes(written.Select(e =>
+        {
+            var entity = new XElement(X("Entity"), new XAttribute("type", e.Type.Trim()), Named(root, e.Name.Trim()));
+
+            if (e.Role.Trim() is { Length: > 0 } role)
+                entity.SetAttributeValue("role", role);
+
+            return entity;
+        }));
+    }
+
+    /// <summary>
+    /// Writes what a reader is warned about (§7.14), keeping the ratings a
+    /// conversion or another tool put there.
+    /// </summary>
+    private static void SetWarnings(XElement root, IReadOnlyList<WarningEdit> warnings)
+    {
+        WarningEdit[] written = [.. warnings.Where(w => !string.IsNullOrWhiteSpace(w.Type))];
+        XElement? section = root.Element(X("Ratings"));
+        XElement[] ratings = [.. section?.Elements(X("Rating")) ?? []];
+
+        if (written.Length == 0 && ratings.Length == 0)
+        {
+            section?.Remove();
+            return;
+        }
+
+        Tokens(written.Select(w => w.Type), nameof(warnings), typeRequired: written.Select(w => w.Type));
+
+        // §7.14 puts the ratings before the warnings, and a section out of
+        // order is a section the schema refuses.
+        Container(root, "Ratings").ReplaceNodes(ratings.Concat(written.Select(w =>
+        {
+            var warning = new XElement(X("ContentWarning"), new XAttribute("type", w.Type.Trim()));
+
+            if (w.Text.Trim() is { Length: > 0 } text)
+            {
+                warning.Value = text;
+
+                if ((string?)root.Attribute(XNamespace.Xml + "lang") is { } language)
+                    warning.SetAttributeValue(XNamespace.Xml + "lang", language);
+            }
+
+            return warning;
+        })));
+    }
+
+    /// <summary>Writes where else this publication is spoken of (§7.15).</summary>
+    private static void SetLinks(XElement root, IReadOnlyList<LinkEdit> links)
+    {
+        LinkEdit[] written = [.. links.Where(l => !string.IsNullOrWhiteSpace(l.Href))];
+
+        if (written.Length == 0)
+        {
+            root.Element(X("Links"))?.Remove();
+            return;
+        }
+
+        Tokens(written.Select(l => l.Relation), nameof(links), typeRequired: written.Select(l => l.Relation));
+
+        Container(root, "Links").ReplaceNodes(written.Select(l =>
+        {
+            var link = new XElement(X("Link"), new XAttribute("rel", l.Relation.Trim()), new XAttribute("href", l.Href.Trim()));
+
+            if (l.Text.Trim() is { Length: > 0 } text)
+                link.Value = text;
+
+            return link;
+        }));
+    }
+
+    /// <summary>Writes what may be done with the publication (§7.16).</summary>
+    private static void SetRights(XElement root, RightsEdit rights)
+    {
+        string copyright = rights.Copyright.Trim();
+        string license = rights.License.Trim();
+        string statement = rights.Statement.Trim();
+
+        if (copyright.Length == 0 && license.Length == 0 && statement.Length == 0)
+        {
+            root.Element(X("Rights"))?.Remove();
+            return;
+        }
+
+        var written = new List<XElement>();
+
+        // In the order §7.16 gives: copyright, licence, statement.
+        if (copyright.Length > 0)
+            written.Add(Named(root, copyright, "Copyright"));
+
+        if (license.Length > 0)
+            written.Add(new XElement(X("License"), new XAttribute("identifier", license)));
+
+        if (statement.Length > 0)
+            written.Add(Named(root, statement, "Statement"));
+
+        Container(root, "Rights").ReplaceNodes(written);
+    }
+
+    /// <summary>
+    /// Refuses anything that is not a token (§4.3), and anything that should
+    /// have been one and is empty.
+    /// </summary>
+    private static void Tokens(IEnumerable<string> values, string parameter, IEnumerable<string> typeRequired)
+    {
+        if (values.Select(v => v.Trim()).FirstOrDefault(v => v.Length > 0 && !KomaTokens.IsToken(v)) is { } malformed)
+            throw new ArgumentException($"'{malformed}' is not a token (§4.3).", parameter);
+
+        if (typeRequired.Any(v => string.IsNullOrWhiteSpace(v)))
+            throw new ArgumentException("§7 wants a type on each of these, and one of them has none.", parameter);
     }
 
     /// <summary>Writes what a publication says about itself (§7.7).</summary>

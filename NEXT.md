@@ -20,15 +20,14 @@ its next run. The same one-line change, with the same comment.
 window and the report window. What is not covered yet: the import window's
 choices, the folders window, and fitting and zooming while reading.
 
-### The rest of what a publication says
+### The last corners of §7
 
-The edit window carries what §7 says about the publication, who it is the work
-of (§7.6), what it is about (§7.9) and what it says of itself (§7.7). What is
-still not editable: the entities of §7.10 — the characters and places of the
-story, a different list from the contributors — the ratings and content
-warnings of §7.14, the links of §7.15, the rights of §7.16, and what
-`Publication` holds beyond the publisher, the imprint and the place: edition,
-dates, physical format. Each is a tab or a section of one, and none is urgent.
+The edit window carries §7 but for three things: the ratings of §7.14, which
+are kept as a conversion wrote them and only the warnings beside them are
+edited; the identifiers and the release identity of §7.2, which an editor has
+no business changing by hand; and what `Publication` holds after the place —
+edition, dates, physical format — which nothing this application writes fills
+in. None of it is urgent, and the first is arguably right as it stands.
 
 ### Try the application with a screen reader running
 
