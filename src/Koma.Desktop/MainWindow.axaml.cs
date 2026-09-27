@@ -56,6 +56,7 @@ internal sealed partial class MainWindow : Window, IDisposable
     private bool localizing;
     private string? rightClicked;
     private IReadOnlyList<string> picked = [];
+    private int walked = -1;
     private Point? pressed;
     private bool importing;
 
@@ -1186,6 +1187,15 @@ internal sealed partial class MainWindow : Window, IDisposable
         if (e.Source is Visual source && NavigationPanel.IsVisualAncestorOf(source) && e.Key is Key.Up or Key.Down or Key.Left or Key.Right or Key.Home or Key.End)
             return;
 
+        // A spread is one picture, so a reader who cannot see it has no way
+        // into it: these walk its pages one at a time and say each one.
+        if (e.KeyModifiers.HasFlag(KeyModifiers.Control) && e.Key is Key.Up or Key.Down)
+        {
+            e.Handled = true;
+            WalkTheSpread(e.Key == Key.Down ? 1 : -1);
+            return;
+        }
+
         if (e.KeyModifiers.HasFlag(KeyModifiers.Control) && ZoomSteps(e.Key) is { } steps)
         {
             e.Handled = true;
@@ -1405,6 +1415,32 @@ internal sealed partial class MainWindow : Window, IDisposable
     internal (FitMode Fit, double Zoom) Reading => (fit, zoom);
 
     /// <summary>
+    /// Says one page of the spread at a time, moving through them.
+    /// </summary>
+    /// <remarks>
+    /// The whole spread is announced when it is drawn, which is the right
+    /// thing to hear on arriving and the wrong thing to hear repeatedly: a
+    /// page at a time is how a reader works through what is in front of them.
+    /// </remarks>
+    private void WalkTheSpread(int by)
+    {
+        if (publication is not { Spreads.Count: > 0 })
+            return;
+
+        string[] pages = [.. SpreadLayout.Items(publication.Spreads[current])];
+
+        if (pages.Length == 0)
+            return;
+
+        walked = Math.Clamp(walked + by, 0, pages.Length - 1);
+
+        string said = Said(publication, pages[walked]);
+
+        Status.Text = said;
+        AutomationProperties.SetName(View, said);
+    }
+
+    /// <summary>
     /// What a spread is, said in words: where it stands, and what each of its
     /// pages says about itself (§8.7).
     /// </summary>
@@ -1419,21 +1455,26 @@ internal sealed partial class MainWindow : Window, IDisposable
 
         foreach (string item in SpreadLayout.Items(spread))
         {
-            if (publication.Described(item) is not { } page)
-                continue;
-
             said.Append(' ');
-            said.Append(Text.Of("Page {0}.", publication.PageNumber(item)));
-            said.Append(' ');
-
-            // §8.7: a decorative page has nothing to describe, and saying so
-            // is better than a silence that might be an omission.
-            said.Append(page.IsDecorative
-                ? Text.Of("Decorative.")
-                : page.AlternativeText is { Length: > 0 } described ? described : Text.Of("Not described."));
+            said.Append(Said(publication, item));
         }
 
         return said.ToString();
+    }
+
+    /// <summary>What one page says about itself (§8.7), and which page it is.</summary>
+    private static string Said(Publication publication, string item)
+    {
+        if (publication.Described(item) is not { } page)
+            return string.Empty;
+
+        // §8.7: a decorative page has nothing to describe, and saying so is
+        // better than a silence that might be an omission.
+        string about = page.IsDecorative
+            ? Text.Of("Decorative.")
+            : page.AlternativeText is { Length: > 0 } described ? described : Text.Of("Not described.");
+
+        return $"{Text.Of("Page {0}.", publication.PageNumber(item))} {about}";
     }
 
     private void ShowCurrent()
@@ -1452,6 +1493,9 @@ internal sealed partial class MainWindow : Window, IDisposable
 
         SizeCanvas(spread);
         View.Show(publication, spread);
+        // Arriving on a spread is arriving at none of its pages: the first
+        // step lands on the first, not past it.
+        walked = -1;
         Announcement = Announced(publication, spread, current, spreads.Count);
         AutomationProperties.SetName(View, Announcement);
         SpreadCounter.Text = CounterOf(publication, spread, current, spreads.Count) + (zoom == 1 ? string.Empty : string.Create(CultureInfo.InvariantCulture, $"  ·  {zoom * 100:0} %"));

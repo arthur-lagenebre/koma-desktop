@@ -63,6 +63,7 @@ internal static class Text
         ["Not described."] = "Non décrite.",
         ["Refused: {0}"] = "Refusé : {0}",
         ["What was refused"] = "Ce qui a été refusé",
+        ["Copy everything"] = "Tout copier",
         ["How a spread fits the window"] = "Ajustement d'une planche à la fenêtre",
         ["Language of the application"] = "Langue de l'application",
         ["By title"] = "Par titre",

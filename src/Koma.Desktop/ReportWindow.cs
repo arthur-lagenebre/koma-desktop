@@ -1,6 +1,8 @@
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Input.Platform;
 using Avalonia.Layout;
 using Avalonia.Media;
 
@@ -20,14 +22,17 @@ internal sealed class ReportWindow : Window
 {
     private readonly TextBlock heading = new() { Margin = new Thickness(8, 8, 8, 0), Opacity = 0.75 };
     private readonly ProgressBar bar = new() { Height = 4, Margin = new Thickness(8, 6, 8, 0), IsVisible = false, HorizontalAlignment = HorizontalAlignment.Stretch };
-    private readonly TextBox body = new()
+    // A list and not a block of text: a screen reader reads a multiline box
+    // as one long paragraph, where a fault at a time is what a reader works
+    // through. The text is still there to copy, under a button.
+    private readonly ListBox body = new()
     {
-        IsReadOnly = true,
-        AcceptsReturn = true,
-        TextWrapping = TextWrapping.Wrap,
         FontFamily = new FontFamily("Consolas, Menlo, monospace"),
-        Margin = new Thickness(8)
+        Margin = new Thickness(8),
+        SelectionMode = SelectionMode.Single
     };
+
+    private readonly List<string> lines = [];
 
     public ReportWindow(string title, string report)
     {
@@ -36,9 +41,9 @@ internal sealed class ReportWindow : Window
         Height = 560;
 
         heading.IsVisible = false;
-        body.Text = report;
 
         AutomationProperties.SetName(body, title);
+        Append(report);
 
         var panel = new DockPanel();
 
@@ -46,6 +51,18 @@ internal sealed class ReportWindow : Window
         DockPanel.SetDock(bar, Dock.Top);
         panel.Children.Add(heading);
         panel.Children.Add(bar);
+        var copy = new Button { Content = Text.Of("Copy everything"), Margin = new Thickness(8, 0, 8, 8), HorizontalAlignment = HorizontalAlignment.Right };
+
+        copy.Click += async (_, _) =>
+        {
+            // Avalonia 12 puts a value of a named format on the clipboard
+            // rather than a string: DataFormat.Text is that format.
+            if (Clipboard is { } clipboard)
+                await clipboard.SetValueAsync(DataFormat.Text, string.Join(Environment.NewLine, lines));
+        };
+
+        DockPanel.SetDock(copy, Dock.Bottom);
+        panel.Children.Add(copy);
         panel.Children.Add(body);
 
         Content = panel;
@@ -75,13 +92,19 @@ internal sealed class ReportWindow : Window
         bar.IsVisible = false;
     }
 
-    /// <summary>Adds what has just happened, and keeps it in view.</summary>
-    public void Append(string lines)
+    /// <summary>Adds what has just happened, a line at a time, and keeps it in view.</summary>
+    public void Append(string written)
     {
-        body.Text += lines;
+        ArgumentNullException.ThrowIfNull(written);
+
+        foreach (string line in written.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries))
+            lines.Add(line);
+
+        body.ItemsSource = lines.ToArray();
 
         // The end is where the new lines are, and where a reader watching a
         // long import is looking.
-        body.CaretIndex = body.Text?.Length ?? 0;
+        if (lines.Count > 0)
+            body.ScrollIntoView(lines.Count - 1);
     }
 }

@@ -30,11 +30,11 @@ been walked: the Narrator announces the shelf, the reading and the forms
 usefully, and the contrast and the focus hold up in both themes. The document
 stays, since every window that changes is a reason to walk them again.
 
-What neither pass covered, and what is left: the reading view is one picture,
-so a reader who cannot see it hears the spread but cannot move within it, page
-by page rather than spread by spread; and a report is read as one block of
-text rather than as a list of faults. Neither is urgent, and both would be
-judged better by someone who reads this way every day than by us.
+What neither pass covered has since been done: Ctrl with the up and down
+arrows walks the pages of a spread one at a time and says each one, and a
+report is a list of faults rather than one paragraph. Both were written
+without a screen reader to hand, so both are worth listening to at the next
+pass.
 
 ## Deferred, and why
 

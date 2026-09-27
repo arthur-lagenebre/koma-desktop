@@ -136,6 +136,37 @@ public sealed class ReadingTests : IDisposable
         Assert.Equal(FitMode.Width, window.Reading.Fit);
     }
 
+    [AvaloniaFact]
+    public void WalksThePagesOfASpreadOneAtATime()
+    {
+        // A spread is one picture: whoever cannot see it needs a way into it.
+        MainWindow window = Reader();
+
+        window.FindButton(b => b.Content is StackPanel).Press();
+
+        // The cover is a spread of one page, so there is nothing to walk
+        // through until the next one. This publication reads right to left.
+        Turn(window, Key.Left);
+
+        // The status line, not the counter: the counter says where the
+        // spread stands, the status line says what was just walked to.
+        Turn(window, Key.Down, KeyModifiers.Control);
+        string first = Status(window);
+
+        Turn(window, Key.Down, KeyModifiers.Control);
+        string second = Status(window);
+
+        Assert.StartsWith("Page ", first, StringComparison.Ordinal);
+        Assert.NotEqual(first, second);
+
+        // The first page of the spread is the first: there is nothing above it.
+        Turn(window, Key.Up, KeyModifiers.Control);
+        Turn(window, Key.Up, KeyModifiers.Control);
+        Turn(window, Key.Up, KeyModifiers.Control);
+
+        Assert.Equal(first, Status(window));
+    }
+
     public void Dispose()
     {
         try
@@ -168,6 +199,9 @@ public sealed class ReadingTests : IDisposable
 
     private static void Turn(MainWindow window, Key key, KeyModifiers modifiers = KeyModifiers.None) =>
         window.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = key, KeyModifiers = modifiers });
+
+    /// <summary>What the status line says, which is what was last announced.</summary>
+    private static string Status(MainWindow window) => window.GetVisualDescendants().OfType<TextBlock>().First(t => t.Name == "Status").Text ?? string.Empty;
 
     /// <summary>What the bar says: the spread being read, or the size of the shelf.</summary>
     private static string Counter(MainWindow window) => window.GetVisualDescendants().OfType<TextBlock>().First(t => t.Name == "SpreadCounter").Text ?? string.Empty;

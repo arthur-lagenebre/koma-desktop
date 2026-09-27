@@ -24,11 +24,11 @@ public sealed class ReportWindowTests
         window.Append($"deux.cbz{Environment.NewLine}");
         window.Done("2 converted, 0 not converted.");
 
-        TextBox report = window.GetVisualDescendants().OfType<TextBox>().First();
+        ListBox report = window.GetVisualDescendants().OfType<ListBox>().First();
+        string[] shown = [.. report.ItemsSource!.OfType<string>()];
 
-        Assert.Contains("un.cbz", report.Text, StringComparison.Ordinal);
-        Assert.Contains("deux.cbz", report.Text, StringComparison.Ordinal);
-        Assert.Equal(report.Text!.Length, report.CaretIndex);
+        Assert.Contains("un.cbz", shown);
+        Assert.Contains("deux.cbz", shown);
         Assert.Contains(window.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "2 converted, 0 not converted.");
     }
 
@@ -38,9 +38,11 @@ public sealed class ReportWindowTests
         var window = new ReportWindow("A report", $"schema-invalid:manifest — …{Environment.NewLine}front-cover-missing — …");
         window.Show();
 
-        TextBox report = window.GetVisualDescendants().OfType<TextBox>().First();
+        // A list, so a screen reader reads a fault at a time where a
+        // multiline box would read one long paragraph.
+        ListBox report = window.GetVisualDescendants().OfType<ListBox>().First();
 
-        Assert.Contains("front-cover-missing", report.Text, StringComparison.Ordinal);
-        Assert.True(report.IsReadOnly);
+        Assert.Equal(2, report.ItemCount);
+        Assert.Contains(report.ItemsSource!.OfType<string>(), line => line.Contains("front-cover-missing", StringComparison.Ordinal));
     }
 }
