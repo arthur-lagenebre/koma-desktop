@@ -142,6 +142,31 @@ public sealed class MetadataEditorTests : IDisposable
     }
 
     [Fact]
+    public void WritesWhatThePublicationSaysOfItselfAndWhereItComesFrom()
+    {
+        var edit = new MetadataEdit(
+            Descriptions: [new DescriptionEdit("summary", "Nemo refait surface.")],
+            Publisher: "Soleil",
+            Imprint: "1800",
+            Place: "Toulon");
+
+        XDocument edited = MetadataEditor.Apply(Minimal(), edit, Now);
+        XElement publication = edited.Root!.Element(M("Publication"))!;
+
+        // §7.8 fixes the order of what it holds, and a section out of order
+        // is a section the schema refuses. The modified date of §7.2.1 lands
+        // in the same section, after the three.
+        string[] order = ["Publisher", "Imprint", "Place", "Date"];
+        Assert.Equal(order, publication.Elements().Select(e => e.Name.LocalName));
+
+        Assert.Equal("summary", (string?)edited.Root!.Element(M("Descriptions"))!.Element(M("Description"))!.Attribute("type"));
+        Assert.Equal("Nemo refait surface.", MetadataEditor.Read(edited).Descriptions![0].Text);
+
+        // §7.7 wants a type on every description.
+        Assert.Throws<ArgumentException>(() => MetadataEditor.Apply(Minimal(), new MetadataEdit(Descriptions: [new DescriptionEdit(string.Empty, "Sans type")]), Now));
+    }
+
+    [Fact]
     public void EmptyingAListTakesItsSectionAway()
     {
         // An editor that could not clear a list could not undo a bad

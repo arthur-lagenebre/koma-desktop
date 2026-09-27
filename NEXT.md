@@ -22,13 +22,13 @@ choices, the folders window, and fitting and zooming while reading.
 
 ### The rest of what a publication says
 
-The edit window carries, over three tabs, what §7 says about the publication,
-who it is the work of (§7.6) and what it is about (§7.9). What is still not
-editable: the descriptions of §7.5, the entities of §7.10 — the characters and
-places of the story, which is a different list from the contributors — the
-ratings of §7.12, the links of §7.14, the rights of §7.15, and everything
-`Publication` holds beyond the publisher: imprint, place, edition, dates,
-physical format. Each is a tab or a section of one, and none is urgent.
+The edit window carries what §7 says about the publication, who it is the work
+of (§7.6), what it is about (§7.9) and what it says of itself (§7.7). What is
+still not editable: the entities of §7.10 — the characters and places of the
+story, a different list from the contributors — the ratings and content
+warnings of §7.14, the links of §7.15, the rights of §7.16, and what
+`Publication` holds beyond the publisher, the imprint and the place: edition,
+dates, physical format. Each is a tab or a section of one, and none is urgent.
 
 ### Try the application with a screen reader running
 

@@ -17,6 +17,7 @@ namespace Koma.Desktop;
 internal static class MetadataRows
 {
     private static readonly string[] SubjectTypes = [.. OpenVocabularies.SubjectTypes];
+    private static readonly string[] DescriptionTypes = [.. OpenVocabularies.DescriptionTypes];
 
     public static Rows People() => new(Text.Of("Add someone"), () => new StackPanel
     {
@@ -40,6 +41,35 @@ internal static class MetadataRows
             Field(Text.Of("Subject"), new TextBox { Width = 340 })
         }
     });
+
+    public static Rows Descriptions() => new(Text.Of("Add a description"), () => new StackPanel
+    {
+        Orientation = Orientation.Horizontal,
+        Spacing = 8,
+        Children =
+        {
+            Field(Text.Of("Kind"), new ComboBox { ItemsSource = DescriptionTypes, SelectedIndex = 0, Width = 150 }),
+            Field(Text.Of("Text"), new TextBox { Width = 380, Height = 90, AcceptsReturn = true, TextWrapping = Avalonia.Media.TextWrapping.Wrap })
+        }
+    });
+
+    public static void Fill(Rows rows, IReadOnlyList<DescriptionEdit> descriptions)
+    {
+        rows.Fill(descriptions.Count);
+
+        foreach ((StackPanel line, DescriptionEdit description) in rows.Lines.Zip(descriptions))
+        {
+            Input<ComboBox>(line, 0).SelectedIndex = Math.Max(0, Array.IndexOf(DescriptionTypes, description.Type));
+            Input<TextBox>(line, 1).Text = description.Text;
+        }
+    }
+
+    public static DescriptionEdit[] ReadDescriptions(Rows rows) =>
+    [
+        .. rows.Lines.Select(line => new DescriptionEdit(
+            Input<ComboBox>(line, 0).SelectedItem as string ?? "summary",
+            Input<TextBox>(line, 1).Text ?? string.Empty))
+    ];
 
     public static void Fill(Rows rows, IReadOnlyList<ContributorEdit> people)
     {

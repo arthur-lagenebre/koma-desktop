@@ -29,6 +29,13 @@ public sealed record AccessibilityEdit(IReadOnlyList<string> AccessModes, IReadO
 public sealed record ContributorEdit(string Name, IReadOnlyList<string> Roles, bool Organization = false);
 
 /// <summary>
+/// One of the texts a publication carries about itself (§7.7).
+/// </summary>
+/// <param name="Type">The kind of text, from the vocabulary of §7.7.</param>
+/// <param name="Text">The text itself, in the language of the document.</param>
+public sealed record DescriptionEdit(string Type, string Text);
+
+/// <summary>
 /// What a publication is about (§7.9): a genre, a theme, a keyword.
 /// </summary>
 /// <param name="Type">The kind of subject, from the vocabulary of §7.9.</param>
@@ -51,7 +58,10 @@ public sealed record MetadataEdit(
     AccessibilityEdit? Accessibility = null,
     IReadOnlyList<ContributorEdit>? Contributors = null,
     IReadOnlyList<SubjectEdit>? Subjects = null,
-    string? Publisher = null);
+    IReadOnlyList<DescriptionEdit>? Descriptions = null,
+    string? Publisher = null,
+    string? Imprint = null,
+    string? Place = null);
 
 /// <summary>
 /// Applies an edit to <c>metadata.xml</c>, touching nothing it was not asked
@@ -75,6 +85,9 @@ public static partial class MetadataEditor
     private const string Namespace = "urn:koma:metadata";
 
     /// <summary>The children of <c>Metadata</c>, in the order §7 and its schema give them.</summary>
+    /// <summary>What §7.8 holds, in the order it holds it.</summary>
+    private static readonly string[] PublicationOrder = ["Publisher", "Imprint", "Place", "Edition", "Date", "PhysicalFormat"];
+
     private static readonly string[] Order =
     [
         "Identifiers", "Titles", "Languages", "Collections", "Contributors", "Descriptions", "Publication",
@@ -106,7 +119,12 @@ public static partial class MetadataEditor
             [.. root.Element(X("Subjects"))?.Elements(X("Subject")).Select(s => new SubjectEdit(
                 (string?)s.Attribute("type") ?? "keyword",
                 s.Value.Trim())) ?? []],
-            root.Element(X("Publication"))?.Element(X("Publisher"))?.Value.Trim() ?? string.Empty);
+            [.. root.Element(X("Descriptions"))?.Elements(X("Description")).Select(d => new DescriptionEdit(
+                (string?)d.Attribute("type") ?? "summary",
+                d.Value.Trim())) ?? []],
+            root.Element(X("Publication"))?.Element(X("Publisher"))?.Value.Trim() ?? string.Empty,
+            root.Element(X("Publication"))?.Element(X("Imprint"))?.Value.Trim() ?? string.Empty,
+            root.Element(X("Publication"))?.Element(X("Place"))?.Value.Trim() ?? string.Empty);
     }
 
     private static AccessibilityEdit ReadAccessibility(XElement root)
@@ -154,8 +172,17 @@ public static partial class MetadataEditor
         if (edit.Subjects is { } subjects)
             SetSubjects(root, subjects);
 
+        if (edit.Descriptions is { } descriptions)
+            SetDescriptions(root, descriptions);
+
         if (edit.Publisher is { } publisher)
-            SetPublisher(root, publisher);
+            SetPublication(root, "Publisher", publisher);
+
+        if (edit.Imprint is { } imprint)
+            SetPublication(root, "Imprint", imprint);
+
+        if (edit.Place is { } place)
+            SetPublication(root, "Place", place);
 
         SetModified(root, now);
 
@@ -364,33 +391,71 @@ public static partial class MetadataEditor
         }));
     }
 
-    /// <summary>Writes who published it (§7.8), or takes the name away.</summary>
-    private static void SetPublisher(XElement root, string publisher)
+    /// <summary>Writes what a publication says about itself (§7.7).</summary>
+    private static void SetDescriptions(XElement root, IReadOnlyList<DescriptionEdit> descriptions)
     {
-        string name = publisher.Trim();
+        DescriptionEdit[] written = [.. descriptions.Where(d => !string.IsNullOrWhiteSpace(d.Text))];
 
-        if (name.Length == 0)
+        if (written.Length == 0)
         {
-            root.Element(X("Publication"))?.Element(X("Publisher"))?.Remove();
+            root.Element(X("Descriptions"))?.Remove();
+            return;
+        }
+
+        if (written.Select(d => d.Type.Trim()).FirstOrDefault(t => t.Length == 0 || !KomaTokens.IsToken(t)) is { } malformed)
+            throw new ArgumentException($"'{malformed}' is not a token, and §7.7 wants a type on every description (§4.3).", nameof(descriptions));
+
+        Container(root, "Descriptions").ReplaceNodes(written.Select(d =>
+        {
+            var description = new XElement(X("Description"), new XAttribute("type", d.Type.Trim()), d.Text.Trim());
+
+            if ((string?)root.Attribute(XNamespace.Xml + "lang") is { } language)
+                description.SetAttributeValue(XNamespace.Xml + "lang", language);
+
+            return description;
+        }));
+    }
+
+    /// <summary>
+    /// Writes one of the plain texts of §7.8 — the publisher, the imprint,
+    /// the place — or takes it away.
+    /// </summary>
+    /// <remarks>
+    /// The order §7.8 gives is kept by writing a missing element in its
+    /// place, since a section out of order is a section the schema refuses.
+    /// </remarks>
+    private static void SetPublication(XElement root, string element, string text)
+    {
+        string value = text.Trim();
+        XElement? section = root.Element(X("Publication"));
+
+        if (value.Length == 0)
+        {
+            section?.Element(X(element))?.Remove();
 
             // §7.8 has no empty Publication to offer, so a section with
             // nothing left in it goes.
-            if (root.Element(X("Publication")) is { } section && !section.Elements().Any())
-                section.Remove();
+            if (section is { } emptied && !emptied.Elements().Any())
+                emptied.Remove();
 
             return;
         }
 
-        XElement publication = Container(root, "Publication");
+        section = Container(root, "Publication");
 
-        if (publication.Element(X("Publisher")) is { } existing)
+        if (section.Element(X(element)) is { } existing)
         {
-            existing.Value = name;
+            existing.Value = value;
             return;
         }
 
-        // First, where §7.8 puts it.
-        publication.AddFirst(Named(root, name, "Publisher"));
+        int rank = Array.IndexOf(PublicationOrder, element);
+        XElement? next = section.Elements().FirstOrDefault(e => Array.IndexOf(PublicationOrder, e.Name.LocalName) > rank);
+
+        if (next is null)
+            section.Add(Named(root, value, element));
+        else
+            next.AddBeforeSelf(Named(root, value, element));
     }
 
     /// <summary>A name in the language the document is written in (§4.4).</summary>

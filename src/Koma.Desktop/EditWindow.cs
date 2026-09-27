@@ -38,6 +38,8 @@ internal sealed class EditWindow : Window
     private readonly TextBox position = new();
     private readonly TextBox total = new();
     private readonly TextBox publisher = new();
+    private readonly TextBox imprint = new();
+    private readonly TextBox place = new();
     private readonly CheckBox[] modes = Boxes.For(OpenVocabularies.AccessModes);
     private readonly CheckBox[] hazards = Boxes.For(OpenVocabularies.AccessibilityHazards);
     private readonly TextBox summary = new() { AcceptsReturn = true, Height = 60, TextWrapping = TextWrapping.Wrap };
@@ -46,6 +48,7 @@ internal sealed class EditWindow : Window
 
     private Rows people = null!;
     private Rows subjects = null!;
+    private Rows descriptions = null!;
     private readonly StackPanel fields = new() { Spacing = 6, Margin = new Thickness(16) };
     private readonly WritingNotice writing = new();
 
@@ -81,6 +84,8 @@ internal sealed class EditWindow : Window
         save.Click += OnSave;
 
         publisher.Text = current.Publisher;
+        imprint.Text = current.Imprint;
+        place.Text = current.Place;
 
         var publication = new StackPanel { Spacing = 6, Margin = new Thickness(12) };
 
@@ -88,6 +93,8 @@ internal sealed class EditWindow : Window
         publication.Children.Add(Field(Text.Of("Language (BCP 47, such as fr or en-GB)"), language));
         publication.Children.Add(Field(Text.Of("Reading direction"), direction));
         publication.Children.Add(Field(Text.Of("Publisher"), publisher));
+        publication.Children.Add(Field(Text.Of("Imprint"), imprint));
+        publication.Children.Add(Field(Text.Of("Place of publication"), place));
         publication.Children.Add(Field(Text.Of("Series"), series));
         publication.Children.Add(Field(Text.Of("Number in the series"), position));
         publication.Children.Add(Field(Text.Of("Volumes in the series"), total));
@@ -104,7 +111,8 @@ internal sealed class EditWindow : Window
             {
                 new TabItem { Header = Text.Of("Publication"), Content = new ScrollViewer { Content = publication } },
                 new TabItem { Header = Text.Of("People"), Content = new ScrollViewer { Content = People(current) } },
-                new TabItem { Header = Text.Of("Subjects"), Content = new ScrollViewer { Content = Subjects(current) } }
+                new TabItem { Header = Text.Of("Subjects"), Content = new ScrollViewer { Content = Subjects(current) } },
+                new TabItem { Header = Text.Of("Descriptions"), Content = new ScrollViewer { Content = Descriptions(current) } }
             }
         });
 
@@ -140,6 +148,15 @@ internal sealed class EditWindow : Window
         MetadataRows.Fill(subjects, current.Subjects ?? []);
 
         return new StackPanel { Spacing = 8, Margin = new Thickness(12), Children = { subjects } };
+    }
+
+    /// <summary>What the publication says about itself (§7.7).</summary>
+    private StackPanel Descriptions(MetadataEdit current)
+    {
+        descriptions = MetadataRows.Descriptions();
+        MetadataRows.Fill(descriptions, current.Descriptions ?? []);
+
+        return new StackPanel { Spacing = 8, Margin = new Thickness(12), Children = { descriptions } };
     }
 
     /// <summary>
@@ -198,7 +215,10 @@ internal sealed class EditWindow : Window
         ContributorEdit[] newPeople = MetadataRows.ReadPeople(people);
         SubjectEdit[] newSubjects = MetadataRows.ReadSubjects(subjects);
 
+        DescriptionEdit[] newDescriptions = MetadataRows.ReadDescriptions(descriptions);
         string newPublisher = (publisher.Text ?? string.Empty).Trim();
+        string newImprint = (imprint.Text ?? string.Empty).Trim();
+        string newPlace = (place.Text ?? string.Empty).Trim();
 
         return new MetadataEdit(
             newTitle == current.Title ? null : newTitle,
@@ -208,7 +228,10 @@ internal sealed class EditWindow : Window
             Same(newAccessibility, current.Accessibility) ? null : newAccessibility,
             Same(newPeople, current.Contributors) ? null : newPeople,
             Same(newSubjects, current.Subjects) ? null : newSubjects,
-            newPublisher == (current.Publisher ?? string.Empty) ? null : newPublisher);
+            Same(newDescriptions, current.Descriptions) ? null : newDescriptions,
+            newPublisher == (current.Publisher ?? string.Empty) ? null : newPublisher,
+            newImprint == (current.Imprint ?? string.Empty) ? null : newImprint,
+            newPlace == (current.Place ?? string.Empty) ? null : newPlace);
     }
 
     /// <remarks>
@@ -225,6 +248,11 @@ internal sealed class EditWindow : Window
         && left.Zip(right).All(both => both.First.Name.Trim() == both.Second.Name.Trim()
             && both.First.Organization == both.Second.Organization
             && both.First.Roles.SequenceEqual(both.Second.Roles, StringComparer.Ordinal));
+
+    private static bool Same(DescriptionEdit[] left, IReadOnlyList<DescriptionEdit>? right) =>
+        right is not null
+        && left.Length == right.Count
+        && left.Zip(right).All(both => both.First.Type == both.Second.Type && both.First.Text.Trim() == both.Second.Text.Trim());
 
     private static bool Same(SubjectEdit[] left, IReadOnlyList<SubjectEdit>? right) =>
         right is not null
