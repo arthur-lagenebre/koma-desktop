@@ -1391,6 +1391,9 @@ internal sealed partial class MainWindow : Window, IDisposable
     /// </summary>
     internal string Announcement { get; private set; } = string.Empty;
 
+    /// <summary>How a spread meets the window, and at what zoom: what a test reads of the reading.</summary>
+    internal (FitMode Fit, double Zoom) Reading => (fit, zoom);
+
     /// <summary>
     /// What a spread is, said in words: where it stands, and what each of its
     /// pages says about itself (§8.7).

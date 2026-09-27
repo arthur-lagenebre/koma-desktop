@@ -88,6 +88,9 @@ internal sealed class ImportWindow : Window
         return new StackPanel { Spacing = 2, Children = { new TextBlock { Text = label, Opacity = 0.75 }, input } };
     }
 
+    /// <summary>What was chosen, for a test to read what a dialog returned.</summary>
+    internal ImportChoice? Chosen { get; private set; }
+
     private ImportChoice Choice(bool folder) => new(folder, comicInfo.IsChecked == true, numbering.IsChecked == true, destination, Boxes.Ticked(modes), Boxes.Ticked(hazards));
 
     public ImportWindow()
@@ -104,8 +107,8 @@ internal sealed class ImportWindow : Window
         elsewhere.Content = Text.Of("Write them into another folder…");
         elsewhere.IsCheckedChanged += async (_, _) => await ChooseDestination();
 
-        files.Click += (_, _) => Close(Choice(folder: false));
-        folder.Click += (_, _) => Close(Choice(folder: true));
+        files.Click += (_, _) => Close(Chosen = Choice(folder: false));
+        folder.Click += (_, _) => Close(Chosen = Choice(folder: true));
         cancel.Click += (_, _) => Close(null);
 
         Content = new StackPanel

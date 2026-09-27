@@ -3,6 +3,7 @@ using Avalonia.Headless.XUnit;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
+using Koma.Core.Rendering;
 using Koma.Library;
 using Koma.TestSupport;
 
@@ -112,6 +113,28 @@ public sealed class ReadingTests : IDisposable
         Assert.Contains("Couverture", said, StringComparison.Ordinal);
     }
 
+    [AvaloniaFact]
+    public void FitsAndZoomsTheSpread()
+    {
+        MainWindow window = Reader();
+
+        window.FindButton(b => b.Content is StackPanel).Press();
+
+        Assert.Equal((FitMode.Page, 1), window.Reading);
+
+        // §10.5 keeps the proportions, so zoom is a step and not a size.
+        Turn(window, Key.Add, KeyModifiers.Control);
+        Assert.True(window.Reading.Zoom > 1);
+
+        Turn(window, Key.D0, KeyModifiers.Control);
+        Assert.Equal(1, window.Reading.Zoom);
+
+        ComboBox fit = window.GetVisualDescendants().OfType<ComboBox>().First(c => c.Name == "FitChoice");
+        fit.SelectedIndex = 1;
+
+        Assert.Equal(FitMode.Width, window.Reading.Fit);
+    }
+
     public void Dispose()
     {
         try
@@ -142,7 +165,8 @@ public sealed class ReadingTests : IDisposable
         return window;
     }
 
-    private static void Turn(MainWindow window, Key key) => window.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = key });
+    private static void Turn(MainWindow window, Key key, KeyModifiers modifiers = KeyModifiers.None) =>
+        window.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = key, KeyModifiers = modifiers });
 
     /// <summary>What the bar says: the spread being read, or the size of the shelf.</summary>
     private static string Counter(MainWindow window) => window.GetVisualDescendants().OfType<TextBlock>().First(t => t.Name == "SpreadCounter").Text ?? string.Empty;
