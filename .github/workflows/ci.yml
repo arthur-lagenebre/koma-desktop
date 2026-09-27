@@ -43,7 +43,15 @@ jobs:
       # --output Detailed, so that a failure names the test here rather than
       # in a log file nobody fetches from a runner.
       - name: Test
-        run: dotnet test --no-build --configuration Release --verbosity normal -- --output Detailed -- --output Detailed
+        run: dotnet test --no-build --configuration Release --verbosity normal
+
+      - name: Keep the test logs when something failed
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-logs-${{ matrix.os }}
+          path: '**/TestResults/*.log'
+          if-no-files-found: ignore
 
   # A workflow that does not parse fails before it starts, and says so only
   # in the Actions tab. actionlint reads the workflows the way GitHub will,
