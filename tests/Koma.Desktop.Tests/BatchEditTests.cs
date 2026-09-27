@@ -4,6 +4,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
 using Koma.Core.Rendering;
+using Koma.Core.Writing;
 using Koma.Library;
 
 namespace Koma.Desktop.Tests;
@@ -61,6 +62,37 @@ public sealed class BatchEditTests : IDisposable
         shelf.Unpick();
 
         Assert.Empty(picked[^1]);
+    }
+
+    [Theory]
+    [InlineData(false, 2)]
+    [InlineData(true, 1)]
+    public void AddsToWhatAPublicationHasOrStandsInPlaceOfIt(bool replace, int expected)
+    {
+        // Adding is what a batch is usually for — a genre shared by a series
+        // does not mean the volumes share nothing else — and replacing is for
+        // a conversion that put the wrong thing everywhere.
+        SubjectEdit[] had = [new SubjectEdit("keyword", "Nemo")];
+        SubjectEdit[] given = [new SubjectEdit("genre", "Aventure")];
+
+        IReadOnlyList<SubjectEdit>? written = MainWindow.Merged(given, had, replace, (left, right) => left.Type == right.Type && left.Text == right.Text);
+
+        Assert.Equal(expected, written!.Count);
+        Assert.Contains(written, s => s.Text == "Aventure");
+    }
+
+    [AvaloniaFact]
+    public void SaysNothingAboutAListNobodyTicked()
+    {
+        // A list left alone is a list left alone: a batch that wrote an empty
+        // one would clear forty publications at once.
+        var window = new BatchEditWindow(3);
+        window.Show();
+
+        window.FindButton(b => b.Content as string == "Save").Press();
+
+        Assert.Null(window.Plan?.People);
+        Assert.Null(window.Plan?.Subjects);
     }
 
     public void Dispose()

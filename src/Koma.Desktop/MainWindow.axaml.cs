@@ -557,6 +557,27 @@ internal sealed partial class MainWindow : Window, IDisposable
         await ScanAsync();
     }
 
+    /// <summary>
+    /// What to write into one publication: the list given, or that list
+    /// joined to what the publication already has.
+    /// </summary>
+    /// <remarks>
+    /// Adding is what a batch is usually for — a genre shared by a series
+    /// does not mean the volumes share nothing else — and replacing is what
+    /// is wanted when a conversion put the wrong thing everywhere. The reader
+    /// says which; nothing is guessed from the list itself.
+    /// </remarks>
+    internal static IReadOnlyList<T>? Merged<T>(IReadOnlyList<T>? given, IReadOnlyList<T>? had, bool replace, Func<T, T, bool> same)
+    {
+        if (given is null)
+            return null;
+
+        if (replace || had is null)
+            return given;
+
+        return [.. had, .. given.Where(one => !had.Any(other => same(one, other)))];
+    }
+
     private static (int Changed, int Refused) EditTogether(string[] paths, BatchEdit plan, IProgress<(int Done, string Line)> progress)
     {
         DateTimeOffset now = DateTimeOffset.UtcNow;
@@ -572,7 +593,16 @@ internal sealed partial class MainWindow : Window, IDisposable
                 plan.NumberFrom is { } from ? (from + i).ToString(CultureInfo.InvariantCulture) : PublicationEditor.Current(paths[i]).Series?.Position,
                 plan.Total is { Length: > 0 } total ? total : PublicationEditor.Current(paths[i]).Series?.Total);
 
-            var edit = new MetadataEdit(null, plan.Language, plan.Direction, series, plan.Accessibility);
+            MetadataEdit publication = PublicationEditor.Current(paths[i]);
+
+            var edit = new MetadataEdit(
+                null,
+                plan.Language,
+                plan.Direction,
+                series,
+                plan.Accessibility,
+                Merged(plan.People, publication.Contributors, plan.Replace, (left, right) => left.Name.Trim() == right.Name.Trim()),
+                Merged(plan.Subjects, publication.Subjects, plan.Replace, (left, right) => left.Type == right.Type && left.Text.Trim() == right.Text.Trim()));
             string line;
 
             try

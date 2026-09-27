@@ -17,13 +17,22 @@ namespace Koma.Desktop;
 /// The number the first publication takes, the others following it in the
 /// order the shelf shows them; <see langword="null"/> numbers nothing.
 /// </param>
+/// <param name="People">Who to write on every publication, or <see langword="null"/> to leave them alone.</param>
+/// <param name="Subjects">What to write about every publication.</param>
+/// <param name="Replace">
+/// Whether the lists given stand in place of what each publication has, or
+/// join it.
+/// </param>
 public sealed record BatchEdit(
     string? Series,
     string? Total,
     int? NumberFrom,
     string? Language,
     ReadingDirection? Direction,
-    AccessibilityEdit? Accessibility);
+    AccessibilityEdit? Accessibility,
+    IReadOnlyList<ContributorEdit>? People = null,
+    IReadOnlyList<SubjectEdit>? Subjects = null,
+    bool Replace = false);
 
 /// <summary>
 /// Edits what several publications have in common: their series, their
@@ -60,6 +69,14 @@ internal sealed class BatchEditWindow : Window
     private readonly CheckBox directionTicked = new();
     private readonly ComboBox direction = new() { SelectedIndex = 0, HorizontalAlignment = HorizontalAlignment.Stretch };
 
+    private readonly CheckBox peopleTicked = new();
+    private readonly Rows people = MetadataRows.People();
+
+    private readonly CheckBox subjectsTicked = new();
+    private readonly Rows subjects = MetadataRows.Subjects();
+
+    private readonly CheckBox replace = new();
+
     private readonly CheckBox accessibilityTicked = new();
     private readonly CheckBox[] modes = Boxes.For(OpenVocabularies.AccessModes);
     private readonly CheckBox[] hazards = Boxes.For(OpenVocabularies.AccessibilityHazards);
@@ -82,12 +99,19 @@ internal sealed class BatchEditWindow : Window
         numberTicked.Content = Text.Of("Number them in the order they are shown, from");
         languageTicked.Content = Text.Of("Language (BCP 47, such as fr or en-GB)");
         directionTicked.Content = Text.Of("Reading direction");
+        peopleTicked.Content = Text.Of("Who they are the work of");
+        subjectsTicked.Content = Text.Of("What they are about");
+        replace.Content = Text.Of("In place of what each publication has, rather than added to it");
         accessibilityTicked.Content = Text.Of("What they say about reading them");
 
         var save = new Button { Content = Text.Of("Save"), IsDefault = true };
         var cancel = new Button { Content = Text.Of("Cancel"), IsCancel = true };
 
-        save.Click += (_, _) => Close(Plan());
+        save.Click += (_, _) =>
+        {
+            Plan = Edit();
+            Close(Plan);
+        };
         cancel.Click += (_, _) => Close(null);
 
         var fields = new StackPanel { Spacing = 8, Margin = new Thickness(16) };
@@ -108,6 +132,9 @@ internal sealed class BatchEditWindow : Window
         fields.Children.Add(Under(numberTicked, numberFrom));
         fields.Children.Add(Under(languageTicked, language));
         fields.Children.Add(Under(directionTicked, direction));
+        fields.Children.Add(Under(peopleTicked, people));
+        fields.Children.Add(Under(subjectsTicked, subjects));
+        fields.Children.Add(replace);
         fields.Children.Add(Under(accessibilityTicked, new StackPanel
         {
             Spacing = 4,
@@ -156,11 +183,17 @@ internal sealed class BatchEditWindow : Window
         return new StackPanel { Spacing = 2, Children = { new TextBlock { Text = label, Opacity = 0.75 }, input } };
     }
 
-    private BatchEdit Plan() => new(
+    /// <summary>What was saved, for a test to read what a dialog returned.</summary>
+    internal BatchEdit? Plan { get; private set; }
+
+    private BatchEdit Edit() => new(
         seriesTicked.IsChecked == true ? (series.Text ?? string.Empty).Trim() : null,
         seriesTicked.IsChecked == true ? (total.Text ?? string.Empty).Trim() : null,
         numberTicked.IsChecked == true && int.TryParse(numberFrom.Text, out int from) ? from : null,
         languageTicked.IsChecked == true ? (language.Text ?? string.Empty).Trim() : null,
         directionTicked.IsChecked == true ? Directions[Math.Max(direction.SelectedIndex, 0)].Direction : null,
-        accessibilityTicked.IsChecked == true ? new AccessibilityEdit(Boxes.Ticked(modes), Boxes.Ticked(hazards), (summary.Text ?? string.Empty).Trim()) : null);
+        accessibilityTicked.IsChecked == true ? new AccessibilityEdit(Boxes.Ticked(modes), Boxes.Ticked(hazards), (summary.Text ?? string.Empty).Trim()) : null,
+        peopleTicked.IsChecked == true ? MetadataRows.ReadPeople(people) : null,
+        subjectsTicked.IsChecked == true ? MetadataRows.ReadSubjects(subjects) : null,
+        replace.IsChecked == true);
 }

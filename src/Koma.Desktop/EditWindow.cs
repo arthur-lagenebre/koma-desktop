@@ -29,8 +29,6 @@ namespace Koma.Desktop;
 /// </remarks>
 internal sealed class EditWindow : Window
 {
-    private static readonly string[] SubjectTypes = [.. OpenVocabularies.SubjectTypes];
-
     private readonly string path;
     private readonly MetadataEdit current;
     private readonly TextBox title = new();
@@ -120,28 +118,8 @@ internal sealed class EditWindow : Window
     /// <summary>Who the publication is the work of (§7.6), one line each.</summary>
     private StackPanel People(MetadataEdit current)
     {
-        ContributorEdit[] known = [.. current.Contributors ?? []];
-
-        people = new Rows(Text.Of("Add someone"), () => new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            Spacing = 8,
-            Children =
-            {
-                Field(Text.Of("Name"), new TextBox { Width = 220 }),
-                Field(Text.Of("Roles, separated by spaces"), new TextBox { Width = 240 }),
-                new CheckBox { Content = Text.Of("An organization"), VerticalAlignment = VerticalAlignment.Bottom }
-            }
-        });
-
-        people.Fill(known.Length);
-
-        foreach ((StackPanel line, ContributorEdit contributor) in people.Lines.Zip(known))
-        {
-            Input<TextBox>(line, 0).Text = contributor.Name;
-            Input<TextBox>(line, 1).Text = string.Join(' ', contributor.Roles);
-            ((CheckBox)line.Children[2]).IsChecked = contributor.Organization;
-        }
+        people = MetadataRows.People();
+        MetadataRows.Fill(people, current.Contributors ?? []);
 
         return new StackPanel
         {
@@ -158,34 +136,11 @@ internal sealed class EditWindow : Window
     /// <summary>What the publication is about (§7.9): a genre, a theme, a keyword.</summary>
     private StackPanel Subjects(MetadataEdit current)
     {
-        SubjectEdit[] known = [.. current.Subjects ?? []];
-
-        subjects = new Rows(Text.Of("Add a subject"), () => new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            Spacing = 8,
-            Children =
-            {
-                Field(Text.Of("Kind"), new ComboBox { ItemsSource = SubjectTypes, SelectedIndex = 0, Width = 150 }),
-                Field(Text.Of("Subject"), new TextBox { Width = 340 })
-            }
-        });
-
-        subjects.Fill(known.Length);
-
-        foreach ((StackPanel line, SubjectEdit subject) in subjects.Lines.Zip(known))
-        {
-            Input<ComboBox>(line, 0).SelectedIndex = Math.Max(0, Array.IndexOf(SubjectTypes, subject.Type));
-            Input<TextBox>(line, 1).Text = subject.Text;
-        }
+        subjects = MetadataRows.Subjects();
+        MetadataRows.Fill(subjects, current.Subjects ?? []);
 
         return new StackPanel { Spacing = 8, Margin = new Thickness(12), Children = { subjects } };
     }
-
-    /// <summary>The input of a field, a field being a label and its input.</summary>
-    private static T Input<T>(StackPanel line, int at)
-        where T : Control =>
-        (T)((StackPanel)line.Children[at]).Children[1];
 
     /// <summary>
     /// A field under its label, the label being what assistive tools
@@ -240,20 +195,8 @@ internal sealed class EditWindow : Window
 
         var newAccessibility = new AccessibilityEdit(Boxes.Ticked(modes), Boxes.Ticked(hazards), (summary.Text ?? string.Empty).Trim());
 
-        ContributorEdit[] newPeople =
-        [
-            .. people.Lines.Select(line => new ContributorEdit(
-                Input<TextBox>(line, 0).Text ?? string.Empty,
-                [.. (Input<TextBox>(line, 1).Text ?? string.Empty).Split(' ', StringSplitOptions.RemoveEmptyEntries)],
-                ((CheckBox)line.Children[2]).IsChecked == true))
-        ];
-
-        SubjectEdit[] newSubjects =
-        [
-            .. subjects.Lines.Select(line => new SubjectEdit(
-                Input<ComboBox>(line, 0).SelectedItem as string ?? "keyword",
-                Input<TextBox>(line, 1).Text ?? string.Empty))
-        ];
+        ContributorEdit[] newPeople = MetadataRows.ReadPeople(people);
+        SubjectEdit[] newSubjects = MetadataRows.ReadSubjects(subjects);
 
         string newPublisher = (publisher.Text ?? string.Empty).Trim();
 
