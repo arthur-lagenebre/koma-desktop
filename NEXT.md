@@ -29,28 +29,18 @@ no business changing by hand; and what `Publication` holds after the place —
 edition, dates, physical format — which nothing this application writes fills
 in. None of it is urgent, and the first is arguably right as it stands.
 
-### Try the application with a screen reader running
+### Walk the accessibility passes again after a change
 
-The names are written and nobody has heard them. That is the test that counts:
-a name can be present, announced, and still say nothing useful — "Series" read
-out after a combo box has already said "Rivage" is noise, and a card that
-announces four sentences in a row is a card nobody will sit through.
+Both passes of [`docs/accessibility-pass.md`](docs/accessibility-pass.md) have
+been walked: the Narrator announces the shelf, the reading and the forms
+usefully, and the contrast and the focus hold up in both themes. The document
+stays, since every window that changes is a reason to walk them again.
 
-Under Windows, the Narrator starts with Ctrl+Windows+Enter. Half an hour is
-enough for the pass that matters: reach the shelf, walk it with the arrows,
-open a publication, turn a page, open the edit window and change a field —
-mouse unplugged, eyes on something else. What comes back from that is worth
-more than another round of names.
-
-### The rest of the accessibility
-
-The reading view now says where a spread stands and what its pages say of
-themselves (§8.7), and a refusal says in words that it is one rather than in
-red alone. What is left is what cannot be settled from here: the contrast,
-which has never been measured against either theme — the refusal red is a
-fixed colour over a background that follows the system — and the focus, which
-is wherever Fluent puts it and has never been watched as it moves. Both want
-eyes on a screen.
+What neither pass covered, and what is left: the reading view is one picture,
+so a reader who cannot see it hears the spread but cannot move within it, page
+by page rather than spread by spread; and a report is read as one block of
+text rather than as a list of faults. Neither is urgent, and both would be
+judged better by someone who reads this way every day than by us.
 
 ## Deferred, and why
 
