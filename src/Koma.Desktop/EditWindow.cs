@@ -29,6 +29,8 @@ namespace Koma.Desktop;
 /// </remarks>
 internal sealed class EditWindow : Window
 {
+    private static readonly string[] SubjectTypes = [.. OpenVocabularies.SubjectTypes];
+
     private readonly string path;
     private readonly MetadataEdit current;
     private readonly TextBox title = new();
@@ -37,11 +39,15 @@ internal sealed class EditWindow : Window
     private readonly TextBox series = new();
     private readonly TextBox position = new();
     private readonly TextBox total = new();
+    private readonly TextBox publisher = new();
     private readonly CheckBox[] modes = Boxes.For(OpenVocabularies.AccessModes);
     private readonly CheckBox[] hazards = Boxes.For(OpenVocabularies.AccessibilityHazards);
     private readonly TextBox summary = new() { AcceptsReturn = true, Height = 60, TextWrapping = TextWrapping.Wrap };
     private readonly TextBlock problem = new() { Foreground = Brushes.OrangeRed, TextWrapping = TextWrapping.Wrap };
     private readonly Button save = new() { Content = Text.Of("Save"), IsDefault = true };
+
+    private Rows people = null!;
+    private Rows subjects = null!;
     private readonly StackPanel fields = new() { Spacing = 6, Margin = new Thickness(16) };
     private readonly WritingNotice writing = new();
 
@@ -51,9 +57,11 @@ internal sealed class EditWindow : Window
         this.current = current;
 
         Title = Text.Of("{0} — Edit metadata", Path.GetFileName(path));
-        Width = 560;
-        SizeToContent = SizeToContent.Height;
-        CanResize = false;
+        // Room for the tabs, and a height of its own: a form that scrolls its
+        // save button out of reach is a form that cannot save.
+        Width = 760;
+        Height = 660;
+        WindowStartupLocation = WindowStartupLocation.CenterOwner;
 
         title.Text = current.Title;
         language.Text = current.Language;
@@ -74,21 +82,110 @@ internal sealed class EditWindow : Window
         cancel.Click += (_, _) => Close(false);
         save.Click += OnSave;
 
-        fields.Children.Add(Field(Text.Of("Title"), title));
-        fields.Children.Add(Field(Text.Of("Language (BCP 47, such as fr or en-GB)"), language));
-        fields.Children.Add(Field(Text.Of("Reading direction"), direction));
-        fields.Children.Add(Field(Text.Of("Series"), series));
-        fields.Children.Add(Field(Text.Of("Number in the series"), position));
-        fields.Children.Add(Field(Text.Of("Volumes in the series"), total));
-        fields.Children.Add(Field(Text.Of("How the publication is read"), Boxes.Row(modes)));
-        fields.Children.Add(Field(Text.Of("What it may do to a reader"), Boxes.Row(hazards)));
-        fields.Children.Add(Field(Text.Of("A sentence for a reader deciding whether they can read it"), summary));
+        publisher.Text = current.Publisher;
+
+        var publication = new StackPanel { Spacing = 6, Margin = new Thickness(12) };
+
+        publication.Children.Add(Field(Text.Of("Title"), title));
+        publication.Children.Add(Field(Text.Of("Language (BCP 47, such as fr or en-GB)"), language));
+        publication.Children.Add(Field(Text.Of("Reading direction"), direction));
+        publication.Children.Add(Field(Text.Of("Publisher"), publisher));
+        publication.Children.Add(Field(Text.Of("Series"), series));
+        publication.Children.Add(Field(Text.Of("Number in the series"), position));
+        publication.Children.Add(Field(Text.Of("Volumes in the series"), total));
+        publication.Children.Add(Field(Text.Of("How the publication is read"), Boxes.Row(modes)));
+        publication.Children.Add(Field(Text.Of("What it may do to a reader"), Boxes.Row(hazards)));
+        publication.Children.Add(Field(Text.Of("A sentence for a reader deciding whether they can read it"), summary));
+
+        // Tabs rather than one long form: §7 carries more than a window holds
+        // at once, and a form of ten sections is a form nobody opens. The
+        // save button stays outside them, an edit being saved whole.
+        fields.Children.Add(new TabControl
+        {
+            ItemsSource = new[]
+            {
+                new TabItem { Header = Text.Of("Publication"), Content = new ScrollViewer { Content = publication } },
+                new TabItem { Header = Text.Of("People"), Content = new ScrollViewer { Content = People(current) } },
+                new TabItem { Header = Text.Of("Subjects"), Content = new ScrollViewer { Content = Subjects(current) } }
+            }
+        });
+
         fields.Children.Add(writing);
         fields.Children.Add(problem);
         fields.Children.Add(new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, HorizontalAlignment = HorizontalAlignment.Right, Children = { cancel, save } });
 
         Content = fields;
     }
+
+    /// <summary>Who the publication is the work of (§7.6), one line each.</summary>
+    private StackPanel People(MetadataEdit current)
+    {
+        ContributorEdit[] known = [.. current.Contributors ?? []];
+
+        people = new Rows(Text.Of("Add someone"), () => new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 8,
+            Children =
+            {
+                Field(Text.Of("Name"), new TextBox { Width = 220 }),
+                Field(Text.Of("Roles, separated by spaces"), new TextBox { Width = 240 }),
+                new CheckBox { Content = Text.Of("An organization"), VerticalAlignment = VerticalAlignment.Bottom }
+            }
+        });
+
+        people.Fill(known.Length);
+
+        foreach ((StackPanel line, ContributorEdit contributor) in people.Lines.Zip(known))
+        {
+            Input<TextBox>(line, 0).Text = contributor.Name;
+            Input<TextBox>(line, 1).Text = string.Join(' ', contributor.Roles);
+            ((CheckBox)line.Children[2]).IsChecked = contributor.Organization;
+        }
+
+        return new StackPanel
+        {
+            Spacing = 8,
+            Margin = new Thickness(12),
+            Children =
+            {
+                new TextBlock { Text = Text.Of("The roles of §7.6: writer, artist, colorist, translator, editor…"), Opacity = 0.6, TextWrapping = TextWrapping.Wrap },
+                people
+            }
+        };
+    }
+
+    /// <summary>What the publication is about (§7.9): a genre, a theme, a keyword.</summary>
+    private StackPanel Subjects(MetadataEdit current)
+    {
+        SubjectEdit[] known = [.. current.Subjects ?? []];
+
+        subjects = new Rows(Text.Of("Add a subject"), () => new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 8,
+            Children =
+            {
+                Field(Text.Of("Kind"), new ComboBox { ItemsSource = SubjectTypes, SelectedIndex = 0, Width = 150 }),
+                Field(Text.Of("Subject"), new TextBox { Width = 340 })
+            }
+        });
+
+        subjects.Fill(known.Length);
+
+        foreach ((StackPanel line, SubjectEdit subject) in subjects.Lines.Zip(known))
+        {
+            Input<ComboBox>(line, 0).SelectedIndex = Math.Max(0, Array.IndexOf(SubjectTypes, subject.Type));
+            Input<TextBox>(line, 1).Text = subject.Text;
+        }
+
+        return new StackPanel { Spacing = 8, Margin = new Thickness(12), Children = { subjects } };
+    }
+
+    /// <summary>The input of a field, a field being a label and its input.</summary>
+    private static T Input<T>(StackPanel line, int at)
+        where T : Control =>
+        (T)((StackPanel)line.Children[at]).Children[1];
 
     /// <summary>
     /// A field under its label, the label being what assistive tools
@@ -143,18 +240,54 @@ internal sealed class EditWindow : Window
 
         var newAccessibility = new AccessibilityEdit(Boxes.Ticked(modes), Boxes.Ticked(hazards), (summary.Text ?? string.Empty).Trim());
 
+        ContributorEdit[] newPeople =
+        [
+            .. people.Lines.Select(line => new ContributorEdit(
+                Input<TextBox>(line, 0).Text ?? string.Empty,
+                [.. (Input<TextBox>(line, 1).Text ?? string.Empty).Split(' ', StringSplitOptions.RemoveEmptyEntries)],
+                ((CheckBox)line.Children[2]).IsChecked == true))
+        ];
+
+        SubjectEdit[] newSubjects =
+        [
+            .. subjects.Lines.Select(line => new SubjectEdit(
+                Input<ComboBox>(line, 0).SelectedItem as string ?? "keyword",
+                Input<TextBox>(line, 1).Text ?? string.Empty))
+        ];
+
+        string newPublisher = (publisher.Text ?? string.Empty).Trim();
+
         return new MetadataEdit(
             newTitle == current.Title ? null : newTitle,
             newLanguage == current.Language ? null : newLanguage,
             newDirection == current.Direction ? null : newDirection,
             newSeries is null || newSeries == current.Series ? null : newSeries,
-            Same(newAccessibility, current.Accessibility) ? null : newAccessibility);
+            Same(newAccessibility, current.Accessibility) ? null : newAccessibility,
+            Same(newPeople, current.Contributors) ? null : newPeople,
+            Same(newSubjects, current.Subjects) ? null : newSubjects,
+            newPublisher == (current.Publisher ?? string.Empty) ? null : newPublisher);
     }
 
     /// <remarks>
     /// Compared by their contents: the record holds lists, which compare by
     /// reference, and an untouched form would otherwise look like a change.
     /// </remarks>
+    /// <remarks>
+    /// Line by line: the records hold lists, which compare by reference, and
+    /// a form nobody touched would otherwise look like a change.
+    /// </remarks>
+    private static bool Same(ContributorEdit[] left, IReadOnlyList<ContributorEdit>? right) =>
+        right is not null
+        && left.Length == right.Count
+        && left.Zip(right).All(both => both.First.Name.Trim() == both.Second.Name.Trim()
+            && both.First.Organization == both.Second.Organization
+            && both.First.Roles.SequenceEqual(both.Second.Roles, StringComparer.Ordinal));
+
+    private static bool Same(SubjectEdit[] left, IReadOnlyList<SubjectEdit>? right) =>
+        right is not null
+        && left.Length == right.Count
+        && left.Zip(right).All(both => both.First.Type == both.Second.Type && both.First.Text.Trim() == both.Second.Text.Trim());
+
     private static bool Same(AccessibilityEdit left, AccessibilityEdit? right) =>
         right is not null
         && left.AccessModes.SequenceEqual(right.AccessModes, StringComparer.Ordinal)

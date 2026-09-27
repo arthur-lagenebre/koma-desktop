@@ -54,6 +54,16 @@ public static class OpenVocabularies
         "sound", "no-sound-hazard", "none", "unknown"
     ];
 
+    /// <summary>The core subject types of §7.9, in the order it lists them.</summary>
+    public static IReadOnlyList<string> SubjectTypes { get; } = ["genre", "theme", "keyword", "setting", "time-period", "audience", "other"];
+
+    /// <summary>The core contributor roles of §7.6, in the order it lists them.</summary>
+    public static IReadOnlyList<string> ContributorRoles { get; } =
+    [
+        "writer", "script-writer", "adapter", "artist", "penciller", "inker", "colorist", "letterer",
+        "cover-artist", "translator", "editor", "designer", "photographer", "consultant", "other"
+    ];
+
     private static readonly Vocabulary[] All =
     [
         Of(Metadata, "Identifier", "scheme", false, ["uuid", "isbn-10", "isbn-13", "ean-13", "issn", "doi", "uri", "proprietary"]),
@@ -62,10 +72,10 @@ public static class OpenVocabularies
         Of(Metadata, "Collection", "type", false, ["series", "subseries", "cycle", "story-arc", "publisher-collection", "franchise", "universe", "anthology", "other"]),
         Of(Metadata, "Collection", "relation", false, ["main", "special", "other"]),
         Of(Metadata, "Name", "type", false, ["name", "given", "family", "middle", "prefix", "suffix", "pseudonym", "mononym", "alternative"]),
-        Of(Metadata, "Contributor", "roles", true, ["writer", "script-writer", "adapter", "artist", "penciller", "inker", "colorist", "letterer", "cover-artist", "translator", "editor", "designer", "photographer", "consultant", "other"]),
+        Of(Metadata, "Contributor", "roles", true, [.. ContributorRoles]),
         Of(Metadata, "Description", "type", false, ["summary", "synopsis", "blurb", "note", "edition-note", "series-note", "other"]),
         Of(Metadata, "Date", "event", false, ["publication", "first-publication", "creation", "digitization", "modified"]),
-        Of(Metadata, "Subject", "type", false, ["genre", "theme", "keyword", "setting", "time-period", "audience", "other"]),
+        Of(Metadata, "Subject", "type", false, [.. SubjectTypes]),
         Of(Metadata, "Entity", "type", false, ["character", "team", "organization", "location", "vehicle", "object", "event", "other"]),
         Of(Metadata, "Entity", "role", false, ["protagonist", "antagonist", "supporting", "cameo", "narrator"]),
         Of(Metadata, "Content", "original-medium", false, ["print", "digital", "webtoon", "mixed", "unknown"]),

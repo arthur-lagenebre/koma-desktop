@@ -113,6 +113,50 @@ public sealed class MetadataEditorTests : IDisposable
     }
 
     [Fact]
+    public void WritesWhoThePublicationIsTheWorkOfAndWhatItIsAbout()
+    {
+        var edit = new MetadataEdit(
+            Contributors: [new ContributorEdit("Froideval", ["writer"]), new ContributorEdit("Glenat", ["editor"], Organization: true)],
+            Subjects: [new SubjectEdit("genre", "Fantastique"), new SubjectEdit("keyword", "demons")],
+            Publisher: "Glenat");
+
+        XDocument edited = MetadataEditor.Apply(Minimal(), edit, Now);
+        XElement root = edited.Root!;
+
+        string[] named = ["Froideval", "Glenat"];
+        Assert.Equal(named, root.Element(M("Contributors"))!.Elements(M("Contributor")).Select(c => c.Element(M("Name"))!.Value));
+        Assert.Equal("organization", (string?)root.Element(M("Contributors"))!.Elements(M("Contributor")).Last().Attribute("type"));
+        Assert.Equal("Glenat", root.Element(M("Publication"))!.Element(M("Publisher"))!.Value);
+
+        // §7.9 reads a subject with no type as a keyword, so a keyword says
+        // nothing and the others say what they are.
+        XElement[] subjects = [.. root.Element(M("Subjects"))!.Elements(M("Subject"))];
+        Assert.Equal("genre", (string?)subjects[0].Attribute("type"));
+        Assert.Null(subjects[1].Attribute("type"));
+
+        MetadataEdit read = MetadataEditor.Read(edited);
+
+        Assert.Equal("Glenat", read.Publisher);
+        Assert.Equal(2, read.Contributors!.Count);
+        Assert.Equal("Fantastique", read.Subjects![0].Text);
+    }
+
+    [Fact]
+    public void EmptyingAListTakesItsSectionAway()
+    {
+        // An editor that could not clear a list could not undo a bad
+        // conversion.
+        XDocument written = MetadataEditor.Apply(Minimal(), new MetadataEdit(Subjects: [new SubjectEdit("genre", "Fantastique")], Publisher: "Glenat"), Now);
+        XDocument cleared = MetadataEditor.Apply(written, new MetadataEdit(Subjects: [], Publisher: ""), Now);
+
+        Assert.Null(cleared.Root!.Element(M("Subjects")));
+        Assert.Null(cleared.Root.Element(M("Publication"))?.Element(M("Publisher")));
+
+        // §7.6 wants a role for whoever is named.
+        Assert.Throws<ArgumentException>(() => MetadataEditor.Apply(Minimal(), new MetadataEdit(Contributors: [new ContributorEdit("Anonyme", [])]), Now));
+    }
+
+    [Fact]
     public void StampsTheModifiedDateToTheSecond()
     {
         // §7.2.1: a producer that changes a core document updates the date. A

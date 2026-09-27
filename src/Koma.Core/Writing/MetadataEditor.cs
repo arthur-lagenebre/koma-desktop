@@ -21,9 +21,37 @@ public sealed record SeriesEdit(string Name, string? Position = null, string? To
 public sealed record AccessibilityEdit(IReadOnlyList<string> AccessModes, IReadOnlyList<string> Hazards, string? Summary);
 
 /// <summary>
+/// One of the people or organizations a publication is the work of (§7.6).
+/// </summary>
+/// <param name="Name">The name as it is written.</param>
+/// <param name="Roles">What they did, from the vocabulary of §7.6; at least one.</param>
+/// <param name="Organization">Whether it is an organization rather than a person.</param>
+public sealed record ContributorEdit(string Name, IReadOnlyList<string> Roles, bool Organization = false);
+
+/// <summary>
+/// What a publication is about (§7.9): a genre, a theme, a keyword.
+/// </summary>
+/// <param name="Type">The kind of subject, from the vocabulary of §7.9.</param>
+/// <param name="Text">The subject itself, in the language of the document.</param>
+public sealed record SubjectEdit(string Type, string Text);
+
+/// <summary>
 /// What an edit changes. A <see langword="null"/> field is left as it is.
 /// </summary>
-public sealed record MetadataEdit(string? Title = null, string? Language = null, ReadingDirection? Direction = null, SeriesEdit? Series = null, AccessibilityEdit? Accessibility = null);
+/// <remarks>
+/// A list given empty empties the section it stands for; a list left
+/// <see langword="null"/> leaves it alone. The difference matters: an editor
+/// that could not clear a list could not undo a bad conversion.
+/// </remarks>
+public sealed record MetadataEdit(
+    string? Title = null,
+    string? Language = null,
+    ReadingDirection? Direction = null,
+    SeriesEdit? Series = null,
+    AccessibilityEdit? Accessibility = null,
+    IReadOnlyList<ContributorEdit>? Contributors = null,
+    IReadOnlyList<SubjectEdit>? Subjects = null,
+    string? Publisher = null);
 
 /// <summary>
 /// Applies an edit to <c>metadata.xml</c>, touching nothing it was not asked
@@ -70,7 +98,15 @@ public static partial class MetadataEditor
             root.Element(X("Languages"))?.Elements(X("Language")).FirstOrDefault(l => (string?)l.Attribute("role") == "content")?.Value.Trim(),
             (string?)root.Element(X("Reading"))?.Attribute("direction") == "rtl" ? ReadingDirection.RightToLeft : ReadingDirection.LeftToRight,
             seriesName is null ? null : new SeriesEdit(seriesName, (string?)series!.Attribute("position"), (string?)series.Attribute("total")),
-            ReadAccessibility(root));
+            ReadAccessibility(root),
+            [.. root.Element(X("Contributors"))?.Elements(X("Contributor")).Select(c => new ContributorEdit(
+                c.Element(X("Name"))?.Value.Trim() ?? string.Empty,
+                [.. ((string?)c.Attribute("roles") ?? string.Empty).Split(' ', StringSplitOptions.RemoveEmptyEntries)],
+                (string?)c.Attribute("type") == "organization")) ?? []],
+            [.. root.Element(X("Subjects"))?.Elements(X("Subject")).Select(s => new SubjectEdit(
+                (string?)s.Attribute("type") ?? "keyword",
+                s.Value.Trim())) ?? []],
+            root.Element(X("Publication"))?.Element(X("Publisher"))?.Value.Trim() ?? string.Empty);
     }
 
     private static AccessibilityEdit ReadAccessibility(XElement root)
@@ -111,6 +147,15 @@ public static partial class MetadataEditor
 
         if (edit.Accessibility is { } accessibility)
             SetAccessibility(root, accessibility);
+
+        if (edit.Contributors is { } contributors)
+            SetContributors(root, contributors);
+
+        if (edit.Subjects is { } subjects)
+            SetSubjects(root, subjects);
+
+        if (edit.Publisher is { } publisher)
+            SetPublisher(root, publisher);
 
         SetModified(root, now);
 
@@ -252,6 +297,111 @@ public static partial class MetadataEditor
         rebuilt.AddRange(section.Elements(X("Certification")));
 
         section.ReplaceNodes(rebuilt);
+    }
+
+    /// <summary>
+    /// Writes who the publication is the work of (§7.6), in the order given.
+    /// </summary>
+    /// <remarks>
+    /// The order is the one shown, since §7.6 gives none and a list of
+    /// contributors is read as an order of billing.
+    /// </remarks>
+    private static void SetContributors(XElement root, IReadOnlyList<ContributorEdit> contributors)
+    {
+        ContributorEdit[] written = [.. contributors.Where(c => !string.IsNullOrWhiteSpace(c.Name))];
+
+        if (written.Length == 0)
+        {
+            root.Element(X("Contributors"))?.Remove();
+            return;
+        }
+
+        foreach (ContributorEdit contributor in written)
+        {
+            string[] roles = [.. contributor.Roles.Select(r => r.Trim()).Where(r => r.Length > 0)];
+
+            if (roles.Length == 0)
+                throw new ArgumentException($"'{contributor.Name}' did what? §7.6 wants a role.", nameof(contributors));
+
+            if (roles.FirstOrDefault(r => !KomaTokens.IsToken(r)) is { } malformed)
+                throw new ArgumentException($"'{malformed}' is not a token (§4.3).", nameof(contributors));
+        }
+
+        Container(root, "Contributors").ReplaceNodes(written.Select(c => new XElement(
+            X("Contributor"),
+            new XAttribute("type", c.Organization ? "organization" : "person"),
+            new XAttribute("roles", string.Join(' ', c.Roles.Select(r => r.Trim()).Where(r => r.Length > 0))),
+            Named(root, c.Name.Trim()))));
+    }
+
+    /// <summary>Writes what the publication is about (§7.9).</summary>
+    private static void SetSubjects(XElement root, IReadOnlyList<SubjectEdit> subjects)
+    {
+        SubjectEdit[] written = [.. subjects.Where(s => !string.IsNullOrWhiteSpace(s.Text))];
+
+        if (written.Length == 0)
+        {
+            root.Element(X("Subjects"))?.Remove();
+            return;
+        }
+
+        if (written.Select(s => s.Type.Trim()).FirstOrDefault(t => t.Length > 0 && !KomaTokens.IsToken(t)) is { } malformed)
+            throw new ArgumentException($"'{malformed}' is not a token (§4.3).", nameof(subjects));
+
+        Container(root, "Subjects").ReplaceNodes(written.Select(s =>
+        {
+            var subject = new XElement(X("Subject"), s.Text.Trim());
+
+            // §7.9 reads a subject with no type as a keyword, so a keyword
+            // says nothing and the others say what they are.
+            if (s.Type.Trim() is { Length: > 0 } type && type != "keyword")
+                subject.SetAttributeValue("type", type);
+
+            if ((string?)root.Attribute(XNamespace.Xml + "lang") is { } language)
+                subject.SetAttributeValue(XNamespace.Xml + "lang", language);
+
+            return subject;
+        }));
+    }
+
+    /// <summary>Writes who published it (§7.8), or takes the name away.</summary>
+    private static void SetPublisher(XElement root, string publisher)
+    {
+        string name = publisher.Trim();
+
+        if (name.Length == 0)
+        {
+            root.Element(X("Publication"))?.Element(X("Publisher"))?.Remove();
+
+            // §7.8 has no empty Publication to offer, so a section with
+            // nothing left in it goes.
+            if (root.Element(X("Publication")) is { } section && !section.Elements().Any())
+                section.Remove();
+
+            return;
+        }
+
+        XElement publication = Container(root, "Publication");
+
+        if (publication.Element(X("Publisher")) is { } existing)
+        {
+            existing.Value = name;
+            return;
+        }
+
+        // First, where §7.8 puts it.
+        publication.AddFirst(Named(root, name, "Publisher"));
+    }
+
+    /// <summary>A name in the language the document is written in (§4.4).</summary>
+    private static XElement Named(XElement root, string name, string element = "Name")
+    {
+        var written = new XElement(X(element), name);
+
+        if ((string?)root.Attribute(XNamespace.Xml + "lang") is { } language)
+            written.SetAttributeValue(XNamespace.Xml + "lang", language);
+
+        return written;
     }
 
     /// <summary>A summary in the language the document is written in (§4.4).</summary>
