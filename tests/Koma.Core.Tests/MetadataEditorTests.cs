@@ -216,6 +216,35 @@ public sealed class MetadataEditorTests : IDisposable
     }
 
     [Fact]
+    public void WritesTheEditionTheDatesAndTheSizeOfThePaper()
+    {
+        var edit = new MetadataEdit(
+            Publisher: "Soleil",
+            Edition: "Édition intégrale",
+            Dates: [new DateEdit("first-publication", "1998"), new DateEdit("publication", "2011-05")],
+            PhysicalFormat: new PhysicalFormatEdit("240", "320"));
+
+        XDocument edited = MetadataEditor.Apply(Minimal(), edit, Now);
+        XElement publication = edited.Root!.Element(M("Publication"))!;
+
+        // §7.8 fixes the order, and the modified date of §7.2.1 sits among
+        // the dates it holds.
+        string[] order = ["Publisher", "Edition", "Date", "Date", "Date", "PhysicalFormat"];
+        Assert.Equal(order, publication.Elements().Select(e => e.Name.LocalName));
+
+        Assert.Equal("mm", (string?)publication.Element(M("PhysicalFormat"))!.Attribute("unit"));
+
+        MetadataEdit read = MetadataEditor.Read(edited);
+
+        // The stamped date is nobody's to edit, so it is not offered back.
+        Assert.Equal(2, read.Dates!.Count);
+        Assert.Equal("240", read.PhysicalFormat!.Width);
+
+        // §7.8 wants both sides: a width without a height describes nothing.
+        Assert.Throws<ArgumentException>(() => MetadataEditor.Apply(Minimal(), new MetadataEdit(PhysicalFormat: new PhysicalFormatEdit("240", "")), Now));
+    }
+
+    [Fact]
     public void EmptyingAListTakesItsSectionAway()
     {
         // An editor that could not clear a list could not undo a bad

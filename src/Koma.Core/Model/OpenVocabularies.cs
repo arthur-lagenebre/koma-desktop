@@ -54,6 +54,16 @@ public static class OpenVocabularies
         "sound", "no-sound-hazard", "none", "unknown"
     ];
 
+    /// <summary>
+    /// The core date events of §7.8, in the order it lists them, without the
+    /// one §7.2.1 keeps for itself.
+    /// </summary>
+    /// <remarks>
+    /// <c>modified</c> is stamped at every write and is nobody's to set by
+    /// hand, so a form that offered it would offer a lie.
+    /// </remarks>
+    public static IReadOnlyList<string> DateEvents { get; } = ["publication", "first-publication", "creation", "digitization"];
+
     /// <summary>The core entity types of §7.10, in the order it lists them.</summary>
     public static IReadOnlyList<string> EntityTypes { get; } = ["character", "team", "organization", "location", "vehicle", "object", "event", "other"];
 

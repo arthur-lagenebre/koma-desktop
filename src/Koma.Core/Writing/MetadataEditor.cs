@@ -67,6 +67,18 @@ public sealed record WarningEdit(string Type, string Text = "");
 public sealed record LinkEdit(string Relation, string Href, string Text = "");
 
 /// <summary>
+/// When something happened to the publication (§7.8).
+/// </summary>
+/// <param name="Event">What happened, from the vocabulary of §7.8.</param>
+/// <param name="Value">The date, as §4.3 writes one: a year, a month, a day.</param>
+public sealed record DateEdit(string Event, string Value);
+
+/// <summary>
+/// How big the paper was (§7.8), in millimetres.
+/// </summary>
+public sealed record PhysicalFormatEdit(string Width, string Height);
+
+/// <summary>
 /// What may be done with a publication (§7.16).
 /// </summary>
 /// <param name="Copyright">The copyright line, or empty.</param>
@@ -97,7 +109,10 @@ public sealed record MetadataEdit(
     RightsEdit? Rights = null,
     string? Publisher = null,
     string? Imprint = null,
-    string? Place = null);
+    string? Place = null,
+    string? Edition = null,
+    IReadOnlyList<DateEdit>? Dates = null,
+    PhysicalFormatEdit? PhysicalFormat = null);
 
 /// <summary>
 /// Applies an edit to <c>metadata.xml</c>, touching nothing it was not asked
@@ -175,7 +190,14 @@ public static partial class MetadataEditor
                 root.Element(X("Rights"))?.Element(X("Statement"))?.Value.Trim() ?? string.Empty),
             root.Element(X("Publication"))?.Element(X("Publisher"))?.Value.Trim() ?? string.Empty,
             root.Element(X("Publication"))?.Element(X("Imprint"))?.Value.Trim() ?? string.Empty,
-            root.Element(X("Publication"))?.Element(X("Place"))?.Value.Trim() ?? string.Empty);
+            root.Element(X("Publication"))?.Element(X("Place"))?.Value.Trim() ?? string.Empty,
+            root.Element(X("Publication"))?.Element(X("Edition"))?.Value.Trim() ?? string.Empty,
+            [.. root.Element(X("Publication"))?.Elements(X("Date")).Where(d => (string?)d.Attribute("event") != "modified").Select(d => new DateEdit(
+                (string?)d.Attribute("event") ?? "publication",
+                d.Value.Trim())) ?? []],
+            new PhysicalFormatEdit(
+                (string?)root.Element(X("Publication"))?.Element(X("PhysicalFormat"))?.Attribute("trim-width") ?? string.Empty,
+                (string?)root.Element(X("Publication"))?.Element(X("PhysicalFormat"))?.Attribute("trim-height") ?? string.Empty));
     }
 
     private static AccessibilityEdit ReadAccessibility(XElement root)
@@ -246,6 +268,15 @@ public static partial class MetadataEditor
 
         if (edit.Place is { } place)
             SetPublication(root, "Place", place);
+
+        if (edit.Edition is { } edition)
+            SetPublication(root, "Edition", edition);
+
+        if (edit.Dates is { } dates)
+            SetDates(root, dates);
+
+        if (edit.PhysicalFormat is { } format)
+            SetPhysicalFormat(root, format);
 
         SetModified(root, now);
 
@@ -646,6 +677,83 @@ public static partial class MetadataEditor
             next.AddBeforeSelf(Named(root, value, element));
     }
 
+    /// <summary>
+    /// Writes when things happened to the publication (§7.8), keeping the
+    /// modified date of §7.2.1 where it is.
+    /// </summary>
+    private static void SetDates(XElement root, IReadOnlyList<DateEdit> dates)
+    {
+        DateEdit[] written = [.. dates.Where(d => !string.IsNullOrWhiteSpace(d.Value))];
+        XElement? section = root.Element(X("Publication"));
+
+        // The release identity of §7.2.1 is stamped at every write and is
+        // nobody's to move: it is carried over whatever the form says.
+        XElement[] stamped = [.. section?.Elements(X("Date")).Where(d => (string?)d.Attribute("event") == "modified") ?? []];
+
+        Tokens(written.Select(d => d.Event), nameof(dates), typeRequired: written.Select(d => d.Event));
+
+        XElement[] all = [.. written.Select(d => new XElement(X("Date"), new XAttribute("event", d.Event.Trim()), d.Value.Trim())), .. stamped];
+
+        foreach (XElement existing in section?.Elements(X("Date")).ToArray() ?? [])
+            existing.Remove();
+
+        if (all.Length == 0)
+        {
+            if (section is { } emptied && !emptied.Elements().Any())
+                emptied.Remove();
+
+            return;
+        }
+
+        Place(Container(root, "Publication"), "Date", all);
+    }
+
+    /// <summary>Writes how big the paper was (§7.8), or takes the size away.</summary>
+    private static void SetPhysicalFormat(XElement root, PhysicalFormatEdit format)
+    {
+        string width = format.Width.Trim();
+        string height = format.Height.Trim();
+        XElement? section = root.Element(X("Publication"));
+
+        if (width.Length == 0 && height.Length == 0)
+        {
+            section?.Element(X("PhysicalFormat"))?.Remove();
+
+            if (section is { } emptied && !emptied.Elements().Any())
+                emptied.Remove();
+
+            return;
+        }
+
+        // §7.8 wants both sides: a width without a height describes nothing.
+        if (width.Length == 0 || height.Length == 0)
+            throw new ArgumentException("A physical format has a width and a height (§7.8).", nameof(format));
+
+        var written = new XElement(
+            X("PhysicalFormat"),
+            new XAttribute("trim-width", width),
+            new XAttribute("trim-height", height),
+            new XAttribute("unit", "mm"));
+
+        section?.Element(X("PhysicalFormat"))?.Remove();
+        Place(Container(root, "Publication"), "PhysicalFormat", [written]);
+    }
+
+    /// <summary>
+    /// Puts elements where §7.8 holds them, since a section out of order is a
+    /// section the schema refuses.
+    /// </summary>
+    private static void Place(XElement section, string element, XElement[] written)
+    {
+        int rank = Array.IndexOf(PublicationOrder, element);
+        XElement? next = section.Elements().FirstOrDefault(e => Array.IndexOf(PublicationOrder, e.Name.LocalName) > rank);
+
+        if (next is null)
+            section.Add(written);
+        else
+            next.AddBeforeSelf(written);
+    }
+
     /// <summary>A name in the language the document is written in (§4.4).</summary>
     private static XElement Named(XElement root, string name, string element = "Name")
     {
@@ -674,10 +782,16 @@ public static partial class MetadataEditor
         XElement publication = Container(root, "Publication");
         XElement? modified = publication.Elements(X("Date")).FirstOrDefault(d => (string?)d.Attribute("event") == "modified");
 
-        if (modified is null)
-            publication.Add(new XElement(X("Date"), new XAttribute("event", "modified"), stamp));
-        else
+        if (modified is not null)
+        {
             modified.Value = stamp;
+            return;
+        }
+
+        // At its rank and not at the end: §7.8 puts the dates before the
+        // physical format, and a section out of order is a section the schema
+        // refuses. Nothing showed it while no publication carried a format.
+        Place(publication, "Date", [new XElement(X("Date"), new XAttribute("event", "modified"), stamp)]);
     }
 
     private static XElement Required(XElement root, string container, string element, string attribute, string value) =>

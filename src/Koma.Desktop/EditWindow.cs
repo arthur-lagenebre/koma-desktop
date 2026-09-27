@@ -40,6 +40,9 @@ internal sealed class EditWindow : Window
     private readonly TextBox publisher = new();
     private readonly TextBox imprint = new();
     private readonly TextBox place = new();
+    private readonly TextBox edition = new();
+    private readonly TextBox trimWidth = new() { Width = 120 };
+    private readonly TextBox trimHeight = new() { Width = 120 };
     private readonly TextBox copyright = new();
     private readonly TextBox license = new();
     private readonly TextBox statement = new() { AcceptsReturn = true, Height = 90, TextWrapping = TextWrapping.Wrap };
@@ -55,6 +58,7 @@ internal sealed class EditWindow : Window
     private Rows entities = null!;
     private Rows warnings = null!;
     private Rows links = null!;
+    private Rows dates = null!;
     private readonly StackPanel fields = new() { Spacing = 6, Margin = new Thickness(16) };
     private readonly WritingNotice writing = new();
 
@@ -92,6 +96,9 @@ internal sealed class EditWindow : Window
         publisher.Text = current.Publisher;
         imprint.Text = current.Imprint;
         place.Text = current.Place;
+        edition.Text = current.Edition;
+        trimWidth.Text = current.PhysicalFormat?.Width;
+        trimHeight.Text = current.PhysicalFormat?.Height;
 
         var publication = new StackPanel { Spacing = 6, Margin = new Thickness(12) };
 
@@ -101,6 +108,10 @@ internal sealed class EditWindow : Window
         publication.Children.Add(Field(Text.Of("Publisher"), publisher));
         publication.Children.Add(Field(Text.Of("Imprint"), imprint));
         publication.Children.Add(Field(Text.Of("Place of publication"), place));
+        publication.Children.Add(Field(Text.Of("Edition"), edition));
+        publication.Children.Add(Dated(current));
+        publication.Children.Add(Field(Text.Of("Trimmed width, in millimetres"), trimWidth));
+        publication.Children.Add(Field(Text.Of("Trimmed height, in millimetres"), trimHeight));
         publication.Children.Add(Field(Text.Of("Series"), series));
         publication.Children.Add(Field(Text.Of("Number in the series"), position));
         publication.Children.Add(Field(Text.Of("Volumes in the series"), total));
@@ -219,6 +230,19 @@ internal sealed class EditWindow : Window
         };
     }
 
+    /// <summary>When things happened to the publication (§7.8).</summary>
+    private StackPanel Dated(MetadataEdit current)
+    {
+        dates = MetadataRows.Dates();
+        MetadataRows.Fill(dates, current.Dates ?? []);
+
+        return new StackPanel
+        {
+            Spacing = 2,
+            Children = { new TextBlock { Text = Text.Of("Dates"), Opacity = 0.75 }, dates }
+        };
+    }
+
     /// <summary>What the publication says about itself (§7.7).</summary>
     private StackPanel Descriptions(MetadataEdit current)
     {
@@ -297,6 +321,9 @@ internal sealed class EditWindow : Window
         string newPublisher = (publisher.Text ?? string.Empty).Trim();
         string newImprint = (imprint.Text ?? string.Empty).Trim();
         string newPlace = (place.Text ?? string.Empty).Trim();
+        string newEdition = (edition.Text ?? string.Empty).Trim();
+        DateEdit[] newDates = MetadataRows.ReadDates(dates);
+        var newFormat = new PhysicalFormatEdit((trimWidth.Text ?? string.Empty).Trim(), (trimHeight.Text ?? string.Empty).Trim());
 
         return new MetadataEdit(
             newTitle == current.Title ? null : newTitle,
@@ -313,7 +340,10 @@ internal sealed class EditWindow : Window
             newRights == current.Rights ? null : newRights,
             newPublisher == (current.Publisher ?? string.Empty) ? null : newPublisher,
             newImprint == (current.Imprint ?? string.Empty) ? null : newImprint,
-            newPlace == (current.Place ?? string.Empty) ? null : newPlace);
+            newPlace == (current.Place ?? string.Empty) ? null : newPlace,
+            newEdition == (current.Edition ?? string.Empty) ? null : newEdition,
+            Same(newDates, current.Dates) ? null : newDates,
+            newFormat == current.PhysicalFormat ? null : newFormat);
     }
 
     /// <remarks>
@@ -330,6 +360,11 @@ internal sealed class EditWindow : Window
         && left.Zip(right).All(both => both.First.Name.Trim() == both.Second.Name.Trim()
             && both.First.Organization == both.Second.Organization
             && both.First.Roles.SequenceEqual(both.Second.Roles, StringComparer.Ordinal));
+
+    private static bool Same(DateEdit[] left, IReadOnlyList<DateEdit>? right) =>
+        right is not null
+        && left.Length == right.Count
+        && left.Zip(right).All(both => both.First.Event == both.Second.Event && both.First.Value.Trim() == both.Second.Value.Trim());
 
     private static bool Same(EntityEdit[] left, IReadOnlyList<EntityEdit>? right) =>
         right is not null

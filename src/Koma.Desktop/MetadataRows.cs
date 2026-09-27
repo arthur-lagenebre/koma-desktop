@@ -22,6 +22,7 @@ internal static class MetadataRows
     private static readonly string[] EntityRoles = ["", .. OpenVocabularies.EntityRoles];
     private static readonly string[] ContentWarnings = [.. OpenVocabularies.ContentWarnings];
     private static readonly string[] LinkRelations = [.. OpenVocabularies.LinkRelations];
+    private static readonly string[] DateEvents = [.. OpenVocabularies.DateEvents];
 
     public static Rows People() => new(Text.Of("Add someone"), () => new StackPanel
     {
@@ -109,6 +110,35 @@ internal static class MetadataRows
             Field(Text.Of("What to call it"), new TextBox { Width = 180 })
         }
     });
+
+    public static Rows Dates() => new(Text.Of("Add a date"), () => new StackPanel
+    {
+        Orientation = Orientation.Horizontal,
+        Spacing = 8,
+        Children =
+        {
+            Field(Text.Of("What happened"), new ComboBox { ItemsSource = DateEvents, SelectedIndex = 0, Width = 180 }),
+            Field(Text.Of("When, as 2026 or 2026-05 or 2026-05-23"), new TextBox { Width = 220 })
+        }
+    });
+
+    public static void Fill(Rows rows, IReadOnlyList<DateEdit> dates)
+    {
+        rows.Fill(dates.Count);
+
+        foreach ((StackPanel line, DateEdit date) in rows.Lines.Zip(dates))
+        {
+            Input<ComboBox>(line, 0).SelectedIndex = Math.Max(0, Array.IndexOf(DateEvents, date.Event));
+            Input<TextBox>(line, 1).Text = date.Value;
+        }
+    }
+
+    public static DateEdit[] ReadDates(Rows rows) =>
+    [
+        .. rows.Lines.Select(line => new DateEdit(
+            Input<ComboBox>(line, 0).SelectedItem as string ?? "publication",
+            Input<TextBox>(line, 1).Text ?? string.Empty))
+    ];
 
     public static void Fill(Rows rows, IReadOnlyList<EntityEdit> entities)
     {
