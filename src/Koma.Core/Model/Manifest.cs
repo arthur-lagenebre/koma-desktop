@@ -33,6 +33,18 @@ public sealed record ManifestItem
 
     /// <summary>Whether the page is purely decorative (§8.7).</summary>
     public bool IsDecorative { get; init; }
+
+    /// <summary>
+    /// What a reader who cannot see the page is told about it (§8.7), or
+    /// <see langword="null"/> where the package says nothing.
+    /// </summary>
+    /// <remarks>
+    /// Kept in the model, and not only checked on the way in, because a
+    /// reader has to be able to say it out loud: a package that describes its
+    /// pages and an application that drops the description on the floor
+    /// amount to a package that describes nothing.
+    /// </remarks>
+    public string? AlternativeText { get; init; }
 }
 
 /// <summary>One entry of the spine (§8.8).</summary>

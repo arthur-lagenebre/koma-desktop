@@ -164,10 +164,12 @@ place of it — is written into all of them at once, each on its own, so that on
 refusal stops itself and not the rest. The arrows walk the shelf card to card
 and row to row, and what a card is — its title, its series, how far it was read
 — is said in one line for whoever is not looking at it, as every field of every
-window says what it is for. The landmarks of §9.3 are listed in the order their
-pages come, whatever order a document puts them in, since §9.3 fixes none and a
-back cover above the start of the story is a list nobody would follow. The
-window opens the size it was left, and full screen if it was left full screen.
+window says what it is for, and a spread says where it stands and what its
+pages say of themselves (§8.7). The landmarks of §9.3 are listed in the order
+their pages come, whatever order a document puts them in, since §9.3 fixes none
+and a back cover above the start of the story is a list nobody would follow.
+The window opens the size it was left, and full screen if it was left full
+screen.
 
 The format itself is at pre-release draft `0.9`. Per §5.0 of the specification,
 a reader supporting one `0.x` version **must reject every other `0.x`**, and

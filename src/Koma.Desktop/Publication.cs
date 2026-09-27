@@ -65,6 +65,17 @@ internal sealed class Publication : IDisposable
         return 0;
     }
 
+    /// <summary>
+    /// What the manifest says about a page, or <see langword="null"/> for one
+    /// it does not name.
+    /// </summary>
+    /// <remarks>
+    /// Not called Item: the private one of that name is for a page of a
+    /// spread, where a page the manifest does not name is a contradiction
+    /// rather than a case to handle.
+    /// </remarks>
+    public ManifestItem? Described(string item) => package.Manifest.Item(item);
+
     /// <summary>What <c>nav.xml</c> offers, or <see langword="null"/> without one.</summary>
     public PublicationNavigation? Navigation => package.Navigation;
 

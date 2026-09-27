@@ -283,7 +283,7 @@ internal sealed class PagesWindow : Window
         }
         catch (Exception refused) when (refused is ArgumentException or InvalidDataException or IOException or UnauthorizedAccessException)
         {
-            problem.Text = refused.Message;
+            problem.Text = Text.Of("Refused: {0}", refused.Message);
         }
 
         Busy(false);
@@ -431,7 +431,7 @@ internal sealed class PagesWindow : Window
         }
         catch (Exception refused) when (refused is ArgumentException or InvalidDataException or IOException or UnauthorizedAccessException)
         {
-            problem.Text = refused.Message;
+            problem.Text = Text.Of("Refused: {0}", refused.Message);
         }
 
         Busy(false);

@@ -44,11 +44,13 @@ more than another round of names.
 
 ### The rest of the accessibility
 
-What is not done at all: contrast, which has never been measured; the focus,
-which is wherever Fluent puts it and has never been looked at; and the reading
-view, where a spread is a picture with nothing to announce — the alternative
-text of §8.7 is written into packages by this application and read back by
-nothing in it.
+The reading view now says where a spread stands and what its pages say of
+themselves (§8.7), and a refusal says in words that it is one rather than in
+red alone. What is left is what cannot be settled from here: the contrast,
+which has never been measured against either theme — the refusal red is a
+fixed colour over a background that follows the system — and the focus, which
+is wherever Fluent puts it and has never been watched as it moves. Both want
+eyes on a screen.
 
 ## Deferred, and why
 

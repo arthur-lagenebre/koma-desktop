@@ -91,6 +91,27 @@ public sealed class ReadingTests : IDisposable
         Assert.Equal((1000, 700), (window.Width, window.Height));
     }
 
+    [AvaloniaFact]
+    public void SaysWhatTheSpreadOnScreenIs()
+    {
+        // This application writes the alternative text of §8.7 and read it
+        // back nowhere, which made the whole of it decoration.
+        MainWindow window = Reader();
+
+        window.FindButton(b => b.Content is StackPanel).Press();
+
+        // What the window announced, not what the visual tree holds: headless
+        // builds no more of it than it needs, and the name is set on the view
+        // at the same moment.
+        string said = window.Announcement;
+
+        Assert.Contains("Spread 1 of 3", said, StringComparison.Ordinal);
+        Assert.Contains("Page 1", said, StringComparison.Ordinal);
+
+        // valid-page-list describes its cover.
+        Assert.Contains("Couverture", said, StringComparison.Ordinal);
+    }
+
     public void Dispose()
     {
         try

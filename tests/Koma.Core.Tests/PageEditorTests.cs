@@ -210,6 +210,18 @@ public sealed class PageEditorTests : IDisposable
     }
 
     [Fact]
+    public void KeepsWhatAPageSaysAboutItselfForAReaderToSayOutLoud()
+    {
+        // §8.7 is written by this application and was read back nowhere,
+        // which made the whole of it decoration.
+        PackageOpenResult result = PackageOpener.Open(File.OpenRead(Corpus.Package("valid-page-list.koma")));
+
+        using KomaPackage? package = result.Package;
+
+        Assert.Equal("Couverture.", package!.Manifest.Item("p001")!.AlternativeText);
+    }
+
+    [Fact]
     public void RewritesThePackageAndStampsTheRelease()
     {
         string path = Copy("valid-page-list.koma");

@@ -1384,6 +1384,45 @@ internal sealed partial class MainWindow : Window, IDisposable
         View.Height = height;
     }
 
+    /// <summary>
+    /// What the spread on screen was last announced as, which a test reads
+    /// rather than hunting for a control in a tree headless has no reason to
+    /// have built.
+    /// </summary>
+    internal string Announcement { get; private set; } = string.Empty;
+
+    /// <summary>
+    /// What a spread is, said in words: where it stands, and what each of its
+    /// pages says about itself (§8.7).
+    /// </summary>
+    /// <remarks>
+    /// This application writes the alternative text of §8.7 into packages and
+    /// read it back nowhere, which made the whole of it decoration. A spread
+    /// is a picture, and a picture announces nothing on its own.
+    /// </remarks>
+    private static string Announced(Publication publication, Spread spread, int at, int of)
+    {
+        var said = new StringBuilder(Text.Of("Spread {0} of {1}.", at + 1, of));
+
+        foreach (string item in SpreadLayout.Items(spread))
+        {
+            if (publication.Described(item) is not { } page)
+                continue;
+
+            said.Append(' ');
+            said.Append(Text.Of("Page {0}.", publication.PageNumber(item)));
+            said.Append(' ');
+
+            // §8.7: a decorative page has nothing to describe, and saying so
+            // is better than a silence that might be an omission.
+            said.Append(page.IsDecorative
+                ? Text.Of("Decorative.")
+                : page.AlternativeText is { Length: > 0 } described ? described : Text.Of("Not described."));
+        }
+
+        return said.ToString();
+    }
+
     private void ShowCurrent()
     {
         if (publication is null || publication.Spreads.Count == 0)
@@ -1400,6 +1439,8 @@ internal sealed partial class MainWindow : Window, IDisposable
 
         SizeCanvas(spread);
         View.Show(publication, spread);
+        Announcement = Announced(publication, spread, current, spreads.Count);
+        AutomationProperties.SetName(View, Announcement);
         SpreadCounter.Text = CounterOf(publication, spread, current, spreads.Count) + (zoom == 1 ? string.Empty : string.Create(CultureInfo.InvariantCulture, $"  ·  {zoom * 100:0} %"));
         Status.Text = StatusOf(publication, onScreen);
 

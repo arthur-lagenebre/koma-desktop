@@ -213,6 +213,7 @@ public static class ManifestReader
             Roles = roles,
             PageSpan = pageSpan,
             BackgroundColor = colour,
+            AlternativeText = accessibility?.Element(XName.Get("AlternativeText", Namespace))?.Value.Trim(),
             Sha256 = element.Element(XName.Get("Checksum", Namespace))?.Value.Trim(),
             IsDecorative = decorative
         };
