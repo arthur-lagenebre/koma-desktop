@@ -23,19 +23,6 @@ archive converted into one. What is not covered: the conversion of a whole
 folder, which is the same work with more of it, and anything that needs a
 picker, which belongs to the platform rather than to this application.
 
-### The ratings of §7.14
-
-The only part of §7 an editor still cannot write. A rating is a scheme and a
-value — `cero`, `B` — and the schemes are somebody else's vocabulary, so a
-form would either offer a free pair of boxes, which is a way of writing
-nonsense carefully, or carry a table of schemes this project would then have
-to keep up to date. What a conversion or another tool wrote is kept
-untouched, which is why nothing is lost by waiting for a reason to do it.
-
-The identifiers and the release identity of §7.2 are settled, not pending: an
-identifier changed is a different publication, and the modified date is
-stamped at every write. Neither belongs in a form.
-
 ### Walk the accessibility passes again after a change
 
 Both passes of [`docs/accessibility-pass.md`](docs/accessibility-pass.md) have

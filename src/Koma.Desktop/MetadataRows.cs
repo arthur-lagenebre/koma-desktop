@@ -88,6 +88,45 @@ internal static class MetadataRows
         }
     });
 
+    /// <summary>
+    /// The schemes met most often, offered without being imposed: a scheme is
+    /// somebody else's vocabulary, and this list is a convenience rather than
+    /// a table this project keeps.
+    /// </summary>
+    private static readonly string[] Schemes = ["cero", "esrb", "pegi", "bbfc", "acb", "usk", "csm"];
+
+    public static Rows Ratings() => new(Text.Of("Add a rating"), () => new StackPanel
+    {
+        Orientation = Orientation.Horizontal,
+        Spacing = 8,
+        Children =
+        {
+            Field(Text.Of("Whose classification"), new AutoCompleteBox { ItemsSource = Schemes, Width = 160, FilterMode = AutoCompleteFilterMode.StartsWith }),
+            Field(Text.Of("What it says"), new TextBox { Width = 120 }),
+            Field(Text.Of("Where it applies, as two capitals"), new TextBox { Width = 120 })
+        }
+    });
+
+    public static void Fill(Rows rows, IReadOnlyList<RatingEdit> ratings)
+    {
+        rows.Fill(ratings.Count);
+
+        foreach ((StackPanel line, RatingEdit rating) in rows.Lines.Zip(ratings))
+        {
+            Input<AutoCompleteBox>(line, 0).Text = rating.Scheme;
+            Input<TextBox>(line, 1).Text = rating.Value;
+            Input<TextBox>(line, 2).Text = rating.Region;
+        }
+    }
+
+    public static RatingEdit[] ReadRatings(Rows rows) =>
+    [
+        .. rows.Lines.Select(line => new RatingEdit(
+            Input<AutoCompleteBox>(line, 0).Text ?? string.Empty,
+            Input<TextBox>(line, 1).Text ?? string.Empty,
+            Input<TextBox>(line, 2).Text ?? string.Empty))
+    ];
+
     public static Rows Warnings() => new(Text.Of("Add a warning"), () => new StackPanel
     {
         Orientation = Orientation.Horizontal,

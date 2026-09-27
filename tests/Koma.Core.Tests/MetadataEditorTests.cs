@@ -198,6 +198,33 @@ public sealed class MetadataEditorTests : IDisposable
     }
 
     [Fact]
+    public void WritesHowOthersClassifiedThePublication()
+    {
+        var edit = new MetadataEdit(
+            Ratings: [new RatingEdit("cero", "B", "JP"), new RatingEdit("esrb", "T")],
+            Warnings: [new WarningEdit("violence")]);
+
+        XDocument edited = MetadataEditor.Apply(Minimal(), edit, Now);
+        XElement section = edited.Root!.Element(M("Ratings"))!;
+
+        // §7.14 puts the ratings before the warnings.
+        string[] order = ["Rating", "Rating", "ContentWarning"];
+        Assert.Equal(order, section.Elements().Select(e => e.Name.LocalName));
+
+        Assert.Equal("JP", (string?)section.Elements(M("Rating")).First().Attribute("region"));
+        Assert.Null(section.Elements(M("Rating")).Last().Attribute("region"));
+
+        // A scheme is somebody else's vocabulary, so one nobody here has
+        // heard of is written as given.
+        XDocument other = MetadataEditor.Apply(Minimal(), new MetadataEdit(Ratings: [new RatingEdit("glenat-maison", "12+")]), Now);
+        Assert.Equal("glenat-maison", (string?)other.Root!.Element(M("Ratings"))!.Element(M("Rating"))!.Attribute("scheme"));
+
+        // Half a rating is no rating, and a region is two capitals (§7.14).
+        Assert.Throws<ArgumentException>(() => MetadataEditor.Apply(Minimal(), new MetadataEdit(Ratings: [new RatingEdit("cero", "")]), Now));
+        Assert.Throws<ArgumentException>(() => MetadataEditor.Apply(Minimal(), new MetadataEdit(Ratings: [new RatingEdit("cero", "B", "Japon")]), Now));
+    }
+
+    [Fact]
     public void KeepsTheRatingsAConversionWroteWhenTheWarningsChange()
     {
         // §7.14 holds both, and this editor knows only one of them: the other

@@ -52,6 +52,14 @@ public sealed record SubjectEdit(string Type, string Text);
 public sealed record EntityEdit(string Name, string Type, string Role = "");
 
 /// <summary>
+/// How somebody else classified the publication (§7.14).
+/// </summary>
+/// <param name="Scheme">Whose classification it is: cero, esrb, pegi, a publisher's own.</param>
+/// <param name="Value">What that scheme says: B, T, 16.</param>
+/// <param name="Region">Where it applies, as two capitals, or empty.</param>
+public sealed record RatingEdit(string Scheme, string Value, string Region = "");
+
+/// <summary>
 /// A warning about what a publication holds (§7.14).
 /// </summary>
 /// <param name="Type">What is being warned about, from the vocabulary of §7.14.</param>
@@ -104,6 +112,7 @@ public sealed record MetadataEdit(
     IReadOnlyList<SubjectEdit>? Subjects = null,
     IReadOnlyList<DescriptionEdit>? Descriptions = null,
     IReadOnlyList<EntityEdit>? Entities = null,
+    IReadOnlyList<RatingEdit>? Ratings = null,
     IReadOnlyList<WarningEdit>? Warnings = null,
     IReadOnlyList<LinkEdit>? Links = null,
     RightsEdit? Rights = null,
@@ -137,6 +146,10 @@ public static partial class MetadataEditor
 
     /// <summary>The children of <c>Metadata</c>, in the order §7 and its schema give them.</summary>
     /// <summary>What §7.8 holds, in the order it holds it.</summary>
+    /// <summary>A region as §7.14 writes one: two capitals, as ISO 3166 does.</summary>
+    [GeneratedRegex("^[A-Z]{2}$")]
+    private static partial Regex Region();
+
     private static readonly string[] PublicationOrder = ["Publisher", "Imprint", "Place", "Edition", "Date", "PhysicalFormat"];
 
     private static readonly string[] Order =
@@ -177,6 +190,10 @@ public static partial class MetadataEditor
                 e.Element(X("Name"))?.Value.Trim() ?? string.Empty,
                 (string?)e.Attribute("type") ?? "character",
                 (string?)e.Attribute("role") ?? string.Empty)) ?? []],
+            [.. root.Element(X("Ratings"))?.Elements(X("Rating")).Select(r => new RatingEdit(
+                (string?)r.Attribute("scheme") ?? string.Empty,
+                (string?)r.Attribute("value") ?? string.Empty,
+                (string?)r.Attribute("region") ?? string.Empty)) ?? []],
             [.. root.Element(X("Ratings"))?.Elements(X("ContentWarning")).Select(w => new WarningEdit(
                 (string?)w.Attribute("type") ?? "other",
                 w.Value.Trim())) ?? []],
@@ -250,6 +267,9 @@ public static partial class MetadataEditor
 
         if (edit.Entities is { } entities)
             SetEntities(root, entities);
+
+        if (edit.Ratings is { } ratings)
+            SetRatings(root, ratings);
 
         if (edit.Warnings is { } warnings)
             SetWarnings(root, warnings);
@@ -510,8 +530,53 @@ public static partial class MetadataEditor
     }
 
     /// <summary>
-    /// Writes what a reader is warned about (§7.14), keeping the ratings a
-    /// conversion or another tool put there.
+    /// Writes how others classified the publication (§7.14), keeping the
+    /// warnings beside them.
+    /// </summary>
+    /// <remarks>
+    /// A scheme is somebody else's vocabulary — cero, esrb, pegi, a
+    /// publisher's own — so nothing here checks what it holds beyond its
+    /// being said at all: refusing a scheme this project has not heard of
+    /// would make it the judge of a table it does not keep.
+    /// </remarks>
+    private static void SetRatings(XElement root, IReadOnlyList<RatingEdit> ratings)
+    {
+        RatingEdit[] written = [.. ratings.Where(r => !string.IsNullOrWhiteSpace(r.Scheme) || !string.IsNullOrWhiteSpace(r.Value))];
+        XElement? section = root.Element(X("Ratings"));
+        XElement[] warnings = [.. section?.Elements(X("ContentWarning")) ?? []];
+
+        foreach (RatingEdit rating in written)
+        {
+            if (string.IsNullOrWhiteSpace(rating.Scheme) || string.IsNullOrWhiteSpace(rating.Value))
+                throw new ArgumentException("A rating is a scheme and what that scheme says (§7.14); one of these has only half.", nameof(ratings));
+
+            // §7.14: two capitals, as ISO 3166 writes a country.
+            if (rating.Region.Trim() is { Length: > 0 } region && !Region().IsMatch(region))
+                throw new ArgumentException($"'{region}' is no region; §7.14 wants two capitals.", nameof(ratings));
+        }
+
+        if (written.Length == 0 && warnings.Length == 0)
+        {
+            section?.Remove();
+            return;
+        }
+
+        // §7.14 puts the ratings before the warnings, and a section out of
+        // order is a section the schema refuses.
+        Container(root, "Ratings").ReplaceNodes(written.Select(r =>
+        {
+            var rating = new XElement(X("Rating"), new XAttribute("scheme", r.Scheme.Trim()), new XAttribute("value", r.Value.Trim()));
+
+            if (r.Region.Trim() is { Length: > 0 } region)
+                rating.SetAttributeValue("region", region);
+
+            return rating;
+        }).Concat(warnings));
+    }
+
+    /// <summary>
+    /// Writes what a reader is warned about (§7.14), keeping the ratings
+    /// beside them.
     /// </summary>
     private static void SetWarnings(XElement root, IReadOnlyList<WarningEdit> warnings)
     {

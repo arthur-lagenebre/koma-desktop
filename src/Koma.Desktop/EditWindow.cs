@@ -56,6 +56,7 @@ internal sealed class EditWindow : Window
     private Rows subjects = null!;
     private Rows descriptions = null!;
     private Rows entities = null!;
+    private Rows ratings = null!;
     private Rows warnings = null!;
     private Rows links = null!;
     private Rows dates = null!;
@@ -191,9 +192,11 @@ internal sealed class EditWindow : Window
     /// <summary>What a reader is warned about (§7.14), and where else to look (§7.15).</summary>
     private StackPanel WarningsAndLinks(MetadataEdit current)
     {
+        ratings = MetadataRows.Ratings();
         warnings = MetadataRows.Warnings();
         links = MetadataRows.Links();
 
+        MetadataRows.Fill(ratings, current.Ratings ?? []);
         MetadataRows.Fill(warnings, current.Warnings ?? []);
         MetadataRows.Fill(links, current.Links ?? []);
 
@@ -203,8 +206,9 @@ internal sealed class EditWindow : Window
             Margin = new Thickness(12),
             Children =
             {
+                new TextBlock { Text = Text.Of("A rating belongs to whoever gives it — cero, pegi, a publisher's own — so the scheme is a name, not a choice from a list this project keeps."), Opacity = 0.6, TextWrapping = TextWrapping.Wrap },
+                ratings,
                 warnings,
-                new TextBlock { Text = Text.Of("The ratings a conversion wrote are kept as they are; only the warnings are edited here."), Opacity = 0.6, TextWrapping = TextWrapping.Wrap },
                 links
             }
         };
@@ -310,6 +314,7 @@ internal sealed class EditWindow : Window
 
         DescriptionEdit[] newDescriptions = MetadataRows.ReadDescriptions(descriptions);
         EntityEdit[] newEntities = MetadataRows.ReadEntities(entities);
+        RatingEdit[] newRatings = MetadataRows.ReadRatings(ratings);
         WarningEdit[] newWarnings = MetadataRows.ReadWarnings(warnings);
         LinkEdit[] newLinks = MetadataRows.ReadLinks(links);
 
@@ -335,6 +340,7 @@ internal sealed class EditWindow : Window
             Same(newSubjects, current.Subjects) ? null : newSubjects,
             Same(newDescriptions, current.Descriptions) ? null : newDescriptions,
             Same(newEntities, current.Entities) ? null : newEntities,
+            Same(newRatings, current.Ratings) ? null : newRatings,
             Same(newWarnings, current.Warnings) ? null : newWarnings,
             Same(newLinks, current.Links) ? null : newLinks,
             newRights == current.Rights ? null : newRights,
@@ -372,6 +378,13 @@ internal sealed class EditWindow : Window
         && left.Zip(right).All(both => both.First.Name.Trim() == both.Second.Name.Trim()
             && both.First.Type == both.Second.Type
             && both.First.Role == both.Second.Role);
+
+    private static bool Same(RatingEdit[] left, IReadOnlyList<RatingEdit>? right) =>
+        right is not null
+        && left.Length == right.Count
+        && left.Zip(right).All(both => both.First.Scheme.Trim() == both.Second.Scheme.Trim()
+            && both.First.Value.Trim() == both.Second.Value.Trim()
+            && both.First.Region.Trim() == both.Second.Region.Trim());
 
     private static bool Same(WarningEdit[] left, IReadOnlyList<WarningEdit>? right) =>
         right is not null
