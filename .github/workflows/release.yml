@@ -130,18 +130,22 @@ jobs:
       # reader where Windows looks, teaches the shell what a .koma file is,
       # and puts the command line on the PATH. The portable pair stays, since
       # some people want a file they can carry and delete.
+      # PowerShell and not bash: Git Bash turns an argument starting with a
+      # slash into a Windows path, so /DVersion=0.2.0 reached ISCC mangled and
+      # was taken for a second script name.
       - name: Build the installer
         if: matrix.rid == 'win-x64'
-        shell: bash
+        shell: pwsh
         run: |
-          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then version="${GITHUB_REF_NAME#v}"; else version="0.0.0"; fi
+          $version = if ($env:GITHUB_REF -like 'refs/tags/v*') { $env:GITHUB_REF_NAME.Substring(1) } else { '0.0.0' }
 
-          cp "$OUTPUT/Koma.Desktop.exe" "$OUTPUT/cli/koma.exe" installer/
+          Copy-Item "$env:OUTPUT/Koma.Desktop.exe" installer/
+          Copy-Item "$env:OUTPUT/cli/koma.exe" installer/
 
           # Inno Setup is on the Windows runner image; ISCC is not on PATH.
-          "/c/Program Files (x86)/Inno Setup 6/ISCC.exe" \
-            "/DVersion=$version" \
-            "/O$(pwd)" \
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" `
+            "/DVersion=$version" `
+            "/O$(Get-Location)" `
             installer/koma.iss
 
       - uses: actions/upload-artifact@v7
