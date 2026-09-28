@@ -4,6 +4,14 @@ This page exists because the SignPath Foundation programme asks every project
 it signs for to publish one, and because whoever downloads a binary deserves
 to know who built it and who vouches for it.
 
+**Nothing is signed yet.** The application to the programme was turned down in
+September 2026 for want of public visibility — stars, forks, contributors,
+outside mentions — which is a fair thing to ask of a project that lends its
+name, and says nothing about the work. The project will apply again. What
+follows describes what signing will look like when it comes; until then, a
+binary is what GitHub Actions built from the public source of this repository,
+and `SHA256SUMS` beside each release says what that build produced.
+
 ## What is signed
 
 The Windows binaries of a release — `koma-desktop-<version>-win-x64.exe` and

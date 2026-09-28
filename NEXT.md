@@ -38,18 +38,24 @@ pass.
 
 ## Deferred, and why
 
-- **Signing the executables.** Windows calls them unknown publishers.
-  [`docs/code-signing.md`](docs/code-signing.md) is written, which the
-  programme asks for; what is left is outside this repository: apply at
-  signpath.org, and once approved, create the organisation, the project, a
-  trusted build system pointing at this repository's Actions, a signing policy
-  with origin verification and manual approval, and an artifact configuration
-  for the two Windows binaries. Then the release workflow gains a step that
-  submits the unsigned binaries and waits for the signature, between the
-  publish and the release.
+- **Signing the executables.** Applied to the SignPath Foundation programme in
+  September 2026 and turned down: the programme asks for public visibility —
+  stars, forks, contributors, outside mentions, sustained activity — and a
+  project a week old has none of it. They said plainly it was no judgment on
+  the work, and invited a fresh application once the project is better known.
+  So: nothing is signed, the release says why, and this is worth trying again
+  when there is something to show. [`docs/code-signing.md`](docs/code-signing.md)
+  stays as it is, and what would follow an approval is written down there.
+
+  Until then a binary is what CI built from public source, with `SHA256SUMS`
+  beside it, and Windows says unknown publisher — which the download section
+  says before a reader meets the dialog. A paid certificate would remove the
+  warning tomorrow; it has not seemed worth it for a comics reader handed out
+  on GitHub.
 - **An installer, and the `.koma` file association.** A double-click that opens
   the application needs an installer, which needs signing to not be worse than
-  the plain executable it replaces. It waits on the item above.
+  the plain executable it replaces — an unsigned installer asks for more trust
+  than an unsigned executable, not less. It waits on the item above.
 - **Translating what `Koma.Core` reports.** Its violations and conversion notes
   are the vocabulary of the specification, read against a bug report or the
   reference converter's output. The interface is translated; these are not, on
