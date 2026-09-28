@@ -126,12 +126,31 @@ jobs:
             chmod +x "${name}" "${tool}"
           fi
 
+      # Windows gets an installer beside the portable executables: it puts the
+      # reader where Windows looks, teaches the shell what a .koma file is,
+      # and puts the command line on the PATH. The portable pair stays, since
+      # some people want a file they can carry and delete.
+      - name: Build the installer
+        if: matrix.rid == 'win-x64'
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then version="${GITHUB_REF_NAME#v}"; else version="0.0.0"; fi
+
+          cp "$OUTPUT/Koma.Desktop.exe" "$OUTPUT/cli/koma.exe" installer/
+
+          # Inno Setup is on the Windows runner image; ISCC is not on PATH.
+          "/c/Program Files (x86)/Inno Setup 6/ISCC.exe" \
+            "/DVersion=$version" \
+            "/O$(pwd)" \
+            installer/koma.iss
+
       - uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.rid }}
           path: |
             koma-desktop-*
             koma-v*
+            koma-setup-*
           if-no-files-found: error
 
   release:
@@ -151,7 +170,7 @@ jobs:
       # can be checked against what CI built.
       - name: Checksums
         working-directory: dist
-        run: sha256sum koma-desktop-* koma-v* > SHA256SUMS
+        run: sha256sum koma-desktop-* koma-v* koma-setup-* > SHA256SUMS
 
       - name: Create the release
         env:

@@ -52,10 +52,10 @@ pass.
   says before a reader meets the dialog. A paid certificate would remove the
   warning tomorrow; it has not seemed worth it for a comics reader handed out
   on GitHub.
-- **An installer, and the `.koma` file association.** A double-click that opens
-  the application needs an installer, which needs signing to not be worse than
-  the plain executable it replaces — an unsigned installer asks for more trust
-  than an unsigned executable, not less. It waits on the item above.
+- **An installer for Linux.** Windows has one; Linux has two executables and
+  no association. A `.desktop` file and a mime type would do it, packaged as
+  an AppImage or a flatpak, and neither is worth doing until somebody says
+  they read on Linux.
 - **Translating what `Koma.Core` reports.** Its violations and conversion notes
   are the vocabulary of the specification, read against a bug report or the
   reference converter's output. The interface is translated; these are not, on

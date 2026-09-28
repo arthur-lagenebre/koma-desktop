@@ -62,16 +62,29 @@ The comics shown are public domain Golden Age issues from the
 ## Download
 
 The [latest release](https://github.com/arthur-lagenebre/koma-desktop/releases/latest)
-carries four files: the reader and the command-line tool, for Windows and for
-Linux. Each is one self-contained executable — nothing to install, no runtime
-to fetch — and `SHA256SUMS` beside them says what CI built.
+carries, for Windows, an installer and the same two programs as portable
+files, and for Linux the two programs. `SHA256SUMS` beside them says what CI
+built.
 
-Windows calls the executables an unknown publisher: they are not signed. The
-project applied to the SignPath Foundation programme, which turned it down for
-want of public visibility rather than for anything about the work, and will
-apply again when there is more to show. The
-[code signing policy](docs/code-signing.md) says what would be signed, by whom
-and how, should that come.
+`koma-setup-<version>-win-x64.exe` installs the reader and the command line
+for the current user — no administrator needed — makes `.koma` files open on a
+double-click, and puts `koma` on the `PATH` so that a converted library is one
+command away. Both the association and the `PATH` entry are choices at install
+time, and both are undone by the uninstaller. Your library is not: it stays in
+`%APPDATA%\KOMA`, since a reading position belongs to the reader and not to
+the installer.
+
+`koma-desktop-<version>-<platform>` and `koma-<version>-<platform>` are the
+same two programs as single self-contained executables — nothing to install,
+no runtime to fetch, nothing written outside the library. Carry them on a
+stick, run them, delete them.
+
+Windows calls the installer and the executables an unknown publisher: they are
+not signed. The project applied to the SignPath Foundation programme, which
+turned it down for want of public visibility rather than for anything about the
+work, and will apply again when there is more to show. The [code signing
+policy](docs/code-signing.md) says what would be signed, by whom and how,
+should that come.
 
 Until then, a binary is what CI built from the public source of this
 repository, and `SHA256SUMS` on the release page says what came out of it.
