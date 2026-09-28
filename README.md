@@ -22,11 +22,42 @@ Written in C# with Avalonia. Windows is the primary target; Linux is supported.
 
 ## What it looks like
 
-<!-- Four screenshots, in this order, dropped into docs/images/ and linked here:
-     the shelf with a series open, a spread being read, the pages window with
-     its thumbnails, and the edit window on the people tab. A reader decides
-     from pictures whether to download; this section is the one part of this
-     file that cannot be written. -->
+![The shelf: a series shown as one card, and two publications on their own,
+each with its cover, its title, its series and where its reader stopped.](docs/images/shelf.png)
+
+The shelf keeps series and single works apart. A series stands as one card
+until it is opened; what is not part of one is a card of its own, and opens on
+a click.
+
+![A publication open on its front cover, the page fitted to the window.](docs/images/reading-cover.png)
+
+![Two pages side by side as one spread, the way they were drawn to be
+read.](docs/images/reading-spread.png)
+
+Pages are paired into spreads by the rules of §10, so a story drawn across two
+pages is read across two pages. A CBZ cannot say that; a KOMA package does,
+and the reader honours it.
+
+![The pages window: every page of the publication with its picture, its
+identifier and its role, beside a form for the role, the spread position, the
+printed number, the chapter and the alternative text.](docs/images/pages.png)
+
+Every page is a thing that can be named. Its role — front cover, story,
+advertisement, back cover — its place in a spread, the number printed on the
+paper, the chapter that starts there, and what a reader who cannot see it is
+told about it (§8.7).
+
+![The edit window, on the publication tab: title, language, reading direction,
+publisher, imprint, place, edition, dates and the size of the
+paper.](docs/images/editing.png)
+
+Seven tabs carry what §7 lets a publication say about itself: the publication,
+the people who made it, what it is about, what it says of itself, the
+characters and places of its story, the ratings and warnings and links, and
+the rights. The same form edits one publication or forty picked out together.
+
+The comics shown are public domain Golden Age issues from the
+[Digital Comic Museum](https://digitalcomicmuseum.com).
 
 ## Download
 
