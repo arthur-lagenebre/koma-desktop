@@ -21,11 +21,22 @@ Linux. Each is one self-contained executable — nothing to install, no runtime
 to fetch — and `SHA256SUMS` beside them says what CI built.
 
 Windows calls the executables an unknown publisher: the project has applied to
-the SignPath Foundation programme and is not signed yet.
-[`docs/code-signing.md`](docs/code-signing.md) says what will be signed, by
-whom, and how — including that the certificate is issued to the Foundation, so
-a signature will say the Foundation vouches for a binary built from this
+the SignPath Foundation programme and is not signed yet. The
+[code signing policy](docs/code-signing.md) says what will be signed, by whom,
+and how — including that the certificate is issued to the Foundation, so a
+signature will say the Foundation vouches for a binary built from this
 repository rather than naming a person.
+
+## Privacy
+
+The application makes no network request of any kind. It reads the files you
+point it at, and writes its library — the watched folders, the reading
+positions, the covers it made — under `%APPDATA%\KOMA` on Windows and
+`~/.config/KOMA` on Linux, which is where .NET puts application data. Nothing
+is sent anywhere, nothing is collected, and there is no account to have.
+
+Its dependencies are Avalonia and SkiaSharp, which draw and decode; neither
+reaches the network on this application's behalf.
 
 ## Status
 

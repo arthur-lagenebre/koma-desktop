@@ -60,6 +60,14 @@ submodule and is maintained by the same person. The dependencies — Avalonia,
 SkiaSharp — are open source and are shipped as they come, unsigned by this
 project.
 
+## Privacy
+
+The application makes no network request of any kind, sends nothing anywhere,
+and collects nothing. It writes its library — the watched folders, the reading
+positions, the covers it made — under `%APPDATA%\KOMA` on Windows and
+`~/.config/KOMA` on Linux, and reads the files it is pointed at. There is no
+account, no telemetry and no update check.
+
 ## Reporting something suspicious
 
 A binary claiming to be KOMA that is unsigned, signed by someone else, or
