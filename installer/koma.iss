@@ -43,6 +43,11 @@ SetupIconFile=..\src\Koma.Desktop\Assets\koma.ico
 UninstallDisplayIcon={app}\Koma.Desktop.exe
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
+; Tell Windows that the environment and the file associations changed, so that
+; a terminal opened after the install finds koma and the shell refreshes its
+; icons. Without these, both wait for the next sign-in.
+ChangesEnvironment=yes
+ChangesAssociations=yes
 LicenseFile=..\LICENSE
 
 [Languages]
