@@ -9,9 +9,24 @@
 [![Généré par](https://img.shields.io/badge/Généré%20par-Claude%20Code-D97757?logo=claude&logoColor=white)](https://claude.com/claude-code)
 
 A cross-platform desktop library manager, reader and editor for
-[KOMA](https://github.com/arthur-lagenebre/koma) publications.
+[KOMA](https://github.com/arthur-lagenebre/koma) publications — an open
+fixed-page format for comics and manga, with a conformance corpus and two
+implementations that agree on every error it defines.
+
+It shelves what it finds, reads double-page spreads the way they were drawn,
+converts CBZ archives without touching the originals, edits everything a
+publication says about itself — for one volume or for forty at once — and
+checks any package against the specification.
 
 Written in C# with Avalonia. Windows is the primary target; Linux is supported.
+
+## What it looks like
+
+<!-- Four screenshots, in this order, dropped into docs/images/ and linked here:
+     the shelf with a series open, a spread being read, the pages window with
+     its thumbnails, and the edit window on the people tab. A reader decides
+     from pictures whether to download; this section is the one part of this
+     file that cannot be written. -->
 
 ## Download
 
