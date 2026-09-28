@@ -223,6 +223,13 @@ internal static class Commands
         options = options with { AccessModes = modes, AccessibilityHazards = hazards };
 
         string cbz = paths[0];
+
+        // A folder converts everything under it, keeping the tree: a library
+        // is converted a library at a time, and one archive at a time was
+        // only ever the smallest case of that.
+        if (Directory.Exists(cbz))
+            return ConvertFolder(cbz, paths.Count == 2 ? paths[1] : cbz, options, output, error);
+
         string koma = paths.Count == 2 ? paths[1] : Path.ChangeExtension(cbz, ".koma");
 
         if (!File.Exists(cbz))
@@ -263,6 +270,101 @@ internal static class Commands
             output.WriteLine($"  note       {note}");
 
         return Opened;
+    }
+
+    /// <summary>
+    /// Converts every archive under a folder, and says at the end which ones
+    /// want a second look.
+    /// </summary>
+    /// <remarks>
+    /// A hundred archives each carrying the same eight notes is eight hundred
+    /// lines saying nothing. What a reader wants after a long conversion is
+    /// the list of publications that are not like the others, so the notes
+    /// are counted: the ones that fall on nearly everything are summed up in
+    /// a line, and the ones that fall on a few name those few.
+    /// </remarks>
+    private static int ConvertFolder(string source, string destination, ConversionOptions options, TextWriter output, TextWriter error)
+    {
+        string[] archives = [.. Directory.EnumerateFiles(source, "*.cbz", SearchOption.AllDirectories).Order(StringComparer.Ordinal)];
+
+        if (archives.Length == 0)
+        {
+            error.WriteLine($"koma convert: no archive under {source}.");
+
+            return Usage;
+        }
+
+        var said = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+        int converted = 0;
+        int refused = 0;
+        int skipped = 0;
+
+        foreach (string cbz in archives)
+        {
+            string koma = Path.Combine(destination, Path.ChangeExtension(Path.GetRelativePath(source, cbz), ".koma"));
+            string name = Path.GetRelativePath(source, koma);
+
+            if (File.Exists(koma))
+            {
+                // Never over an existing publication, and a run that was
+                // interrupted is finished by running it again.
+                skipped++;
+                continue;
+            }
+
+            Directory.CreateDirectory(Path.GetDirectoryName(koma)!);
+
+            try
+            {
+                CbzConversion conversion = CbzConverter.Convert(cbz, koma, options);
+
+                converted++;
+
+                foreach (string note in conversion.Notes)
+                {
+                    if (!said.TryGetValue(note, out List<string>? which))
+                        said[note] = which = [];
+
+                    which.Add(name);
+                }
+            }
+            catch (Exception refusal) when (refusal is InvalidDataException or IOException or UnauthorizedAccessException)
+            {
+                refused++;
+                error.WriteLine($"{name}: {refusal.Message}");
+            }
+        }
+
+        output.WriteLine($"{Count(converted)} converted, {Count(refused)} refused, {Count(skipped)} already there.");
+
+        if (converted > 0)
+            Notes(said, converted, output);
+
+        return refused == 0 ? Opened : Rejected;
+    }
+
+    /// <summary>
+    /// The notes of a whole conversion: what fell on everything, then what
+    /// fell on a few, with their names.
+    /// </summary>
+    private static void Notes(Dictionary<string, List<string>> said, int converted, TextWriter output)
+    {
+        // A tenth of the run, or five publications: below either, a note is
+        // about particular publications and they are worth naming.
+        int few = Math.Max(5, converted / 10);
+
+        output.WriteLine();
+
+        foreach ((string note, List<string> which) in said.OrderByDescending(n => n.Value.Count).ThenBy(n => n.Key, StringComparer.Ordinal))
+        {
+            output.WriteLine($"  {Count(which.Count)}  {note}");
+
+            if (which.Count > few)
+                continue;
+
+            foreach (string name in which)
+                output.WriteLine($"       {name}");
+        }
     }
 
     private static int Unknown(string command, TextWriter output, TextWriter error)

@@ -114,10 +114,13 @@ only when its path, size or modification time has changed.
 publication says about itself; `koma check` adds layer 4, reading the pages a
 package can open without, and answers 0 when a publication conforms and 1 when
 it does not, so a shell can walk a library; `koma convert` writes a CBZ as a
-publication, never over one that is there, with the same options the import
-window offers and over the same converter, and prints what it assumed in the
-words the reference converter uses. A release ships it beside the reader, for
-whoever wants to convert without a window. It writes UTF-8 whatever the
+publication, or every archive under a folder keeping its tree, never over one
+that is there — so an interrupted run is finished by running it again — and
+after a folder it counts its notes rather than repeating them, naming the
+publications a note fell on when they are few; it takes the same options the
+import window offers, over the same converter, and prints what it assumed in
+the words the reference converter uses. A release ships it beside the reader,
+for whoever wants to convert without a window. It writes UTF-8 whatever the
 console's code page: a name is not the terminal's to mangle.
 
 `Koma.Desktop` opens on the shelf: the publications of the watched folders,

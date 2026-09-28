@@ -101,6 +101,35 @@ public sealed class CommandsTests : IDisposable
         Assert.NotEqual(string.Empty, error);
     }
 
+    [Fact]
+    public void ConvertsAWholeFolderAndSumsUpItsNotes()
+    {
+        // A hundred archives each carrying the same eight notes is eight
+        // hundred lines saying nothing.
+        string source = Path.Combine(folder, "library", "Rivage");
+        Directory.CreateDirectory(source);
+
+        File.Copy(Corpus.Example("manga.cbz"), Path.Combine(source, "1.cbz"));
+        File.Copy(Corpus.Example("bare.cbz"), Path.Combine(source, "2.cbz"));
+
+        string destination = Path.Combine(folder, "packages");
+        var output = new StringWriter();
+
+        int code = Commands.Run(["convert", Path.Combine(folder, "library"), destination], output, new StringWriter());
+        string said = output.ToString();
+
+        Assert.Equal(0, code);
+        Assert.Contains("2 converted, 0 refused, 0 already there.", said, StringComparison.Ordinal);
+
+        // The tree is kept, and a second run finds the work done.
+        Assert.True(File.Exists(Path.Combine(destination, "Rivage", "1.koma")));
+
+        var again = new StringWriter();
+        Commands.Run(["convert", Path.Combine(folder, "library"), destination], again, new StringWriter());
+
+        Assert.Contains("0 converted, 0 refused, 2 already there.", again.ToString(), StringComparison.Ordinal);
+    }
+
     public void Dispose()
     {
         try
