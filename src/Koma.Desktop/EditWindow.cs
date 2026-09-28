@@ -60,7 +60,10 @@ internal sealed class EditWindow : Window
     private Rows warnings = null!;
     private Rows links = null!;
     private Rows dates = null!;
-    private readonly StackPanel fields = new() { Spacing = 6, Margin = new Thickness(16) };
+    // A dock and not a stack: what is docked at the bottom keeps its place
+    // whatever the tabs hold, where a stack let seven tabs push the save
+    // button off the window with nothing to scroll.
+    private readonly DockPanel fields = new() { Margin = new Thickness(16) };
     private readonly WritingNotice writing = new();
 
     public EditWindow(string path, MetadataEdit current)
@@ -70,9 +73,12 @@ internal sealed class EditWindow : Window
 
         Title = Text.Of("{0} — Edit metadata", Path.GetFileName(path));
         // Room for the tabs, and a height of its own: a form that scrolls its
-        // save button out of reach is a form that cannot save.
-        Width = 760;
-        Height = 660;
+        // save button out of reach is a form that cannot save. Small enough
+        // to open on a laptop, and resizable for the rest.
+        Width = 820;
+        Height = 700;
+        MinWidth = 640;
+        MinHeight = 480;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
 
         title.Text = current.Title;
@@ -120,6 +126,25 @@ internal sealed class EditWindow : Window
         publication.Children.Add(Field(Text.Of("What it may do to a reader"), Boxes.Row(hazards)));
         publication.Children.Add(Field(Text.Of("A sentence for a reader deciding whether they can read it"), summary));
 
+        var buttons = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 8,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            Margin = new Thickness(0, 8, 0, 0),
+            Children = { cancel, save }
+        };
+
+        // Bottom first, so that the tabs take what is left rather than the
+        // other way round.
+        DockPanel.SetDock(buttons, Dock.Bottom);
+        DockPanel.SetDock(problem, Dock.Bottom);
+        DockPanel.SetDock(writing, Dock.Bottom);
+
+        fields.Children.Add(buttons);
+        fields.Children.Add(problem);
+        fields.Children.Add(writing);
+
         // Tabs rather than one long form: §7 carries more than a window holds
         // at once, and a form of ten sections is a form nobody opens. The
         // save button stays outside them, an edit being saved whole.
@@ -136,10 +161,6 @@ internal sealed class EditWindow : Window
                 new TabItem { Header = Text.Of("Rights"), Content = new ScrollViewer { Content = Rights(current) } }
             }
         });
-
-        fields.Children.Add(writing);
-        fields.Children.Add(problem);
-        fields.Children.Add(new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, HorizontalAlignment = HorizontalAlignment.Right, Children = { cancel, save } });
 
         Content = fields;
     }

@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Koma.Core.Writing;
@@ -44,6 +45,22 @@ public sealed class EditWindowTests : IDisposable
 
         Assert.Equal("français", window.Input<TextBox>("Language (BCP 47, such as fr or en-GB)").Text);
         Assert.Equal(before, File.ReadAllBytes(path));
+    }
+
+    [AvaloniaFact]
+    public void KeepsTheSaveButtonInTheWindowWhateverTheTabsHold()
+    {
+        // Seven tabs used to push it out of a stack with nothing to scroll.
+        string path = Path.Combine(folder, "valid-minimal.koma");
+        File.Copy(Corpus.Package("valid-minimal.koma"), path);
+
+        var window = new EditWindow(path, PublicationEditor.Current(path));
+        window.Show();
+
+        Button save = window.FindButton(b => b.Content as string == "Save");
+        Point corner = save.TranslatePoint(new Point(0, save.Bounds.Height), window) ?? new Point(0, double.MaxValue);
+
+        Assert.True(corner.Y <= window.Height, $"the save button ends at {corner.Y} in a window {window.Height} high");
     }
 
     public void Dispose()
