@@ -23,16 +23,16 @@ Written in C# with Avalonia. Windows is the primary target; Linux is supported.
 ## What it looks like
 
 ![The shelf: a series shown as one card, and two publications on their own,
-each with its cover, its title, its series and where its reader stopped.](docs/images/shelf.png)
+each with its cover, its title, its series and where its reader stopped.](docs/images/shelf.webp)
 
 The shelf keeps series and single works apart. A series stands as one card
 until it is opened; what is not part of one is a card of its own, and opens on
 a click.
 
-![A publication open on its front cover, the page fitted to the window.](docs/images/reading-cover.png)
+![A publication open on its front cover, the page fitted to the window.](docs/images/reading-cover.webp)
 
 ![Two pages side by side as one spread, the way they were drawn to be
-read.](docs/images/reading-spread.png)
+read.](docs/images/reading-spread.webp)
 
 Pages are paired into spreads by the rules of §10, so a story drawn across two
 pages is read across two pages. A CBZ cannot say that; a KOMA package does,
@@ -40,7 +40,7 @@ and the reader honours it.
 
 ![The pages window: every page of the publication with its picture, its
 identifier and its role, beside a form for the role, the spread position, the
-printed number, the chapter and the alternative text.](docs/images/pages.png)
+printed number, the chapter and the alternative text.](docs/images/pages.webp)
 
 Every page is a thing that can be named. Its role — front cover, story,
 advertisement, back cover — its place in a spread, the number printed on the
@@ -49,7 +49,7 @@ told about it (§8.7).
 
 ![The edit window, on the publication tab: title, language, reading direction,
 publisher, imprint, place, edition, dates and the size of the
-paper.](docs/images/editing.png)
+paper.](docs/images/editing.webp)
 
 Seven tabs carry what §7 lets a publication say about itself: the publication,
 the people who made it, what it is about, what it says of itself, the
