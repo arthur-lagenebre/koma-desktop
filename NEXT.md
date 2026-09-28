@@ -52,6 +52,22 @@ pass.
   says before a reader meets the dialog. A paid certificate would remove the
   warning tomorrow; it has not seemed worth it for a comics reader handed out
   on GitHub.
+- **Covers as thumbnails in the Windows Explorer.** A `.koma` file shows the
+  application's icon; showing its front cover would want a thumbnail handler —
+  a COM DLL implementing `IThumbnailProvider`, which Explorer loads into its
+  own process. That is the whole of the objection: a leak of ours leaks in
+  Explorer, a crash of ours crashes Explorer, and a version in use cannot be
+  replaced without restarting it. Microsoft has long advised against shell
+  extensions in managed code, since several of them in one process can demand
+  incompatible runtimes; NativeAOT changes that, a COM server compiled to
+  native code sharing no runtime, and projects do it. It is still a separate
+  component with its own build, registration, clean uninstall, and a test
+  cycle that restarts Explorer each time.
+
+  Several days, then, for something the shelf already does where a reader
+  chooses what to read. Worth doing when somebody says they miss it, and not
+  before.
+
 - **An installer for Linux.** Windows has one; Linux has two executables and
   no association. A `.desktop` file and a mime type would do it, packaged as
   an AppImage or a flatpak, and neither is worth doing until somebody says
