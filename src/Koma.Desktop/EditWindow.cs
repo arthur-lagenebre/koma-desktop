@@ -107,7 +107,9 @@ internal sealed class EditWindow : Window
         trimWidth.Text = current.PhysicalFormat?.Width;
         trimHeight.Text = current.PhysicalFormat?.Height;
 
-        var publication = new StackPanel { Spacing = 6, Margin = new Thickness(12) };
+        // Wide enough for the longest label, no wider: a field stretched
+        // across a maximised window is a field nobody can scan.
+        var publication = new StackPanel { Spacing = 6, Margin = new Thickness(12), MaxWidth = 900, HorizontalAlignment = HorizontalAlignment.Left };
 
         publication.Children.Add(Field(Text.Of("Title"), title));
         publication.Children.Add(Field(Text.Of("Language (BCP 47, such as fr or en-GB)"), language));
@@ -175,6 +177,8 @@ internal sealed class EditWindow : Window
         {
             Spacing = 8,
             Margin = new Thickness(12),
+            MaxWidth = 900,
+            HorizontalAlignment = HorizontalAlignment.Left,
             Children =
             {
                 new TextBlock { Text = Text.Of("The roles of §7.6: writer, artist, colorist, translator, editor…"), Opacity = 0.6, TextWrapping = TextWrapping.Wrap },
@@ -189,7 +193,7 @@ internal sealed class EditWindow : Window
         subjects = MetadataRows.Subjects();
         MetadataRows.Fill(subjects, current.Subjects ?? []);
 
-        return new StackPanel { Spacing = 8, Margin = new Thickness(12), Children = { subjects } };
+        return new StackPanel { Spacing = 8, Margin = new Thickness(12), MaxWidth = 900, HorizontalAlignment = HorizontalAlignment.Left, Children = { subjects } };
     }
 
     /// <summary>Who and what the story is about (§7.10).</summary>
@@ -202,6 +206,8 @@ internal sealed class EditWindow : Window
         {
             Spacing = 8,
             Margin = new Thickness(12),
+            MaxWidth = 900,
+            HorizontalAlignment = HorizontalAlignment.Left,
             Children =
             {
                 new TextBlock { Text = Text.Of("The characters, teams and places of the story, which is a different list from the people who made it."), Opacity = 0.6, TextWrapping = TextWrapping.Wrap },
@@ -225,6 +231,8 @@ internal sealed class EditWindow : Window
         {
             Spacing = 12,
             Margin = new Thickness(12),
+            MaxWidth = 900,
+            HorizontalAlignment = HorizontalAlignment.Left,
             Children =
             {
                 new TextBlock { Text = Text.Of("A rating belongs to whoever gives it — cero, pegi, a publisher's own — so the scheme is a name, not a choice from a list this project keeps."), Opacity = 0.6, TextWrapping = TextWrapping.Wrap },
@@ -246,6 +254,8 @@ internal sealed class EditWindow : Window
         {
             Spacing = 6,
             Margin = new Thickness(12),
+            MaxWidth = 900,
+            HorizontalAlignment = HorizontalAlignment.Left,
             Children =
             {
                 Field(Text.Of("Copyright"), copyright),
@@ -274,7 +284,7 @@ internal sealed class EditWindow : Window
         descriptions = MetadataRows.Descriptions();
         MetadataRows.Fill(descriptions, current.Descriptions ?? []);
 
-        return new StackPanel { Spacing = 8, Margin = new Thickness(12), Children = { descriptions } };
+        return new StackPanel { Spacing = 8, Margin = new Thickness(12), MaxWidth = 900, HorizontalAlignment = HorizontalAlignment.Left, Children = { descriptions } };
     }
 
     /// <summary>
@@ -283,6 +293,12 @@ internal sealed class EditWindow : Window
     /// </summary>
     private static StackPanel Field(string label, Control input)
     {
+        // A field of its own width sits where it was put, not in the middle
+        // of whatever the window happens to be: a form stretched over a wide
+        // screen leaves its small boxes adrift.
+        if (!double.IsNaN(input.Width))
+            input.HorizontalAlignment = HorizontalAlignment.Left;
+
         AutomationProperties.SetName(input, label);
 
         return new StackPanel { Spacing = 2, Children = { new TextBlock { Text = label, Opacity = 0.75 }, input } };

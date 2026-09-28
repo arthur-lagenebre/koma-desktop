@@ -201,8 +201,17 @@ internal sealed class PagesWindow : Window
 
             try
             {
+                // Into memory first: a decoder seeks, and an entry deflated
+                // inside a zip is read once, forwards. The corpus packages
+                // store their pages rather than deflate them, which is why
+                // this was invisible until a real library was opened.
+                using var seekable = new MemoryStream();
+
+                resource.CopyTo(seekable);
+                seekable.Position = 0;
+
                 // At the size it is shown, as the shelf decodes its covers.
-                read.Add((item.Id, Bitmap.DecodeToHeight(resource, (int)TileHeight)));
+                read.Add((item.Id, Bitmap.DecodeToHeight(seekable, (int)TileHeight)));
             }
             catch (Exception)
             {

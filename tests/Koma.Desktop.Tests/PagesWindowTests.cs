@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.VisualTree;
@@ -35,9 +36,12 @@ public sealed class PagesWindowTests : IDisposable
     [AvaloniaFact]
     public async Task ShowsThePagesThemselvesBesideTheirLines()
     {
-        // A reader editing p014 wants to see p014, not the word p014.
-        string path = Path.Combine(folder, "valid-page-list.koma");
-        File.Copy(Corpus.Package("valid-page-list.koma"), path);
+        // A reader editing p014 wants to see p014, not the word p014. The
+        // pages are deflated here, as a converted library's are, and not
+        // stored as the corpus packages keep them: a decoder seeks, so the
+        // bytes have to be in hand before it is asked to.
+        string path = Path.Combine(folder, "deflated.koma");
+        Deflated(Corpus.Package("valid-page-list.koma"), path);
 
         var window = new PagesWindow(path, null);
         window.Show();
@@ -69,6 +73,28 @@ public sealed class PagesWindowTests : IDisposable
 
         Assert.True(window.Input<TextBox>(Text.Of("Number printed on its right half")).IsEffectivelyVisible);
         Assert.Equal("3", window.Input<TextBox>(Text.Of("Number printed on the page")).Text);
+    }
+
+    /// <summary>
+    /// The same package with every entry deflated rather than stored, which
+    /// is what a conversion writes and what the corpus does not.
+    /// </summary>
+    private static void Deflated(string source, string destination)
+    {
+        using ZipArchive from = ZipFile.OpenRead(source);
+        using var to = new ZipArchive(File.Create(destination), ZipArchiveMode.Create);
+
+        foreach (ZipArchiveEntry entry in from.Entries)
+        {
+            // §2.1 keeps the mimetype stored and first; everything else is
+            // deflated, as a real package has it.
+            ZipArchiveEntry written = to.CreateEntry(entry.FullName, entry.FullName == "mimetype" ? CompressionLevel.NoCompression : CompressionLevel.Optimal);
+
+            using Stream read = entry.Open();
+            using Stream write = written.Open();
+
+            read.CopyTo(write);
+        }
     }
 
     public void Dispose()
