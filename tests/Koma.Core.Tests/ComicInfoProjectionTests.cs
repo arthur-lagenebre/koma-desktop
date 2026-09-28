@@ -220,6 +220,24 @@ public sealed class ComicInfoProjectionTests
         Assert.Equal(new Guid("527dda32-a0de-5105-a042-cb475b5f7d11"), ComicInfoProjection.NameBasedUuid(url, "https://example.org/"));
     }
 
+    [Fact]
+    public void ReadsCreditsWrittenOnSeveralLines()
+    {
+        // Seen in a real library: two writers written on two lines rather
+        // than separated by a comma, which left a newline inside a name.
+        var notes = new List<string>();
+        ComicInfo parsed = ComicInfo.Parse(Encoding.UTF8.GetBytes("<ComicInfo><Series>Rivage</Series><Writer>S.D. Perry\nMatthew K. Manning</Writer><Penciller>  Ming   Doyle  </Penciller></ComicInfo>"), notes);
+
+        XDocument metadata = ComicInfoProjection.Metadata(parsed, new ConversionOptions(), [], notes).Metadata;
+        XNamespace m = "urn:koma:metadata";
+
+        // Two people, and a name squeezed to single spaces: a name with two
+        // spaces in it is the same name.
+        string[] named = ["S.D. Perry", "Matthew K. Manning", "Ming Doyle"];
+
+        Assert.Equal(named, metadata.Root!.Element(m + "Contributors")!.Elements(m + "Contributor").Select(c => c.Element(m + "Name")!.Value));
+    }
+
     private static (string Metadata, ReadingDirection Direction, List<string> Notes) Project(string cbz)
     {
         using ZipArchive archive = ZipFile.OpenRead(Corpus.Example(cbz));

@@ -423,10 +423,33 @@ public static partial class ComicInfoProjection
             notes.Add("ComicInfo fields recomputed from the package rather than trusted: " + string.Join(", ", redundant) + ". The passthrough copy still carries the original values, which is the section 15 warning 'ComicInfo projection inconsistent with KOMA'");
     }
 
-    private static IEnumerable<string> SplitCredits(string? value) => value is null ? [] : CreditSeparator().Split(value).Select(part => part.Trim()).Where(part => part.Length > 0);
+    /// <summary>
+    /// The credits of one ComicInfo field, one name at a time.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Separated by commas and semicolons, as ComicInfo has always done, and
+    /// by line breaks, which some libraries write instead: a writer field
+    /// holding two names on two lines means two people, and keeping it whole
+    /// would put a newline inside a name.
+    /// </para>
+    /// <para>
+    /// What is left of each is squeezed to single spaces. A name with two
+    /// spaces in it is the same name, and nothing downstream should have to
+    /// know that.
+    /// </para>
+    /// </remarks>
+    private static IEnumerable<string> SplitCredits(string? value) =>
+        value is null ? [] : CreditSeparator().Split(value).Select(Squeezed).Where(part => part.Length > 0);
 
-    [GeneratedRegex("[,;]")]
+    /// <summary>One line, single spaces, nothing at either end.</summary>
+    private static string Squeezed(string value) => Blanks().Replace(value, " ").Trim();
+
+    [GeneratedRegex(@"[,;\r\n]")]
     private static partial Regex CreditSeparator();
+
+    [GeneratedRegex(@"\s+")]
+    private static partial Regex Blanks();
 
     private static void Add(XElement root, string container, IEnumerable<XElement> children)
     {
