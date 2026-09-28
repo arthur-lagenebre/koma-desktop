@@ -20,8 +20,12 @@ carries four files: the reader and the command-line tool, for Windows and for
 Linux. Each is one self-contained executable — nothing to install, no runtime
 to fetch — and `SHA256SUMS` beside them says what CI built.
 
-Windows will call the executable an unknown publisher until the project is
-signed, which it is not yet.
+Windows calls the executables an unknown publisher: the project has applied to
+the SignPath Foundation programme and is not signed yet.
+[`docs/code-signing.md`](docs/code-signing.md) says what will be signed, by
+whom, and how — including that the certificate is issued to the Foundation, so
+a signature will say the Foundation vouches for a binary built from this
+repository rather than naming a person.
 
 ## Status
 

@@ -38,11 +38,15 @@ pass.
 
 ## Deferred, and why
 
-- **Signing the executables.** Windows calls them unknown publishers. SignPath
-  Foundation signs open-source projects for free, and asks for a code-signing
-  policy on the project page, multi-factor authentication for everyone, and an
-  approver for each signing. The application has to be made by a person, not by
-  CI.
+- **Signing the executables.** Windows calls them unknown publishers.
+  [`docs/code-signing.md`](docs/code-signing.md) is written, which the
+  programme asks for; what is left is outside this repository: apply at
+  signpath.org, and once approved, create the organisation, the project, a
+  trusted build system pointing at this repository's Actions, a signing policy
+  with origin verification and manual approval, and an artifact configuration
+  for the two Windows binaries. Then the release workflow gains a step that
+  submits the unsigned binaries and waits for the signature, between the
+  publish and the release.
 - **An installer, and the `.koma` file association.** A double-click that opens
   the application needs an installer, which needs signing to not be worse than
   the plain executable it replaces. It waits on the item above.
